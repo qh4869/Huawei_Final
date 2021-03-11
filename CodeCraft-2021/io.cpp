@@ -1,4 +1,4 @@
-#include "dataStat.h"
+#include "io.h"
 using namespace std;
 
 std::tuple<cServer, cVM, cRequests> dataIn(string fileName) {
@@ -9,7 +9,6 @@ std::tuple<cServer, cVM, cRequests> dataIn(string fileName) {
 *   - fileName: txt文件名
 *   
 */
-
     ifstream fin; 
     fin.open(fileName.c_str());
     cin.rdbuf(fin.rdbuf()); // 重定向
@@ -23,29 +22,33 @@ std::tuple<cServer, cVM, cRequests> dataIn(string fileName) {
     cin >> inputStr;
     server.serverTypeNum = atoi(inputStr.c_str()); // string to int
     // 服务器每条信息
-    server.info.resize(server.serverTypeNum);
     for (int iTerm=0; iTerm<server.serverTypeNum; iTerm++) { 
         // server name
+        string serName;
         cin >> inputStr;
         inputStr.erase(inputStr.begin()); // 删除左括号
         inputStr.erase(inputStr.end()-1); // 逗号
-        server.info[iTerm].serName = inputStr;
+        serName = inputStr;
+
         // cpu
         cin >> inputStr;
         inputStr.erase(inputStr.end()-1);
-        server.info[iTerm].totalCPU = atoi(inputStr.c_str());
+        server.info[serName].totalCPU = atoi(inputStr.c_str());
+
         // RAM
         cin >> inputStr;
         inputStr.erase(inputStr.end()-1);
-        server.info[iTerm].totalRAM = atoi(inputStr.c_str());
+        server.info[serName].totalRAM = atoi(inputStr.c_str());
+
         // hardware price
         cin >> inputStr;
         inputStr.erase(inputStr.end()-1);
-        server.info[iTerm].hardCost = atoi(inputStr.c_str());
+        server.info[serName].hardCost = atoi(inputStr.c_str());
+        
         // energy price
         cin >> inputStr;
         inputStr.erase(inputStr.end()-1);
-        server.info[iTerm].energyCost = atoi(inputStr.c_str());
+        server.info[serName].energyCost = atoi(inputStr.c_str());
     }
 
     // 虚拟机总数
@@ -79,8 +82,13 @@ std::tuple<cServer, cVM, cRequests> dataIn(string fileName) {
     // 请求数据天数
     cin >> inputStr;
     request.dayNum = atoi(inputStr.c_str());
+    // 与天数有关的vector初始化
     request.numEachDay.resize(request.dayNum);
     request.info.resize(request.dayNum);
+    server.newServerNum.resize(request.dayNum);
+    server.buyRecord.resize(request.dayNum);
+    VM.transVmRecord.resize(request.dayNum);
+    VM.deployRecord.resize(request.dayNum);
     // 每天的请求
     for (int iDay=0; iDay<request.dayNum; iDay++) {
         // 每天的请求数目
