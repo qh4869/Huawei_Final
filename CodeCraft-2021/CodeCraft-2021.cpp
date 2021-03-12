@@ -7,11 +7,12 @@
 using namespace std;
 
 const int ALPHA = 400; // 价格加权参数
+const double BETA = 1; // 没存CPU加权参数 SSP
 
 // 上传系统要把dataIn函数前三行注释掉，process中估计成本部分也得去掉
 int main()
 {
-    cServer server;
+    cSspServer server;
     cVM VM;
     cRequests request;
     void process(cServer &server, cVM &VM, const cRequests &request);
@@ -20,8 +21,8 @@ int main()
     tie(server, VM, request) = dataIn("../CodeCraft-2021/training-1.txt");
 
     // 数据预处理
-    server.alpha = ALPHA;
-    server.rankServerByPrice(); // 按照价格排序 权重为alpha
+    server.beta = BETA;
+    // server.rankServerByPrice(); // 按照价格排序 权重为alpha
 
     // 购买，迁移，部署
     process(server, VM, request);
@@ -33,5 +34,6 @@ int main()
 }
 
 void process(cServer &server, cVM &VM, const cRequests &request) {
-	firstFit(server, VM, request);
+	// firstFit(server, VM, request);
+	// ssp(server, VM, request);
 }

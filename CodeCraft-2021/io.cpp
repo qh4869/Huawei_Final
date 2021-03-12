@@ -1,7 +1,7 @@
 #include "io.h"
 using namespace std;
 
-std::tuple<cServer, cVM, cRequests> dataIn(string fileName) {
+std::tuple<cSspServer, cVM, cRequests> dataIn(string fileName) {
 /*
 * Fn: 读入数据
 *

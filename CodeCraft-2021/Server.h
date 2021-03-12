@@ -48,3 +48,7 @@ public:
     // 选购服务器，从某个排序后的服务器列表里，按顺序找能够符合虚拟机要求 而且最便宜的服务器 (不可能找不到)
     string chooseSer(int reqCPU, int reqRAM, bool isDoubleNode);
 };
+
+class cSspServer : public cServer {
+    double beta; // 资源加权参数
+};

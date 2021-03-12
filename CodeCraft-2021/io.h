@@ -8,4 +8,4 @@ using namespace std;
 
 
 // 输入数据读取
-std::tuple<cServer, cVM, cRequests> dataIn(string fileName);
+std::tuple<cSspServer, cVM, cRequests> dataIn(string fileName);
