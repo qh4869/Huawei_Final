@@ -1,9 +1,12 @@
 #include "Server.h"
 
-void cServer::purchase(string name, int iDay) {
-/* Fn:
+int cServer::purchase(string name, int iDay) {
+/* In:
 *	- name: 服务器型号
 * 	- iDay: 第几天
+*	
+* Out:
+*	- 购买的服务器ID
 */
 	sMyEachServer oneServer;
 	oneServer.serName = name;
@@ -21,5 +24,6 @@ void cServer::purchase(string name, int iDay) {
 		newServerNum[iDay]++;
 	}
 
+	return myServerSet.size()-1;
 
 }
