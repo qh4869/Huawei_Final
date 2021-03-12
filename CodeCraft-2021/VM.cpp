@@ -177,3 +177,40 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 	transVmRecord[iDay].push_back(oneTrans);
 }
 
+bool cVM::isDouble(string vmName) {
+	return info[vmName].nodeStatus;
+}
+
+int cVM::reqCPU(string vmName) {
+	return info[vmName].needCPU;
+}
+
+int cVM::reqRAM(string vmName) {
+	return info[vmName].needRAM;
+}
+
+void cVM::deleteVM(string vmID, cServer& server) {
+	string vmName = workingVmSet[vmID].vmName;
+	bool doubleStatus = isDouble(vmName);
+	int serID = workingVmSet[vmID].serverID;
+	int reqCPUs = reqCPU(vmName);
+	int reqRAMs = reqRAM(vmName);
+
+	// 恢复服务器资源
+	if (doubleStatus) {
+		server.myServerSet[serID].aIdleCPU += reqCPUs/2;
+		server.myServerSet[serID].bIdleCPU += reqCPUs/2;
+		server.myServerSet[serID].aIdleRAM += reqRAMs/2;
+		server.myServerSet[serID].bIdleRAM += reqRAMs/2;
+	}
+	else {
+		if (workingVmSet[vmID].node) { // A
+			server.myServerSet[serID].aIdleCPU += reqCPUs;
+			server.myServerSet[serID].aIdleRAM += reqRAMs;
+		}
+		else { // B
+			server.myServerSet[serID].bIdleCPU += reqCPUs;
+			server.myServerSet[serID].bIdleRAM += reqRAMs;
+		}
+	}
+}

@@ -2,6 +2,9 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <algorithm>
+#include <tuple>
+#include <utility>
 using namespace std;
 
 struct sServerItem {
@@ -23,10 +26,25 @@ class cServer {
 public:
     int serverTypeNum;
     unordered_map<string, sServerItem> info; // 服务器型号 -> 其他信息
+    int alpha; // 价格加权参数
+    vector<pair<string, int>> priceOrder; // 所有服务器价格从小到大排序，其中储存 <服务器的型号, 加权价格>
     vector<sMyEachServer> myServerSet; // 当前已经购买的服务器 服务器id就是vector的index
 
-    vector<int> newServerNum; // 每天购买的服务器种类数 用于输出
-    vector<unordered_map<string, int>> buyRecord; // 每天 购买的每种服务器 购买记录 用于输出 (hash: 服务器型号->数目)
+    vector<int> newServerNum; // 用于输出: 每天购买的服务器种类数 
+    vector<unordered_map<string, int>> buyRecord; // 用于输出: 每天 购买的每种服务器 购买记录 (hash: 服务器型号->数目)
+
+    // 按照价格排序
+    static bool mycomp(pair<string, int> i, pair<string, int> j);
+    void rankServerByPrice();
+
+    // 计算某台服务器是否为开机状态
+    bool isOpen(int serID);
 
     int purchase(string serName, int iDay); // 购买服务器
+    
+    // First Fit，从0号服务器开始找一台能装进去的服务器ID, 找不到返回-1。
+    int firstFitDouble(int reqCPU, int reqRAM); // 双节点部署
+    std::tuple<int, bool> firstFitSingle(int reqCPU, int reqRAM); // 单节点部署
+    // 选购服务器，从某个排序后的服务器列表里，按顺序找能够符合虚拟机要求 而且最便宜的服务器 (不可能找不到)
+    string chooseSer(int reqCPU, int reqRAM, bool isDoubleNode);
 };

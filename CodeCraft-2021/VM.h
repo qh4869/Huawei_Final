@@ -42,8 +42,18 @@ public:
     // 双节点部署
     int deploy(cServer &server, int iDay, string VMid, string vmName, int serID);
 
+    // delete VM
+    void deleteVM(string vmID, cServer& server);
+
     // 单节点虚拟机迁移
     void transfer(cServer &server, int iDay, string VMid, int serID, bool node);
     // 双节点虚拟接迁移
     void transfer(cServer &server, int iDay, string VMid, int serID);
+
+    // 输入虚拟机名字，返回是否是 双节点部署
+    bool isDouble(string vmName);
+    // 输入虚拟机名字，返回需要CPU
+    int reqCPU(string vmName);
+    // 输入虚拟机名字，返回需要RAM
+    int reqRAM(string vmName);
 };
