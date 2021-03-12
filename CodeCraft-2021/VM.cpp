@@ -146,6 +146,7 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 	oneTrans.vmID = VMid;
 	oneTrans.serverID = serID;
 	oneTrans.node = node;
+	oneTrans.isSingle = true;
 	transVmRecord[iDay].push_back(oneTrans);
 }
 
@@ -174,6 +175,7 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 	sTransVmItem oneTrans;
 	oneTrans.vmID = VMid;
 	oneTrans.serverID = serID;
+	oneTrans.isSingle = false;
 	transVmRecord[iDay].push_back(oneTrans);
 }
 

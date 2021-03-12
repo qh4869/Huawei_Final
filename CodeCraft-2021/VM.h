@@ -19,6 +19,7 @@ struct sEachWorkingVM {
 struct sTransVmItem {
 	string vmID;
 	int serverID;
+    bool isSingle;
 	bool node; // 双节点的虚拟机这个变量没有意义
 };
 
