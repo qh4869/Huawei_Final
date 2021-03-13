@@ -7,6 +7,7 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 	int engCostStas = 0; // 计算功耗成本
 	int hardCostStas = 0;
 	string costName;
+	int bugID;
 
 	// 初始化变量
 	int serId; 
@@ -39,17 +40,23 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 				// 根据搜索结果分配或者购买
 				if (serId != -1) { // 分配成功
 					if (vmIsDouble) 
-						VM.deploy(server, iDay, vmID, vmName, serId);
+						bugID = VM.deploy(server, iDay, vmID, vmName, serId);
 					else
-						VM.deploy(server, iDay, vmID, vmName, serId, serNode);
+						bugID = VM.deploy(server, iDay, vmID, vmName, serId, serNode);
 				}
 				else { // 需要购买服务器
 					serName = server.chooseSer(vmReqCPU, vmReqRAM, vmIsDouble);
 					serId = server.purchase(serName, iDay);
 					if (vmIsDouble)
-						VM.deploy(server, iDay, vmID, vmName, serId);
+						bugID = VM.deploy(server, iDay, vmID, vmName, serId);
 					else
-						VM.deploy(server, iDay, vmID, vmName, serId, true); // 新买的服务器就先放A节点
+						bugID = VM.deploy(server, iDay, vmID, vmName, serId, true); // 新买的服务器就先放A节点
+				}
+
+				// debug
+				if (bugID) {
+					cout << "部署失败" << bugID << endl;
+					return;
 				}
 			}
 			else { // delete 请求
@@ -57,18 +64,18 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 				VM.deleteVM(vmID, server);
 			}
 		}
-		// 一天结束统计功耗成本
-		for (int iServer=0; iServer<server.myServerSet.size(); iServer++) {
-			if (server.isOpen(iServer)) {
-				costName = server.myServerSet[iServer].serName;
-				engCostStas += server.info[costName].energyCost;
-			}
-		}
+		// // 一天结束统计功耗成本
+		// for (int iServer=0; iServer<server.myServerSet.size(); iServer++) {
+		// 	if (server.isOpen(iServer)) {
+		// 		costName = server.myServerSet[iServer].serName;
+		// 		engCostStas += server.info[costName].energyCost;
+		// 	}
+		// }
 	}
-	// 计算买服务器总成本
-	for (int iServer=0; iServer<server.myServerSet.size(); iServer++) {
-		costName = server.myServerSet[iServer].serName;
-		hardCostStas += server.info[costName].hardCost;
-	}
-	cout << "成本: " << engCostStas+hardCostStas << endl;
+	// // 计算买服务器总成本
+	// for (int iServer=0; iServer<server.myServerSet.size(); iServer++) {
+	// 	costName = server.myServerSet[iServer].serName;
+	// 	hardCostStas += server.info[costName].hardCost;
+	// }
+	// cout << "成本: " << engCostStas+hardCostStas << endl;
 }
