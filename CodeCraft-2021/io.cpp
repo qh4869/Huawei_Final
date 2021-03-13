@@ -161,5 +161,6 @@ void dataOut(cServer& server, cVM& VM, const cRequests& request) {
             else
                 cout << "(" << ite->serID << ")" << endl;
         }
+        // cout << "day end" << endl;
     }
 }

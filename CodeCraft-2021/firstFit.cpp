@@ -53,6 +53,7 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 				}
 			}
 			else { // delete 请求
+				vmID = request.info[iDay][iTerm].vmID;
 				VM.deleteVM(vmID, server);
 			}
 		}

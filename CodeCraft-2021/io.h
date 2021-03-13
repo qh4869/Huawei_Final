@@ -12,4 +12,4 @@ using namespace std;
 std::tuple<cServer, cVM, cRequests> dataIn(string fileName);
 
 //将结果输出到标准输出
-void dataOut(cServer server, cVM VM, const cRequests request);
+void dataOut(cServer &server, cVM &VM, const cRequests &request);
