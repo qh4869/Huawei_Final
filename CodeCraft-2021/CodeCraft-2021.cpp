@@ -27,7 +27,7 @@ int main()
     process(server, VM, request);
 
     // 输出
-    // dataOut()
+    dataOut(server, VM, request);
 
     return 0;
 }
