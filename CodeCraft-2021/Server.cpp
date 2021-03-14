@@ -18,40 +18,53 @@ int cServer::purchase(string name, int iDay) {
 
 	myServerSet.push_back(oneServer);
 
-	if (buyRecord[iDay].count(name)) 
-		buyRecord[iDay][name]++;
-	else {
-		buyRecord[iDay].insert(std::make_pair(name, 1));
+	if (buyRecord[iDay].empty() || buyRecord[iDay].back().first!=name) {
+		buyRecord[iDay].push_back(make_pair(name, 1));
 		newServerNum[iDay]++;
+	}
+	else { // 已有相同类型(必然是相连的 ref: cVM:buy())
+		buyRecord[iDay].back().second++;
 	}
 
 	return myServerSet.size()-1;
 
 }
 
-int cServer::firstFitDouble(int reqCPU, int reqRAM) {
-/* Fn: 双节点部署
+pair<bool, int> cServer::firstFitDouble(int reqCPU, int reqRAM) {
+/* Fn: 双节点预部署
+* Out: false 表示旧服务器 true表示当天新买的服务器
 */
-	for (int iSer=0; iSer<myServerSet.size(); iSer++) {
-		if (myServerSet[iSer].aIdleCPU > reqCPU/2 && myServerSet[iSer].bIdleCPU > reqCPU/2 \
-			&& myServerSet[iSer].aIdleRAM > reqRAM/2 && myServerSet[iSer].bIdleRAM > reqRAM/2)
-			return iSer;
+	for (int iSer=0; iSer<(int)mySerCopy.size(); iSer++) {
+		if (mySerCopy[iSer].aIdleCPU > reqCPU/2 && mySerCopy[iSer].bIdleCPU > reqCPU/2 \
+			&& mySerCopy[iSer].aIdleRAM > reqRAM/2 && mySerCopy[iSer].bIdleRAM > reqRAM/2)
+			return make_pair(false, iSer);
+	}
+	for (int iSer=0; iSer<(int)preSvSet.size(); iSer++) {
+		if (preSvSet[iSer].aIdleCPU > reqCPU/2 && preSvSet[iSer].bIdleCPU > reqCPU/2 \
+			&& preSvSet[iSer].aIdleRAM > reqRAM/2 && preSvSet[iSer].bIdleRAM > reqRAM/2)
+			return make_pair(true, iSer);
 	}
 
-	return -1;
+	return make_pair(false, -1);
 }
 
-std::tuple<int, bool> cServer::firstFitSingle(int reqCPU, int reqRAM) {
+std::tuple<pair<bool, int>, bool> cServer::firstFitSingle(int reqCPU, int reqRAM) {
 /* Fn: 单节点部署，bool输入为true表示A节点
 */
-	for (int iSer=0; iSer<myServerSet.size(); iSer++) {
-		if (myServerSet[iSer].aIdleCPU > reqCPU && myServerSet[iSer].aIdleRAM > reqRAM)
-			return make_tuple(iSer, true);
-		if (myServerSet[iSer].bIdleCPU > reqCPU && myServerSet[iSer].bIdleRAM > reqRAM)
-			return make_tuple(iSer, false);
+	for (int iSer=0; iSer<(int)mySerCopy.size(); iSer++) {
+		if (mySerCopy[iSer].aIdleCPU > reqCPU && mySerCopy[iSer].aIdleRAM > reqRAM)
+			return make_tuple(make_pair(false, iSer), true);
+		if (mySerCopy[iSer].bIdleCPU > reqCPU && mySerCopy[iSer].bIdleRAM > reqRAM)
+			return make_tuple(make_pair(false, iSer), false);
+	}
+	for (int iSer=0; iSer<(int)preSvSet.size(); iSer++) {
+		if (preSvSet[iSer].aIdleCPU > reqCPU && preSvSet[iSer].aIdleRAM > reqRAM)
+			return make_tuple(make_pair(true, iSer), true);
+		if (preSvSet[iSer].bIdleCPU > reqCPU && preSvSet[iSer].bIdleRAM > reqRAM)
+			return make_tuple(make_pair(true, iSer), false);
 	}
 
-	return make_tuple(-1, false);
+	return make_tuple(make_pair(false, -1), false);
 }
 
 bool cServer::mycomp(pair<string, int> i, pair<string, int> j) {
@@ -96,4 +109,47 @@ bool cServer::isOpen(int serID) {
 		&& myServerSet[serID].bIdleRAM == info[serName].totalRAM/2)
 		return false;
 	return true;
+}
+
+int cServer::prePurchase(string name) {
+	sMyEachServer oneServer;
+
+	oneServer.serName = name;
+	oneServer.aIdleCPU = info[name].totalCPU / 2;
+	oneServer.bIdleCPU = info[name].totalCPU / 2;
+	oneServer.aIdleRAM = info[name].totalRAM / 2;
+	oneServer.bIdleRAM = info[name].totalRAM / 2;
+
+	preSvSet.push_back(oneServer);
+
+	return preSvSet.size()-1;
+
+}
+
+void cServer::buy(int iDay) {
+/* Fn: preSvSet内容转为myServerSet，同时填写id映射表
+*/
+	int realid;
+	vector<bool> movedFlag(preSvSet.size());
+	string curSerName;
+
+	for (int id=0; id<(int)preSvSet.size(); id++) {
+		if (movedFlag[id]==true)
+			continue;
+		realid = purchase(preSvSet[id].serName, iDay);
+		idMap.insert(make_pair(id, realid));
+		movedFlag[id] = true;
+
+		curSerName = myServerSet[realid].serName;
+		// 再搜索同类型的sv放在一起
+		for (int k=id+1; k<(int)preSvSet.size(); k++) {
+			if (movedFlag[k]==false && preSvSet[k].serName==curSerName) {
+				realid = purchase(preSvSet[id].serName, iDay);
+				idMap.insert(make_pair(k, realid));
+				movedFlag[k] = true;
+			}
+		}
+	}
+
+	preSvSet.clear();
 }

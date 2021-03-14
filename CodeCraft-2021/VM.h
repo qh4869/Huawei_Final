@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include "Server.h"
 #include <iostream>
+#include "globalHeader.h"
 using namespace std;
 
 struct sVmItem { // hash map 的 value部分
@@ -29,14 +30,34 @@ struct sDeployItem {
 	bool node; // true a节点
 };
 
+struct sPreDeployItem {
+    bool isNew; // 是否新买服务器
+    int serID;
+    bool node; // true: node a
+    string vmName;
+};
+
 class cVM {
 public:
     int vmTypeNum;
     unordered_map<string, sVmItem> info; // hash map: type->info
     unordered_map<string, sEachWorkingVM> workingVmSet; // 工作中的虚拟机 哈希表： 虚拟机ID -> 该虚拟机信息
+    unordered_map<string ,sPreDeployItem> preDeploy; // 预部署 vmID->其他
+    vector<string> preDel; // 预删除 vmID
 
     vector<vector<sTransVmItem>> transVmRecord; // 每天 每条 迁移记录 用于输出
     vector<vector<sDeployItem>> deployRecord; // 每天 每条 虚拟机部署记录 用于输出
+
+    // 单节点预部署
+    void predp(string vmID, bool isNew, int serID, string vmName, cServer &server, bool node);
+    // 双节点预部署
+    void predp(string vmID, bool isNew, int serID, string vmName, cServer &server);
+
+    // 预删除虚拟机
+    void preDltVM(string vmID);
+
+    // 后部署
+    int postDpWithDel(cServer &server, const cRequests &request, int iDay);
 
     // 单节点部署
     int deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node);

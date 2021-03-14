@@ -9,9 +9,11 @@ std::tuple<cServer, cVM, cRequests> dataIn(string fileName) {
 *   - fileName: txt文件名
 *   
 */
+#ifdef LOCAL
     ifstream fin; 
     fin.open(fileName.c_str());
     cin.rdbuf(fin.rdbuf()); // 重定向
+#endif
 
     string inputStr;
     cServer server;

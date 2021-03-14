@@ -4,11 +4,9 @@
 #include "Request.h"
 #include "firstFit.h"
 #include <iostream>
+#include "globalHeader.h" // 全局常量
 using namespace std;
 
-const int ALPHA = 400; // 价格加权参数
-
-// 上传系统要把dataIn函数前三行注释掉，process中估计成本部分也得去掉
 int main()
 {
     cServer server;
@@ -26,8 +24,10 @@ int main()
     // 购买，迁移，部署
     process(server, VM, request);
 
+#ifndef LOCAL
     // 输出
     dataOut(server, VM, request);
+#endif
 
     return 0;
 }
