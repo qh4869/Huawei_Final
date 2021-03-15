@@ -67,7 +67,7 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 		// 按顺序处理请求
 		bugID = VM.postDpWithDel(server, request, iDay);
 		if (bugID) {
-			cout << "部署失败" << bugID << endl;
+			cout << "部署删除失败" << bugID << endl;
 			return;
 		}
 #ifdef LOCAL

@@ -191,7 +191,13 @@ int cVM::reqRAM(string vmName) {
 	return info[vmName].needRAM;
 }
 
-void cVM::deleteVM(string vmID, cServer& server) {
+int cVM::deleteVM(string vmID, cServer& server) {
+	if (!workingVmSet.count(vmID)){
+		cout << "不能删除不存在的服务器" << endl;
+		return -1;
+	}
+
+
 	string vmName = workingVmSet[vmID].vmName;
 	bool doubleStatus = isDouble(vmName);
 	int serID = workingVmSet[vmID].serverID;
@@ -215,6 +221,9 @@ void cVM::deleteVM(string vmID, cServer& server) {
 			server.myServerSet[serID].bIdleRAM += reqRAMs;
 		}
 	}
+
+	workingVmSet.erase(vmID);
+	return 0;
 }
 
 void cVM::predp(string vmID, bool isNew, int serID, string vmName, cServer &server, bool node) {
@@ -391,14 +400,17 @@ int cVM::postDpWithDel(cServer &server, const cRequests &request, int iDay) {
 		}
 		else {
 			vmID = request.info[iDay][iTerm].vmID;
-			deleteVM(vmID, server);
+			bugID = deleteVM(vmID, server);
+			if (bugID) {
+				cout << "删除失败" << bugID << endl;
+				return -1;
+			}
 		}
 	}
 
 	server.mySerCopy = server.myServerSet;
 	server.idMap.clear();
 	preDeploy.clear();
-
 
 	return 0;
 }

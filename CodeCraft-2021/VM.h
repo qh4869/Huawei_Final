@@ -65,7 +65,7 @@ public:
     int deploy(cServer &server, int iDay, string VMid, string vmName, int serID);
 
     // delete VM
-    void deleteVM(string vmID, cServer& server);
+    int deleteVM(string vmID, cServer& server);
 
     // 单节点虚拟机迁移
     void transfer(cServer &server, int iDay, string VMid, int serID, bool node);
