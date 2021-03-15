@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include "globalHeader.h"
 using namespace std;
 
 struct sRequestItem {

@@ -216,3 +216,123 @@ void cVM::deleteVM(string vmID, cServer& server) {
 		}
 	}
 }
+
+void cVM::predp(string vmID, bool isNew, int serID, string vmName, cServer &server, bool node) {
+/* Fn: 预部署 单节点
+*/
+	int reqCPU = info[vmName].needCPU;
+	int reqRAM = info[vmName].needRAM;
+
+	// 减少资源 (preSvSet & mySerCopy)
+	if (isNew) {
+		if (node) {
+			server.preSvSet[serID].aIdleCPU -= reqCPU;
+			server.preSvSet[serID].aIdleRAM -= reqRAM;
+		}
+		else {
+			server.preSvSet[serID].bIdleCPU -= reqCPU;
+			server.preSvSet[serID].bIdleRAM -= reqRAM;
+		}
+	}
+	else {
+		if (node) {
+			server.mySerCopy[serID].aIdleCPU -= reqCPU;
+			server.mySerCopy[serID].aIdleRAM -= reqRAM;
+		}
+		else {
+			server.mySerCopy[serID].bIdleCPU -= reqCPU;
+			server.mySerCopy[serID].bIdleRAM -= reqRAM;
+		}
+	}
+
+	// 输入数据结构
+	sPreDeployItem onePreDeploy;
+
+	onePreDeploy.isNew = isNew;
+	onePreDeploy.serID = serID;
+	onePreDeploy.node = node;
+	onePreDeploy.vmName = vmName;
+
+	pair<string, sPreDeployItem> res(vmID, onePreDeploy);
+	preDeploy.insert(res);
+}
+
+void cVM::predp(string vmID, bool isNew, int serID, string vmName, cServer &server) {
+/* Fn: 预部署 双节点
+*/
+	int reqCPU = info[vmName].needCPU;
+	int reqRAM = info[vmName].needRAM;
+	
+	if (isNew) {
+		server.preSvSet[serID].aIdleCPU -= reqCPU/2;
+		server.preSvSet[serID].bIdleCPU -= reqCPU/2;
+		server.preSvSet[serID].aIdleRAM -= reqRAM/2;
+		server.preSvSet[serID].bIdleRAM -= reqRAM/2;
+	}
+	else {
+		server.mySerCopy[serID].aIdleCPU -= reqCPU/2;
+		server.mySerCopy[serID].bIdleCPU -= reqCPU/2;
+		server.mySerCopy[serID].aIdleRAM -= reqRAM/2;
+		server.mySerCopy[serID].bIdleRAM -= reqRAM/2;
+	}
+
+	sPreDeployItem onePreDeploy;
+
+	onePreDeploy.isNew = isNew;
+	onePreDeploy.serID = serID;
+	onePreDeploy.vmName = vmName;
+
+	pair<string, sPreDeployItem> res(vmID, onePreDeploy);
+	preDeploy.insert(res);
+}
+
+void cVM::preDltVM(string vmID) {
+	preDel.push_back(vmID);
+}
+
+int cVM::postDpWithDel(cServer &server, const cRequests &request, int iDay) {
+	int postid;
+	int bugID;
+	string vmID;
+	string vmName;
+	bool isdouble;
+	bool isNew;
+	int preid;
+	bool node;
+
+	for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) {
+		if (request.info[iDay][iTerm].type) { //
+			vmID = request.info[iDay][iTerm].vmID;
+			vmName = preDeploy[vmID].vmName;
+			isdouble = isDouble(vmName);
+			isNew = preDeploy[vmID].isNew;
+			preid = preDeploy[vmID].serID;
+			node = preDeploy[vmID].node;
+
+			// id 映射
+			if (isNew)
+				postid = server.idMap[preid];
+			else
+				postid = preid;
+
+			if (isdouble)
+				bugID = deploy(server, iDay, vmID, vmName, postid);
+			else
+				bugID = deploy(server, iDay, vmID, vmName, postid, node);
+
+			if (bugID) {
+				cout << "部署失败" << bugID << endl;
+				return -1;
+			}
+		}
+		else {
+			vmID = request.info[iDay][iTerm].vmID;
+			deleteVM(vmID, server);
+		}
+	}
+
+	server.mySerCopy = server.myServerSet;
+	server.idMap.clear();
+
+	return 0;
+}
