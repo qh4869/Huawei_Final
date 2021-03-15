@@ -286,8 +286,72 @@ void cVM::predp(string vmID, bool isNew, int serID, string vmName, cServer &serv
 	preDeploy.insert(res);
 }
 
-void cVM::preDltVM(string vmID) {
-	preDel.push_back(vmID);
+void cVM::preDltVM(cServer &server, string vmID) {
+	// 删除预部署的资源
+	string vmName = preDeploy[vmID].vmName;
+	int reqCPU = info[vmName].needCPU;
+	int reqRAM = info[vmName].needRAM;
+	bool isdouble = isDouble(vmName);
+	bool isNew;
+	int serID;
+	bool node;
+	bool isTodayDeployed;
+
+
+	if (preDeploy.count(vmID)) { // 是当天部署进去的
+		isTodayDeployed = true;
+		isNew = preDeploy[vmID].isNew;
+		serID = preDeploy[vmID].serID;
+		node = preDeploy[vmID].node;
+	}
+	else if (workingVmSet.count(vmID)) {
+		isTodayDeployed = false;
+		serID = workingVmSet[vmID].serverID;
+		node = workingVmSet[vmID].node;
+	}
+	else {
+		cout << "无法(预)删除不存在的虚拟机" << endl;
+		return;
+	}
+
+	if (isTodayDeployed && isNew) {
+		if (isdouble) {
+			server.preSvSet[serID].aIdleCPU += reqCPU/2;
+			server.preSvSet[serID].bIdleCPU += reqCPU/2;
+			server.preSvSet[serID].aIdleRAM += reqRAM/2;
+			server.preSvSet[serID].bIdleRAM += reqRAM/2;
+		}
+		else {
+			if (node) {
+				server.preSvSet[serID].aIdleCPU += reqCPU;
+				server.preSvSet[serID].aIdleRAM += reqRAM;
+			}
+			else {
+				server.preSvSet[serID].bIdleCPU += reqCPU;
+				server.preSvSet[serID].bIdleRAM += reqRAM;
+			}
+		}
+	}
+	else {
+		if (isdouble) {
+			server.mySerCopy[serID].aIdleCPU += reqCPU/2;
+			server.mySerCopy[serID].bIdleCPU += reqCPU/2;
+			server.mySerCopy[serID].aIdleRAM += reqRAM/2;
+			server.mySerCopy[serID].bIdleRAM += reqRAM/2;
+		}
+		else {
+			if (node) {
+				server.mySerCopy[serID].aIdleCPU += reqCPU;
+				server.mySerCopy[serID].aIdleRAM += reqRAM;
+			}
+			else {
+				server.mySerCopy[serID].bIdleCPU += reqCPU;
+				server.mySerCopy[serID].bIdleRAM += reqRAM;
+			}
+		}
+	}
+
+	// preDel.push_back(vmID);
 }
 
 int cVM::postDpWithDel(cServer &server, const cRequests &request, int iDay) {
@@ -333,6 +397,8 @@ int cVM::postDpWithDel(cServer &server, const cRequests &request, int iDay) {
 
 	server.mySerCopy = server.myServerSet;
 	server.idMap.clear();
+	preDeploy.clear();
+
 
 	return 0;
 }

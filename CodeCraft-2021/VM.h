@@ -43,7 +43,7 @@ public:
     unordered_map<string, sVmItem> info; // hash map: type->info
     unordered_map<string, sEachWorkingVM> workingVmSet; // 工作中的虚拟机 哈希表： 虚拟机ID -> 该虚拟机信息
     unordered_map<string ,sPreDeployItem> preDeploy; // 预部署 vmID->其他
-    vector<string> preDel; // 预删除 vmID
+    // vector<string> preDel; // 预删除 vmID
 
     vector<vector<sTransVmItem>> transVmRecord; // 每天 每条 迁移记录 用于输出
     vector<vector<sDeployItem>> deployRecord; // 每天 每条 虚拟机部署记录 用于输出
@@ -54,7 +54,7 @@ public:
     void predp(string vmID, bool isNew, int serID, string vmName, cServer &server);
 
     // 预删除虚拟机
-    void preDltVM(string vmID);
+    void preDltVM(cServer &server, string vmID);
 
     // 后部署
     int postDpWithDel(cServer &server, const cRequests &request, int iDay);

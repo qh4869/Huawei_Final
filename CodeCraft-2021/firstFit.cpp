@@ -59,7 +59,7 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 			}
 			else { // delete 请求
 				vmID = request.info[iDay][iTerm].vmID;
-				VM.preDltVM(vmID);
+				VM.preDltVM(server, vmID);
 			}
 		}
 		// 正式购买
