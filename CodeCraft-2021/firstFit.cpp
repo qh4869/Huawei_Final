@@ -1,4 +1,4 @@
-#include "firstFit.h"
+﻿#include "firstFit.h"
 
 void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 /* Fn: first fit算法部署和购买，不迁移
@@ -59,7 +59,7 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 			}
 			else { // delete 请求
 				vmID = request.info[iDay][iTerm].vmID;
-				VM.preDltVM(vmID);
+				VM.preDltVM(server, vmID);
 			}
 		}
 		// 正式购买
@@ -67,7 +67,7 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 		// 按顺序处理请求
 		bugID = VM.postDpWithDel(server, request, iDay);
 		if (bugID) {
-			cout << "部署失败" << bugID << endl;
+			cout << "部署删除失败" << bugID << endl;
 			return;
 		}
 #ifdef LOCAL
