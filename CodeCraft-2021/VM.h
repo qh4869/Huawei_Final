@@ -1,37 +1,38 @@
-ï»¿#pragma once
+#pragma once
 #include <unordered_map>
 #include "Server.h"
 #include <iostream>
 #include "globalHeader.h"
 using namespace std;
 
-struct sVmItem { // hash map çš„ valueéƒ¨åˆ†
+struct sVmItem { // hash map µÄ value²¿·Ö
     int needCPU;
     int needRAM;
-    bool nodeStatus; // trueè¡¨ç¤ºåŒèŠ‚ç‚¹
+    bool nodeStatus; // true±íÊ¾Ë«½Úµã
 };
 
 struct sEachWorkingVM {
 	string vmName;
 	int serverID;
-	bool node; // true è¡¨ç¤ºaèŠ‚ç‚¹ false è¡¨ç¤ºbèŠ‚ç‚¹
+	bool node; // true ±íÊ¾a½Úµã false ±íÊ¾b½Úµã
 };
 
 struct sTransVmItem {
 	string vmID;
 	int serverID;
     bool isSingle;
-	bool node; // åŒèŠ‚ç‚¹çš„è™šæ‹Ÿæœºè¿™ä¸ªå˜é‡æ²¡æœ‰æ„ä¹‰
+	bool node; // Ë«½ÚµãµÄĞéÄâ»úÕâ¸ö±äÁ¿Ã»ÓĞÒâÒå
 };
 
 struct sDeployItem {
 	int serID;
 	bool isSingle;
-	bool node; // true aèŠ‚ç‚¹
+	bool node; // true a½Úµã
+	int indexTerm;
 };
 
 struct sPreDeployItem {
-    bool isNew; // æ˜¯å¦æ–°ä¹°æœåŠ¡å™¨
+    bool isNew; // ÊÇ·ñĞÂÂò·şÎñÆ÷
     int serID;
     bool node; // true: node a
     string vmName;
@@ -41,41 +42,46 @@ class cVM {
 public:
     int vmTypeNum;
     unordered_map<string, sVmItem> info; // hash map: type->info
-    unordered_map<string, sEachWorkingVM> workingVmSet; // å·¥ä½œä¸­çš„è™šæ‹Ÿæœº å“ˆå¸Œè¡¨ï¼š è™šæ‹ŸæœºID -> è¯¥è™šæ‹Ÿæœºä¿¡æ¯
-    unordered_map<string ,sPreDeployItem> preDeploy; // é¢„éƒ¨ç½² vmID->å…¶ä»–
-    // vector<string> preDel; // é¢„åˆ é™¤ vmID
+    unordered_map<string, sEachWorkingVM> workingVmSet; // ¹¤×÷ÖĞµÄĞéÄâ»ú ¹şÏ£±í£º ĞéÄâ»úID -> ¸ÃĞéÄâ»úĞÅÏ¢
+    unordered_map<string ,sPreDeployItem> preDeploy; // Ô¤²¿Êğ vmID->ÆäËû
+    vector<string> preDel; // Ô¤É¾³ı vmID
 
-    vector<vector<sTransVmItem>> transVmRecord; // æ¯å¤© æ¯æ¡ è¿ç§»è®°å½• ç”¨äºè¾“å‡º
-    vector<vector<sDeployItem>> deployRecord; // æ¯å¤© æ¯æ¡ è™šæ‹Ÿæœºéƒ¨ç½²è®°å½• ç”¨äºè¾“å‡º
+    vector<vector<sTransVmItem>> transVmRecord; // Ã¿Ìì Ã¿Ìõ Ç¨ÒÆ¼ÇÂ¼ ÓÃÓÚÊä³ö
+    vector<vector<sDeployItem>> deployRecord; // Ã¿Ìì Ã¿Ìõ ĞéÄâ»ú²¿Êğ¼ÇÂ¼ ÓÃÓÚÊä³ö
+	vector<vector<sDeployItem>> realDeployRecord; // Ã¿Ìì Ã¿Ìõ ĞéÄâ»ú²¿Êğ¼ÇÂ¼ ÓÃÓÚÊä³ö
 
-    // å•èŠ‚ç‚¹é¢„éƒ¨ç½²
+    // µ¥½ÚµãÔ¤²¿Êğ
     void predp(string vmID, bool isNew, int serID, string vmName, cServer &server, bool node);
-    // åŒèŠ‚ç‚¹é¢„éƒ¨ç½²
+    // Ë«½ÚµãÔ¤²¿Êğ
     void predp(string vmID, bool isNew, int serID, string vmName, cServer &server);
 
-    // é¢„åˆ é™¤è™šæ‹Ÿæœº
+    // Ô¤É¾³ıĞéÄâ»ú
     void preDltVM(cServer &server, string vmID);
 
-    // åéƒ¨ç½²
+    // ºó²¿Êğ
     int postDpWithDel(cServer &server, const cRequests &request, int iDay);
 
-    // å•èŠ‚ç‚¹éƒ¨ç½²
+    // µ¥½Úµã²¿Êğ
     int deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node);
-    // åŒèŠ‚ç‚¹éƒ¨ç½²
+    // Ë«½Úµã²¿Êğ
     int deploy(cServer &server, int iDay, string VMid, string vmName, int serID);
 
     // delete VM
-    int deleteVM(string vmID, cServer& server);
+    void deleteVM(string vmID, cServer& server);
 
-    // å•èŠ‚ç‚¹è™šæ‹Ÿæœºè¿ç§»
+    // µ¥½ÚµãĞéÄâ»úÇ¨ÒÆ
     void transfer(cServer &server, int iDay, string VMid, int serID, bool node);
-    // åŒèŠ‚ç‚¹è™šæ‹Ÿæ¥è¿ç§»
+    // Ë«½ÚµãĞéÄâ½ÓÇ¨ÒÆ
     void transfer(cServer &server, int iDay, string VMid, int serID);
 
-    // è¾“å…¥è™šæ‹Ÿæœºåå­—ï¼Œè¿”å›æ˜¯å¦æ˜¯ åŒèŠ‚ç‚¹éƒ¨ç½²
+    // ÊäÈëĞéÄâ»úÃû×Ö£¬·µ»ØÊÇ·ñÊÇ Ë«½Úµã²¿Êğ
     bool isDouble(string vmName);
-    // è¾“å…¥è™šæ‹Ÿæœºåå­—ï¼Œè¿”å›éœ€è¦CPU
+    // ÊäÈëĞéÄâ»úÃû×Ö£¬·µ»ØĞèÒªCPU
     int reqCPU(string vmName);
-    // è¾“å…¥è™šæ‹Ÿæœºåå­—ï¼Œè¿”å›éœ€è¦RAM
+    // ÊäÈëĞéÄâ»úÃû×Ö£¬·µ»ØĞèÒªRAM
     int reqRAM(string vmName);
+
+	// CYT
+	int deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node, int indexTerm);
+	int deploy(cServer &server, int iDay, string VMid, string vmName, int serID, int indexTerm);
 };

@@ -1,18 +1,18 @@
-ï»¿#pragma once
+#pragma once
 #include <string>
 #include <vector>
 #include "globalHeader.h"
 using namespace std;
 
 struct sRequestItem {
-    bool type; // operation type, trueè¡¨ç¤ºadd falseè¡¨ç¤ºdelete
-    string vmName; // deleteç±»å‹ä¸‹è¿™ä¸ªå€¼ä¸ºç©º
+    bool type; // operation type, true±íÊ¾add false±íÊ¾delete
+    string vmName; // deleteÀàĞÍÏÂÕâ¸öÖµÎª¿Õ
     string vmID;
 };
 
 class cRequests {
 public:
-    int dayNum; // å¤©æ•°
-    vector<int> numEachDay; // æ¯å¤©çš„è¯·æ±‚æ•°é‡
-    vector<vector<sRequestItem>> info; // æŸä¸€å¤©çš„ æŸæ¡ è¯·æ±‚
+    int dayNum; // ÌìÊı
+    vector<int> numEachDay; // Ã¿ÌìµÄÇëÇóÊıÁ¿
+    vector<vector<sRequestItem>> info; // Ä³Ò»ÌìµÄ Ä³Ìõ ÇëÇó
 };

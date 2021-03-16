@@ -1,14 +1,12 @@
-ï»¿#include "Server.h"
+#include "Server.h"
 #include <iostream>
 
-int cServer::purchase(string name, int iDay) {
-/* In:
-*	- name: æœåŠ¡å™¨å‹å·
-* 	- iDay: ç¬¬å‡ å¤©
-*	
-* Out:
-*	- è´­ä¹°çš„æœåŠ¡å™¨ID
-*/
+void cServer::purchase(string name, int iDay) {
+	/* Fn:
+	*	- name: ·şÎñÆ÷ĞÍºÅ
+	* 	- iDay: µÚ¼¸Ìì
+	*/
+
 	sMyEachServer oneServer;
 	oneServer.serName = name;
 	oneServer.aIdleCPU = info[name].totalCPU / 2;
@@ -17,22 +15,50 @@ int cServer::purchase(string name, int iDay) {
 	oneServer.bIdleRAM = info[name].totalRAM / 2;
 
 	myServerSet.push_back(oneServer);
+	dayServerNum[iDay]++;     // Ã¿Ìì·şÎñÆ÷¼Ó1
 
-	if (buyRecord[iDay].empty() || buyRecord[iDay].back().first!=name) {
-		buyRecord[iDay].push_back(make_pair(name, 1));
+	if (buyRecord[iDay].count(name))
+		buyRecord[iDay][name]++;
+	else {
+		buyRecord[iDay].insert(std::make_pair(name, 1));
 		newServerNum[iDay]++;
 	}
-	else { // å·²æœ‰ç›¸åŒç±»å‹(å¿…ç„¶æ˜¯ç›¸è¿çš„ ref: cVM:buy())
-		buyRecord[iDay].back().second++;
-	}
-
-	return myServerSet.size()-1;
 
 }
 
+//int cServer::purchase(string name, int iDay) {
+///* In:
+//*	- name: ·şÎñÆ÷ĞÍºÅ
+//* 	- iDay: µÚ¼¸Ìì
+//*	
+//* Out:
+//*	- ¹ºÂòµÄ·şÎñÆ÷ID
+//*/
+//
+//	sMyEachServer oneServer;
+//	oneServer.serName = name;
+//	oneServer.aIdleCPU = info[name].totalCPU / 2;
+//	oneServer.bIdleCPU = info[name].totalCPU / 2;
+//	oneServer.aIdleRAM = info[name].totalRAM / 2;
+//	oneServer.bIdleRAM = info[name].totalRAM / 2;
+//
+//	myServerSet.push_back(oneServer);
+//
+//	if (buyRecord[iDay].empty() || buyRecord[iDay].back().first!=name) {
+//		buyRecord[iDay].push_back(make_pair(name, 1));
+//		newServerNum[iDay]++;
+//	}
+//	else { // ÒÑÓĞÏàÍ¬ÀàĞÍ(±ØÈ»ÊÇÏàÁ¬µÄ ref: cVM:buy())
+//		buyRecord[iDay].back().second++;
+//	}
+//
+//	return myServerSet.size()-1;
+//
+//}
+
 pair<bool, int> cServer::firstFitDouble(int reqCPU, int reqRAM) {
-/* Fn: åŒèŠ‚ç‚¹é¢„éƒ¨ç½²
-* Out: false è¡¨ç¤ºæ—§æœåŠ¡å™¨ trueè¡¨ç¤ºå½“å¤©æ–°ä¹°çš„æœåŠ¡å™¨
+/* Fn: Ë«½ÚµãÔ¤²¿Êğ
+* Out: false ±íÊ¾¾É·şÎñÆ÷ true±íÊ¾µ±ÌìĞÂÂòµÄ·şÎñÆ÷
 */
 	for (int iSer=0; iSer<(int)mySerCopy.size(); iSer++) {
 		if (mySerCopy[iSer].aIdleCPU > reqCPU/2 && mySerCopy[iSer].bIdleCPU > reqCPU/2 \
@@ -49,7 +75,7 @@ pair<bool, int> cServer::firstFitDouble(int reqCPU, int reqRAM) {
 }
 
 std::tuple<pair<bool, int>, bool> cServer::firstFitSingle(int reqCPU, int reqRAM) {
-/* Fn: å•èŠ‚ç‚¹éƒ¨ç½²ï¼Œboolè¾“å…¥ä¸ºtrueè¡¨ç¤ºAèŠ‚ç‚¹
+/* Fn: µ¥½Úµã²¿Êğ£¬boolÊäÈëÎªtrue±íÊ¾A½Úµã
 */
 	for (int iSer=0; iSer<(int)mySerCopy.size(); iSer++) {
 		if (mySerCopy[iSer].aIdleCPU > reqCPU && mySerCopy[iSer].aIdleRAM > reqRAM)
@@ -68,11 +94,11 @@ std::tuple<pair<bool, int>, bool> cServer::firstFitSingle(int reqCPU, int reqRAM
 }
 
 bool cServer::mycomp(pair<string, int> i, pair<string, int> j) {
-    return i.second < j.second;
+	return i.second < j.second;
 }
 
 void cServer::rankServerByPrice() {
-	for (auto ite=info.begin(); ite!=info.end(); ite++) { // è¿­ä»£å™¨
+	for (auto ite = info.begin(); ite != info.end(); ite++) { // µü´úÆ÷
 		priceOrder.push_back(make_pair(ite->first, ite->second.hardCost + ite->second.energyCost * alpha));
 	}
 
@@ -100,15 +126,18 @@ string cServer::chooseSer(int reqCPU, int reqRAM, bool isDoubleNode) {
 	return "";
 }
 
+
+
 bool cServer::isOpen(int serID) {
 	string serName = myServerSet[serID].serName;
 
-	if (myServerSet[serID].aIdleCPU == info[serName].totalCPU/2 \
-		&& myServerSet[serID].bIdleCPU == info[serName].totalCPU/2 \
-		&& myServerSet[serID].aIdleRAM == info[serName].totalRAM/2 \
-		&& myServerSet[serID].bIdleRAM == info[serName].totalRAM/2)
+	if (myServerSet[serID].aIdleCPU == info[serName].totalCPU / 2 \
+		&& myServerSet[serID].bIdleCPU == info[serName].totalCPU / 2 \
+		&& myServerSet[serID].aIdleRAM == info[serName].totalRAM / 2 \
+		&& myServerSet[serID].bIdleRAM == info[serName].totalRAM / 2)
 		return false;
 	return true;
+
 }
 
 int cServer::prePurchase(string name) {
@@ -127,7 +156,7 @@ int cServer::prePurchase(string name) {
 }
 
 void cServer::buy(int iDay) {
-/* Fn: preSvSetå†…å®¹è½¬ä¸ºmyServerSetï¼ŒåŒæ—¶å¡«å†™idæ˜ å°„è¡¨
+/* Fn: preSvSetÄÚÈİ×ªÎªmyServerSet£¬Í¬Ê±ÌîĞ´idÓ³Éä±í
 */
 	int realid;
 	vector<bool> movedFlag(preSvSet.size());
@@ -136,15 +165,22 @@ void cServer::buy(int iDay) {
 	for (int id=0; id<(int)preSvSet.size(); id++) {
 		if (movedFlag[id]==true)
 			continue;
-		realid = purchase(preSvSet[id].serName, iDay);
+		//////////////////////////////////////////////////////////////
+		//realid = purchase(preSvSet[id].serName, iDay);
+		realid = 0; /////////////¸Ãº¯Êı²»¿ÉÓÃ
+		///////////////////////////////////////////////////////
+		
 		idMap.insert(make_pair(id, realid));
 		movedFlag[id] = true;
 
 		curSerName = myServerSet[realid].serName;
-		// å†æœç´¢åŒç±»å‹çš„svæ”¾åœ¨ä¸€èµ·
+		// ÔÙËÑË÷Í¬ÀàĞÍµÄsv·ÅÔÚÒ»Æğ
 		for (int k=id+1; k<(int)preSvSet.size(); k++) {
 			if (movedFlag[k]==false && preSvSet[k].serName==curSerName) {
-				realid = purchase(preSvSet[id].serName, iDay);
+				///////////////////////////////////////////////////////
+				//realid = purchase(preSvSet[id].serName, iDay);
+				realid = 0;///////////////////////////////////////
+				/////////////////////////////////////////
 				idMap.insert(make_pair(k, realid));
 				movedFlag[k] = true;
 			}
@@ -152,4 +188,129 @@ void cServer::buy(int iDay) {
 	}
 
 	preSvSet.clear();
+}
+
+
+void cServer::rankServerByPrice(bool flag) {
+
+	if (flag) {   // Îªtrue±íÊ¾µÚÒ»´ÎÉú³ÉÊı¾İ
+		for (auto ite = info.begin(); ite != info.end(); ite++) { // µü´úÆ÷
+			priceOrder.push_back(make_pair(ite->first, ite->second.hardCost + ite->second.energyCost * alpha));
+		}
+	}
+	else {   // Ö®Ç°ÒÑ¾­Éú³É¹ıÊı¾İÁË£¬ÏÖÔÚ²»ÓÃÖØĞÂ·ÖÅäÄÚ´æ
+
+		int i = 0;
+		for (auto ite = info.begin(); ite != info.end(); ite++) {
+			priceOrder[i] = make_pair(ite->first, ite->second.hardCost + ite->second.energyCost * alpha);
+			i++;
+		}
+
+	}
+
+	sort(priceOrder.begin(), priceOrder.end(), cServer::mycomp);
+
+}
+
+
+/// CYT
+// ´ÓĞ¡µ½´óÅÅĞò
+bool cServer::rescomp(pair<int, int> i, pair<int, int> j) {
+	return i.second < j.second;
+}
+
+bool cServer::rescomp_equal(pair<int, int> i, pair<int, int> j) {
+	return i.second <= j.second;
+}
+
+// ÍùÀïÔö¼ÓĞÂ·şÎñÆ÷Ê±ÅÅĞò
+void cServer::rankServerByResource(pair<int, int> newOne) {
+
+	if (resourceOrder.size() == 0) {    // Ã»ÓĞÔªËØÔòÖ±½Ó¼ÓÈë
+		resourceOrder.push_back(newOne);
+	}
+	else {
+
+		int capacity = resourceOrder.size();
+		if (rescomp_equal(resourceOrder[capacity - 1], newOne)) {
+			resourceOrder.push_back(newOne);
+		}
+		else {
+			for (int i = 0; i < capacity; i++) {
+
+				if (rescomp_equal(newOne, resourceOrder[i])) {
+					resourceOrder.insert(resourceOrder.begin() + i, newOne);
+					break;
+				}
+
+			}
+		}
+
+	}
+
+}
+
+// Ã¿´ÎÍù·şÎñÆ÷Ìí¼ÓVM»òÕßÉ¾³ıVM¶¼ĞèÒª¸üĞÂ·şÎñÆ÷µÄÅÅĞò
+void cServer::updateRank(int buyID, bool flag) { // flag=true±íÊ¾ÍùÀï¼ÓVM£¬false±íÊ¾É¾³ıVM
+
+	// ÕÒµ½¶ÔÓ¦µÄÎ»ÖÃ
+	int pos;
+	for (int i = 0; i < resourceOrder.size(); i++) {
+		if (resourceOrder[i].first == buyID) {
+			pos = i;
+			break;
+		}
+	}
+
+	if (flag && pos == 0) {
+	}
+	else if (!flag && pos == resourceOrder.size() - 1) {
+	}
+	else {
+
+		pair<int, int> temp = resourceOrder[pos];
+		int serID = temp.first;
+		auto ite = resourceOrder.begin();
+		temp.second = myServerSet[serID].aIdleCPU + myServerSet[serID].bIdleCPU
+			+ myServerSet[serID].aIdleRAM + myServerSet[serID].bIdleRAM;
+
+		if (pos - 1 < 0 || rescomp(resourceOrder[pos - 1], temp)) {
+
+			if (pos != resourceOrder.size() - 1) {
+
+				for (int i = pos + 1; i < resourceOrder.size(); i++) {
+					if (rescomp_equal(temp, resourceOrder[i])) {
+						resourceOrder.erase(ite + pos);
+						resourceOrder.insert(resourceOrder.begin() + i - 1, temp);
+						break;
+					}
+				}
+
+			}
+			else {
+				resourceOrder[pos] = temp;
+			}
+
+		}
+		else {
+
+			for (int i = pos - 1; i >= 0; i--) {
+
+				if (i == 0 && rescomp_equal(temp, resourceOrder[i])) {
+					resourceOrder.erase(ite + pos);
+					resourceOrder.insert(resourceOrder.begin() + i, temp);
+					break;
+				}
+
+				if (rescomp_equal(resourceOrder[i], temp)) {
+					resourceOrder.erase(ite + pos);
+					resourceOrder.insert(resourceOrder.begin() + i + 1, temp);
+					break;
+				}
+			}
+
+		}
+
+	}
+
 }

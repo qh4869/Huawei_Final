@@ -1,78 +1,79 @@
-ï»¿#include "firstFit.h"
+#include "firstFit.h"
 
 void firstFit(cServer &server, cVM &VM, const cRequests &request) {
-/* Fn: first fitç®—æ³•éƒ¨ç½²å’Œè´­ä¹°ï¼Œä¸è¿ç§»
-*/
+	/* Fn: first fitËã·¨²¿ÊğºÍ¹ºÂò£¬²»Ç¨ÒÆ
+	*/
 #ifdef LOCAL
-	// ä¼°è®¡æˆæœ¬å˜é‡
-	int engCostStas = 0; // è®¡ç®—åŠŸè€—æˆæœ¬
+	// ¹À¼Æ³É±¾±äÁ¿
+	int engCostStas = 0; // ¼ÆËã¹¦ºÄ³É±¾
 	int hardCostStas = 0;
 	string costName;
 #endif
 
-	// åˆå§‹åŒ–å˜é‡
-	int serId; 
+	// ³õÊ¼»¯±äÁ¿
+	int serId;
 	pair<bool, int> serPosId;
-	bool serNode; 
+	bool serNode;
 	string serName;
 	string vmName;
 	string vmID;
-	bool vmIsDouble; 
-	int vmReqCPU; 
-	int vmReqRAM; 
+	bool vmIsDouble;
+	int vmReqCPU;
+	int vmReqRAM;
 	int bugID;
 
-	for (int iDay=0; iDay<request.dayNum; iDay++) {
-		for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) {
-			// é¢„è´­ä¹°å’Œé¢„éƒ¨ç½²
-			if (request.info[iDay][iTerm].type) { // add è¯·æ±‚
-				// è·å–è™šæ‹Ÿæœºä¿¡æ¯
+	for (int iDay = 0; iDay<request.dayNum; iDay++) {
+		cout << iDay << endl;
+		for (int iTerm = 0; iTerm<request.numEachDay[iDay]; iTerm++) {
+			// Ô¤¹ºÂòºÍÔ¤²¿Êğ			
+			if (request.info[iDay][iTerm].type) { // add ÇëÇó
+												  // »ñÈ¡ĞéÄâ»úĞÅÏ¢
 				vmName = request.info[iDay][iTerm].vmName;
 				vmID = request.info[iDay][iTerm].vmID;
 				vmIsDouble = VM.isDouble(vmName);
 				vmReqCPU = VM.reqCPU(vmName);
 				vmReqRAM = VM.reqRAM(vmName);
 
-				// æœç´¢å·²æœ‰çš„æœåŠ¡å™¨ ä»0å·æœåŠ¡å™¨å¼€å§‹
-				if (vmIsDouble) { // åŒèŠ‚ç‚¹
+				// ËÑË÷ÒÑÓĞµÄ·şÎñÆ÷ ´Ó0ºÅ·şÎñÆ÷¿ªÊ¼
+				if (vmIsDouble) { // Ë«½Úµã
 					serPosId = server.firstFitDouble(vmReqCPU, vmReqRAM);
 				}
 				else {
 					tie(serPosId, serNode) = server.firstFitSingle(vmReqCPU, vmReqRAM);
 				}
 
-				// æ ¹æ®æœç´¢ç»“æœé¢„è´­ä¹°æˆ–é¢„éƒ¨ç½²
-				if (serPosId.second != -1) { // ä¸ç”¨è´­ä¹°ï¼Œä½†ä¹Ÿæœ‰å¯èƒ½æ˜¯ä»Šå¤©ä¹°çš„
-					if (vmIsDouble) 
+				// ¸ù¾İËÑË÷½á¹ûÔ¤¹ºÂò»òÔ¤²¿Êğ
+				if (serPosId.second != -1) { // ²»ÓÃ¹ºÂò£¬µ«Ò²ÓĞ¿ÉÄÜÊÇ½ñÌìÂòµÄ
+					if (vmIsDouble)
 						VM.predp(vmID, serPosId.first, serPosId.second, vmName, server);
 					else
 						VM.predp(vmID, serPosId.first, serPosId.second, vmName, server, serNode);
 				}
-				else { // éœ€è¦è´­ä¹°
+				else { // ĞèÒª¹ºÂò
 					serName = server.chooseSer(vmReqCPU, vmReqRAM, vmIsDouble);
 					serId = server.prePurchase(serName);
 					if (vmIsDouble)
 						VM.predp(vmID, true, serId, vmName, server);
 					else
 						VM.predp(vmID, true, serId, vmName, server, true);
-				}			
+				}
 			}
-			else { // delete è¯·æ±‚
+			else { // delete ÇëÇó
 				vmID = request.info[iDay][iTerm].vmID;
 				VM.preDltVM(server, vmID);
 			}
 		}
-		// æ­£å¼è´­ä¹°
+		// ÕıÊ½¹ºÂò
 		server.buy(iDay);
-		// æŒ‰é¡ºåºå¤„ç†è¯·æ±‚
+		// °´Ë³Ğò´¦ÀíÇëÇó
 		bugID = VM.postDpWithDel(server, request, iDay);
 		if (bugID) {
-			cout << "éƒ¨ç½²åˆ é™¤å¤±è´¥" << bugID << endl;
+			cout << "²¿ÊğÊ§°Ü" << bugID << endl;
 			return;
 		}
 #ifdef LOCAL
-		// ä¸€å¤©ç»“æŸç»Ÿè®¡åŠŸè€—æˆæœ¬
-		for (int iServer=0; iServer<(int)server.myServerSet.size(); iServer++) {
+		// Ò»Ìì½áÊøÍ³¼Æ¹¦ºÄ³É±¾
+		for (int iServer = 0; iServer<(int)server.myServerSet.size(); iServer++) {
 			if (server.isOpen(iServer)) {
 				costName = server.myServerSet[iServer].serName;
 				engCostStas += server.info[costName].energyCost;
@@ -81,11 +82,11 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 #endif
 	}
 #ifdef LOCAL
-	// è®¡ç®—ä¹°æœåŠ¡å™¨æ€»æˆæœ¬
-	for (int iServer=0; iServer<(int)server.myServerSet.size(); iServer++) {
+	// ¼ÆËãÂò·şÎñÆ÷×Ü³É±¾
+	for (int iServer = 0; iServer<(int)server.myServerSet.size(); iServer++) {
 		costName = server.myServerSet[iServer].serName;
 		hardCostStas += server.info[costName].hardCost;
 	}
-	cout << "æˆæœ¬: " << engCostStas+hardCostStas << endl;
+	cout << "³É±¾: " << engCostStas + hardCostStas << endl;
 #endif
 }

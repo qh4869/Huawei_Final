@@ -1,168 +1,190 @@
-ï»¿#include "io.h"
+#include "io.h"
 using namespace std;
 
 std::tuple<cServer, cVM, cRequests> dataIn(string fileName) {
-/*
-* Fn: è¯»å…¥æ•°æ®
-*
-* In:
-*   - fileName: txtæ–‡ä»¶å
-*   
-*/
+	/*
+	* Fn: ¶ÁÈëÊı¾İ
+	*
+	* In:
+	*   - fileName: txtÎÄ¼şÃû
+	*
+	*/
 #ifdef LOCAL
-    ifstream fin; 
-    fin.open(fileName.c_str());
-    cin.rdbuf(fin.rdbuf()); // é‡å®šå‘
+	ifstream fin;
+	fin.open(fileName.c_str());
+	cin.rdbuf(fin.rdbuf()); // ÖØ¶¨Ïò
 #endif
 
-    string inputStr;
-    cServer server;
-    cVM VM;
-    cRequests request;
+	string inputStr;
+	cServer server;
+	cVM VM;
+	cRequests request;
 
-    // æœåŠ¡å™¨ç§ç±»æ•°
-    cin >> inputStr;
-    server.serverTypeNum = atoi(inputStr.c_str()); // string to int
-    // æœåŠ¡å™¨æ¯æ¡ä¿¡æ¯
-    for (int iTerm=0; iTerm<server.serverTypeNum; iTerm++) { 
-        // server name
-        string serName;
-        cin >> inputStr;
-        inputStr.erase(inputStr.begin()); // åˆ é™¤å·¦æ‹¬å·
-        inputStr.erase(inputStr.end()-1); // é€—å·
-        serName = inputStr;
+	// ·şÎñÆ÷ÖÖÀàÊı
+	cin >> inputStr;
+	server.serverTypeNum = atoi(inputStr.c_str()); // string to int
+												   // ·şÎñÆ÷Ã¿ÌõĞÅÏ¢
+	for (int iTerm = 0; iTerm<server.serverTypeNum; iTerm++) {
+		// server name
+		string serName;
+		cin >> inputStr;
+		inputStr.erase(inputStr.begin()); // É¾³ı×óÀ¨ºÅ
+		inputStr.erase(inputStr.end() - 1); // ¶ººÅ
+		serName = inputStr;
 
-        // cpu
-        cin >> inputStr;
-        inputStr.erase(inputStr.end()-1);
-        server.info[serName].totalCPU = atoi(inputStr.c_str());
+		// CYT add serName
+		server.info[serName].serName = inputStr;
 
-        // RAM
-        cin >> inputStr;
-        inputStr.erase(inputStr.end()-1);
-        server.info[serName].totalRAM = atoi(inputStr.c_str());
+		// cpu
+		cin >> inputStr;
+		inputStr.erase(inputStr.end() - 1);
+		server.info[serName].totalCPU = atoi(inputStr.c_str());
 
-        // hardware price
-        cin >> inputStr;
-        inputStr.erase(inputStr.end()-1);
-        server.info[serName].hardCost = atoi(inputStr.c_str());
-        
-        // energy price
-        cin >> inputStr;
-        inputStr.erase(inputStr.end()-1);
-        server.info[serName].energyCost = atoi(inputStr.c_str());
-    }
+		// RAM
+		cin >> inputStr;
+		inputStr.erase(inputStr.end() - 1);
+		server.info[serName].totalRAM = atoi(inputStr.c_str());
 
-    // è™šæ‹Ÿæœºæ€»æ•°
-    cin >> inputStr;
-    VM.vmTypeNum = atoi(inputStr.c_str());
-    // è™šæ‹Ÿæœºçš„æ¯æ¡ä¿¡æ¯
-    for (int iTerm=0; iTerm<VM.vmTypeNum; iTerm++) {
-        // vm name
-        string vmName;
-        cin >> inputStr;
-        inputStr.erase(inputStr.begin()); // åˆ é™¤å·¦æ‹¬å·
-        inputStr.erase(inputStr.end()-1); // é€—å·
-        vmName = inputStr;
+		// hardware price
+		cin >> inputStr;
+		inputStr.erase(inputStr.end() - 1);
+		server.info[serName].hardCost = atoi(inputStr.c_str());
 
-        // vm CPU
-        cin >> inputStr;
-        inputStr.erase(inputStr.end()-1);
-        VM.info[vmName].needCPU = atoi(inputStr.c_str());
+		// energy price
+		cin >> inputStr;
+		inputStr.erase(inputStr.end() - 1);
+		server.info[serName].energyCost = atoi(inputStr.c_str());
+	}
 
-        // vm RAM
-        cin >> inputStr;
-        inputStr.erase(inputStr.end()-1);
-        VM.info[vmName].needRAM = atoi(inputStr.c_str());
+	// ĞéÄâ»ú×ÜÊı
+	cin >> inputStr;
+	VM.vmTypeNum = atoi(inputStr.c_str());
+	// ĞéÄâ»úµÄÃ¿ÌõĞÅÏ¢
+	for (int iTerm = 0; iTerm<VM.vmTypeNum; iTerm++) {
+		// vm name
+		string vmName;
+		cin >> inputStr;
+		inputStr.erase(inputStr.begin()); // É¾³ı×óÀ¨ºÅ
+		inputStr.erase(inputStr.end() - 1); // ¶ººÅ
+		vmName = inputStr;
 
-        // double Node
-        cin >> inputStr;
-        inputStr.erase(inputStr.end()-1);
-        VM.info[vmName].nodeStatus = (inputStr == "1") ? true : false;
-    }
+		// vm CPU
+		cin >> inputStr;
+		inputStr.erase(inputStr.end() - 1);
+		VM.info[vmName].needCPU = atoi(inputStr.c_str());
 
-    // è¯·æ±‚æ•°æ®å¤©æ•°
-    cin >> inputStr;
-    request.dayNum = atoi(inputStr.c_str());
-    // ä¸å¤©æ•°æœ‰å…³çš„vectoråˆå§‹åŒ–
-    request.numEachDay.resize(request.dayNum);
-    request.info.resize(request.dayNum);
-    server.newServerNum.resize(request.dayNum);
-    server.buyRecord.resize(request.dayNum);
-    VM.transVmRecord.resize(request.dayNum);
-    VM.deployRecord.resize(request.dayNum);
-    // æ¯å¤©çš„è¯·æ±‚
-    for (int iDay=0; iDay<request.dayNum; iDay++) {
-        // æ¯å¤©çš„è¯·æ±‚æ•°ç›®
-        cin >> inputStr;
-        request.numEachDay[iDay] = atoi(inputStr.c_str());
-        request.info[iDay].resize(request.numEachDay[iDay]);
+		// vm RAM
+		cin >> inputStr;
+		inputStr.erase(inputStr.end() - 1);
+		VM.info[vmName].needRAM = atoi(inputStr.c_str());
 
-        // æ¯æ¡çš„è¯·æ±‚ä¿¡æ¯
-        for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) {
-            // è¯·æ±‚ç±»å‹
-            cin >> inputStr;
-            inputStr.erase(inputStr.begin()); // åˆ é™¤å·¦æ‹¬å·
-            inputStr.erase(inputStr.end()-1); // é€—å·
-            request.info[iDay][iTerm].type = (inputStr=="add")? true : false;
+		// double Node
+		cin >> inputStr;
+		inputStr.erase(inputStr.end() - 1);
+		VM.info[vmName].nodeStatus = (inputStr == "1") ? true : false;
+	}
 
-            // è¯·æ±‚è™šæ‹Ÿæœºçš„å‹å·
-            if (request.info[iDay][iTerm].type) { // addè¾“å…¥è™šæ‹Ÿæœºå‹å·ï¼Œdelä¸è¾“å…¥å‹å·
-                cin >> inputStr;
-                inputStr.erase(inputStr.end()-1);
-                request.info[iDay][iTerm].vmName = inputStr;
-            }
+	// ÇëÇóÊı¾İÌìÊı
+	cin >> inputStr;
+	request.dayNum = atoi(inputStr.c_str());
+	// ÓëÌìÊıÓĞ¹ØµÄvector³õÊ¼»¯
+	request.numEachDay.resize(request.dayNum);
+	request.info.resize(request.dayNum);
+	server.newServerNum.resize(request.dayNum);
+	server.buyRecord.resize(request.dayNum);
+	VM.transVmRecord.resize(request.dayNum);
+	VM.deployRecord.resize(request.dayNum);
+	// Ã¿ÌìµÄÇëÇó
+	for (int iDay = 0; iDay<request.dayNum; iDay++) {
+		// Ã¿ÌìµÄÇëÇóÊıÄ¿
+		cin >> inputStr;
+		request.numEachDay[iDay] = atoi(inputStr.c_str());
+		request.info[iDay].resize(request.numEachDay[iDay]);
 
-            // è¯·æ±‚è™šæ‹ŸæœºID
-            cin >> inputStr;
-            inputStr.erase(inputStr.end()-1);
-            request.info[iDay][iTerm].vmID = inputStr;
-        }
-    }
+		// Ã¿ÌõµÄÇëÇóĞÅÏ¢
+		for (int iTerm = 0; iTerm<request.numEachDay[iDay]; iTerm++) {
+			// ÇëÇóÀàĞÍ
+			cin >> inputStr;
+			inputStr.erase(inputStr.begin()); // É¾³ı×óÀ¨ºÅ
+			inputStr.erase(inputStr.end() - 1); // ¶ººÅ
+			request.info[iDay][iTerm].type = (inputStr == "add") ? true : false;
 
-    // cout << server.serverTypeNum << endl;
+			// ÇëÇóĞéÄâ»úµÄĞÍºÅ
+			if (request.info[iDay][iTerm].type) { // addÊäÈëĞéÄâ»úĞÍºÅ£¬del²»ÊäÈëĞÍºÅ
+				cin >> inputStr;
+				inputStr.erase(inputStr.end() - 1);
+				request.info[iDay][iTerm].vmName = inputStr;
+			}
 
-    return make_tuple(server, VM, request);
+			// ÇëÇóĞéÄâ»úID
+			cin >> inputStr;
+			inputStr.erase(inputStr.end() - 1);
+			request.info[iDay][iTerm].vmID = inputStr;
+		}
+	}
+
+	// cout << server.serverTypeNum << endl;
+
+	return make_tuple(server, VM, request);
 }
 
 void dataOut(cServer& server, cVM& VM, const cRequests& request) {
-    /*
-    * Fn: å°†ç»“æœè¾“å‡ºåˆ°æ ‡å‡†è¾“å‡º
-    *
-    * In:
-    *
-    */
-    for (int iDay = 0; iDay < request.dayNum; iDay++) {
-        //è¾“å‡ºï¼ˆpurchase,Q) , Qè¡¨ç¤ºå½“å¤©è´­ä¹°çš„æœåŠ¡å™¨ç§ç±»æ•°
-        cout << "(" << "purchase" << "," << server.newServerNum[iDay] << ")" << endl;//ä¹Ÿå¯ä»¥ç”¨ server.buyRecord[iDay].size()
-        //è¾“å‡º(æœåŠ¡å™¨å‹å·ï¼Œè´­ä¹°æ•°é‡ï¼‰
-        for (auto ite = server.buyRecord[iDay].begin(); ite != server.buyRecord[iDay].end(); ite++) { //è¿­ä»£å™¨
-            cout << "(" << ite->first << "," << ite->second << ")" << endl;
-        }
-        //è¾“å‡ºï¼ˆmigration,W) , Wè¡¨ç¤ºå½“å¤©è¦è¿ç§»çš„è™šæ‹Ÿæœºæ•°é‡
-        cout << "(" << "migration," << VM.transVmRecord[iDay].size() << ")" << endl;
-        //åˆ†åˆ«è¾“å‡ºWå°è™šæ‹Ÿæœºçš„è¿ç§»è·¯å¾„
-        for (auto ite = VM.transVmRecord[iDay].begin(); ite != VM.transVmRecord[iDay].end(); ite++) { //è¿­ä»£å™¨
-            if (ite->isSingle) {
-                if (ite->node)
-                    cout << "(" << ite->vmID << "," << ite->serverID << "," << "A" << ")" << endl;
-                else
-                    cout << "(" << ite->vmID << "," << ite->serverID << "," << "B" << ")" << endl;
-            }
-            else
-                cout << "(" << ite->vmID << "," << ite->serverID << ")" << endl;
-        }
-        //è¾“å‡ºå½“å¤©æ¯æ¡è™šæ‹Ÿæœºéƒ¨ç½²è®°å½• 
-        for (auto ite = VM.deployRecord[iDay].begin(); ite != VM.deployRecord[iDay].end(); ite++) { //è¿­ä»£å™¨
-            if (ite->isSingle) {
-                if (ite->node)
-                    cout << "(" << ite->serID << "," << "A" << ")" << endl;
-                else
-                    cout << "(" << ite->serID << "," << "B" << ")" << endl;
-            }
-            else
-                cout << "(" << ite->serID << ")" << endl;
-        }
-        // cout << "day end" << endl;
-    }
+	/*
+	* Fn: ½«½á¹ûÊä³öµ½±ê×¼Êä³ö
+	*
+	* In:
+	*
+	*/
+	for (int iDay = 0; iDay < request.dayNum; iDay++) {
+		//Êä³ö£¨purchase,Q) , Q±íÊ¾µ±Ìì¹ºÂòµÄ·şÎñÆ÷ÖÖÀàÊı
+		cout << "(" << "purchase" << "," << server.newServerNum[iDay] << ")" << endl;//Ò²¿ÉÒÔÓÃ server.buyRecord[iDay].size()
+																					 //Êä³ö(·şÎñÆ÷ĞÍºÅ£¬¹ºÂòÊıÁ¿£©
+		//for (auto ite = server.buyRecord[iDay].begin(); ite != server.buyRecord[iDay].end(); ite++) { //µü´úÆ÷
+		//	cout << "(" << ite->first << "," << ite->second << ")" << endl;
+		//}
+		//////////////////////////////////////////////////////////////////////////////////////////
+		unordered_map<string, int> record = server.buyRecord[iDay];
+		for (auto ite = record.begin(); ite != record.end(); ite++) {
+			cout << "(" << ite->first << "," << ite->second << ")" << endl;
+		}
+		/////////////////////////////////////////////////////////////////////////////////////////
+		//Êä³ö£¨migration,W) , W±íÊ¾µ±ÌìÒªÇ¨ÒÆµÄĞéÄâ»úÊıÁ¿
+		cout << "(" << "migration," << VM.transVmRecord[iDay].size() << ")" << endl;
+		//·Ö±ğÊä³öWÌ¨ĞéÄâ»úµÄÇ¨ÒÆÂ·¾¶
+		for (auto ite = VM.transVmRecord[iDay].begin(); ite != VM.transVmRecord[iDay].end(); ite++) { //µü´úÆ÷
+			if (ite->isSingle) {
+				if (ite->node)
+					cout << "(" << ite->vmID << "," << ite->serverID << "," << "A" << ")" << endl;
+				else
+					cout << "(" << ite->vmID << "," << ite->serverID << "," << "B" << ")" << endl;
+			}
+			else
+				cout << "(" << ite->vmID << "," << ite->serverID << ")" << endl;
+		}
+		//Êä³öµ±ÌìÃ¿ÌõĞéÄâ»ú²¿Êğ¼ÇÂ¼ 
+		for (auto ite = VM.realDeployRecord[iDay].begin(); ite != VM.realDeployRecord[iDay].end(); ite++) { //µü´úÆ÷
+			if (ite->serID < 0) {
+				continue;
+			}
+			if (ite->isSingle) {
+				if (ite->node)
+					cout << "(" << ite->serID << "," << "A" << ")" << endl;
+				else
+					cout << "(" << ite->serID << "," << "B" << ")" << endl;
+			}
+			else
+				cout << "(" << ite->serID << ")" << endl;
+		}
+		//for (auto ite = VM.deployRecord[iDay].begin(); ite != VM.deployRecord[iDay].end(); ite++) { //µü´úÆ÷
+		//	if (ite->isSingle) {
+		//		if (ite->node)
+		//			cout << "(" << ite->serID << "," << "A" << ")" << endl;
+		//		else
+		//			cout << "(" << ite->serID << "," << "B" << ")" << endl;
+		//	}
+		//	else
+		//		cout << "(" << ite->serID << ")" << endl;
+		//}
+		// cout << "day end" << endl;
+	}
 }
