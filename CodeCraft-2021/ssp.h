@@ -2,6 +2,7 @@
 #include "Server.h"
 #include "VM.h"
 #include "Request.h"
+#include <tuple>
 using namespace std;
 
 struct sVmNode {
