@@ -12,7 +12,6 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 
 	// 初始化变量
 	int serId; 
-	pair<bool, int> serPosId;
 	bool serNode; 
 	string serName;
 	string vmName;
@@ -23,6 +22,7 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 	int bugID;
 
 	for (int iDay=0; iDay<request.dayNum; iDay++) {
+		cout << iDay << endl;
 		for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) {
 			// 预购买和预部署
 			if (request.info[iDay][iTerm].type) { // add 请求
@@ -33,42 +33,42 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 				vmReqCPU = VM.reqCPU(vmName);
 				vmReqRAM = VM.reqRAM(vmName);
 
-				// 搜索已有的服务器 从0号服务器开始
+				// 搜索已有的服务器 排序的版本没优化程序，运行可能慢一点
 				if (vmIsDouble) { // 双节点
-					serPosId = server.firstFitDouble(vmReqCPU, vmReqRAM);
+					serId = server.firstFitByIdleOrdDouble(vmReqCPU, vmReqRAM);
 				}
 				else {
-					tie(serPosId, serNode) = server.firstFitSingle(vmReqCPU, vmReqRAM);
+					tie(serId, serNode) = server.firstFitByIdleOrdSingle(vmReqCPU, vmReqRAM);
 				}
 
 				// 根据搜索结果预购买或预部署
-				if (serPosId.second != -1) { // 不用购买，但也有可能是今天买的
+				if (serId != -1) { // 不用购买，但也有可能是今天买的
 					if (vmIsDouble) 
-						VM.predp(vmID, serPosId.first, serPosId.second, vmName, server);
+						bugID = VM.deploy(server, iDay, vmID, vmName, serId);
 					else
-						VM.predp(vmID, serPosId.first, serPosId.second, vmName, server, serNode);
+						bugID = VM.deploy(server, iDay, vmID, vmName, serId, serNode);
+					if (bugID) {
+						cout << "部署失败" << bugID << endl;
+						return;
+					}
 				}
 				else { // 需要购买
 					serName = server.chooseSer(vmReqCPU, vmReqRAM, vmIsDouble);
-					serId = server.prePurchase(serName);
+					serId = server.purchase(serName, iDay);
 					if (vmIsDouble)
-						VM.predp(vmID, true, serId, vmName, server);
+						bugID = VM.deploy(server, iDay, vmID, vmName, serId);
 					else
-						VM.predp(vmID, true, serId, vmName, server, true);
+						bugID = VM.deploy(server, iDay, vmID, vmName, serId, true);
+					if (bugID) {
+						cout << "部署失败" << bugID << endl;
+						return;
+					}
 				}			
 			}
 			else { // delete 请求
 				vmID = request.info[iDay][iTerm].vmID;
-				VM.preDltVM(server, vmID);
+				VM.deleteVM(vmID, server);
 			}
-		}
-		// 正式购买
-		server.buy(iDay);
-		// 按顺序处理请求
-		bugID = VM.postDpWithDel(server, request, iDay);
-		if (bugID) {
-			cout << "部署删除失败" << bugID << endl;
-			return;
 		}
 #ifdef LOCAL
 		// 一天结束统计功耗成本
