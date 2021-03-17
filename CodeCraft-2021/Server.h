@@ -64,8 +64,7 @@ public:
 
     // id 映射
     int idMapping();
-};
 
-class cSspServer : public cServer {
+    /*SSP*/
     int ksSize; // 背包算法分组
 };

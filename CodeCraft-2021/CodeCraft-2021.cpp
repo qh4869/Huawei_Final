@@ -2,14 +2,14 @@
 #include "Server.h"
 #include "VM.h"
 #include "Request.h"
-#include "firstFit.h"
+#include "ssp.h"
 #include <iostream>
 #include "globalHeader.h" // 全局常量
 using namespace std;
 
 int main()
 {
-    cSspServer server;
+    cServer server;
     cVM VM;
     cRequests request;
     void process(cServer &server, cVM &VM, const cRequests &request);
@@ -31,12 +31,12 @@ int main()
 void process(cServer &server, cVM &VM, const cRequests &request) {
 
     // 数据预处理
-    server.alpha = ALPHA;
+    // server.alpha = ALPHA;
     server.ksSize = KSSIZE;
-    server.rankServerByPrice(); // 按照价格排序 权重为alpha
+    // server.rankServerByPrice(); // 按照价格排序 权重为alpha
 
 	// firstFit(server, VM, request);
-    // ssp(server, VM, request);
+    ssp(server, VM, request);
 
     server.idMapping(); // id map
 }
