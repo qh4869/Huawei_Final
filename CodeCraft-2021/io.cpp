@@ -87,7 +87,6 @@ std::tuple<cSspServer, cVM, cRequests> dataIn(string fileName) {
     // 与天数有关的vector初始化
     request.numEachDay.resize(request.dayNum);
     request.info.resize(request.dayNum);
-    server.newServerNum.resize(request.dayNum);
     server.buyRecord.resize(request.dayNum);
     VM.transVmRecord.resize(request.dayNum);
     VM.deployRecord.resize(request.dayNum);
@@ -134,7 +133,7 @@ void dataOut(cServer& server, cVM& VM, const cRequests& request) {
     */
     for (int iDay = 0; iDay < request.dayNum; iDay++) {
         //输出（purchase,Q) , Q表示当天购买的服务器种类数
-        cout << "(" << "purchase" << "," << server.newServerNum[iDay] << ")" << endl;//也可以用 server.buyRecord[iDay].size()
+        cout << "(" << "purchase" << "," << server.buyRecord[iDay].size() << ")" << endl;//也可以用 server.buyRecord[iDay].size()
         //输出(服务器型号，购买数量）
         for (auto ite = server.buyRecord[iDay].begin(); ite != server.buyRecord[iDay].end(); ite++) { //迭代器
             cout << "(" << ite->first << "," << ite->second << ")" << endl;
@@ -145,24 +144,32 @@ void dataOut(cServer& server, cVM& VM, const cRequests& request) {
         for (auto ite = VM.transVmRecord[iDay].begin(); ite != VM.transVmRecord[iDay].end(); ite++) { //迭代器
             if (ite->isSingle) {
                 if (ite->node)
-                    cout << "(" << ite->vmID << "," << ite->serverID << "," << "A" << ")" << endl;
+                    cout << "(" << ite->vmID << "," << server.idMap[ite->serverID] << "," << "A" << ")" << endl;
                 else
-                    cout << "(" << ite->vmID << "," << ite->serverID << "," << "B" << ")" << endl;
+                    cout << "(" << ite->vmID << "," << server.idMap[ite->serverID] << "," << "B" << ")" << endl;
             }
             else
-                cout << "(" << ite->vmID << "," << ite->serverID << ")" << endl;
+                cout << "(" << ite->vmID << "," << server.idMap[ite->serverID] << ")" << endl;
         }
-        //输出当天每条虚拟机部署记录 
-        for (auto ite = VM.deployRecord[iDay].begin(); ite != VM.deployRecord[iDay].end(); ite++) { //迭代器
-            if (ite->isSingle) {
-                if (ite->node)
-                    cout << "(" << ite->serID << "," << "A" << ")" << endl;
+
+        //输出当天每条虚拟机部署记录，按照add request的顺序
+        for (const auto &reqItem : request.info[iDay]) {
+            if (!reqItem.type) // del 请求
+                continue;
+
+            string vmID = reqItem.vmID;
+            int serID = server.idMap.at(VM.deployRecord[iDay][vmID].serID);
+            bool isSingle = VM.deployRecord[iDay][vmID].isSingle;
+            bool node = VM.deployRecord[iDay][vmID].node;
+
+            if (isSingle) {
+                if (node) 
+                    cout << "(" << serID << "," << "A" << ")" << endl;
                 else
-                    cout << "(" << ite->serID << "," << "B" << ")" << endl;
+                    cout << "(" << serID << "," << "B" << ")" << endl;
             }
             else
-                cout << "(" << ite->serID << ")" << endl;
+                cout << "(" << serID << ")" << endl;
         }
-        // cout << "day end" << endl;
     }
 }

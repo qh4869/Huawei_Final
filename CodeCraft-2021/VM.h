@@ -18,7 +18,7 @@ struct sEachWorkingVM {
 };
 
 struct sTransVmItem {
-	string vmID;
+    string vmID;
 	int serverID;
     bool isSingle;
 	bool node; // 双节点的虚拟机这个变量没有意义
@@ -40,24 +40,11 @@ struct sPreDeployItem {
 class cVM {
 public:
     int vmTypeNum;
-    unordered_map<string, sVmItem> info; // hash map: type->info
+    unordered_map<string, sVmItem> info; // 每一类虚拟机信息: type->info
     unordered_map<string, sEachWorkingVM> workingVmSet; // 工作中的虚拟机 哈希表： 虚拟机ID -> 该虚拟机信息
-    unordered_map<string ,sPreDeployItem> preDeploy; // 预部署 vmID->其他
-    // vector<string> preDel; // 预删除 vmID
 
-    vector<vector<sTransVmItem>> transVmRecord; // 每天 每条 迁移记录 用于输出
-    vector<vector<sDeployItem>> deployRecord; // 每天 每条 虚拟机部署记录 用于输出
-
-    // 单节点预部署
-    void predp(string vmID, bool isNew, int serID, string vmName, cServer &server, bool node);
-    // 双节点预部署
-    void predp(string vmID, bool isNew, int serID, string vmName, cServer &server);
-
-    // 预删除虚拟机
-    void preDltVM(cServer &server, string vmID);
-
-    // 后部署
-    int postDpWithDel(cServer &server, const cRequests &request, int iDay);
+    vector<vector<sTransVmItem>> transVmRecord; // 每天 迁移记录 用于输出 (注意迁移是有先后顺序的)
+    vector<unordered_map<string, sDeployItem>> deployRecord; // 每天 虚拟机部署记录 用于输出 vmID -> 部署详情
 
     // 单节点部署
     int deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node);

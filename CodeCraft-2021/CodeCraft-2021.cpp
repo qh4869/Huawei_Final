@@ -17,10 +17,6 @@ int main()
     // 输入
     tie(server, VM, request) = dataIn("../CodeCraft-2021/training-1.txt");
 
-    // 数据预处理
-    server.beta = BETA;
-    // server.rankServerByPrice(); // 按照价格排序 权重为alpha
-
     // 购买，迁移，部署
     process(server, VM, request);
 
@@ -33,6 +29,14 @@ int main()
 }
 
 void process(cServer &server, cVM &VM, const cRequests &request) {
+
+    // 数据预处理
+    server.alpha = ALPHA;
+    server.ksSize = KSSIZE;
+    server.rankServerByPrice(); // 按照价格排序 权重为alpha
+
 	// firstFit(server, VM, request);
-	// ssp(server, VM, request);
+    // ssp(server, VM, request);
+
+    server.idMapping(); // id map
 }

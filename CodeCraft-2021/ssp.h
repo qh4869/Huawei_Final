@@ -3,6 +3,7 @@
 #include "VM.h"
 #include "Request.h"
 #include <tuple>
+#include <unordered_set>
 using namespace std;
 
 struct sVmNode {

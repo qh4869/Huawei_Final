@@ -62,7 +62,7 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 	oneDeploy.isSingle = true;
 	oneDeploy.node = node;
 
-	deployRecord[iDay].push_back(oneDeploy);
+	deployRecord[iDay].insert(make_pair(VMid, oneDeploy));
 
 	return 0;
 }
@@ -106,7 +106,8 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 	sDeployItem oneDeploy;
 	oneDeploy.serID = serID;
 	oneDeploy.isSingle = false;
-	deployRecord[iDay].push_back(oneDeploy);
+	
+	deployRecord[iDay].insert(make_pair(VMid, oneDeploy));
 
 	return 0;
 }
@@ -223,194 +224,5 @@ int cVM::deleteVM(string vmID, cServer& server) {
 	}
 
 	workingVmSet.erase(vmID);
-	return 0;
-}
-
-void cVM::predp(string vmID, bool isNew, int serID, string vmName, cServer &server, bool node) {
-/* Fn: 预部署 单节点
-*/
-	int reqCPU = info[vmName].needCPU;
-	int reqRAM = info[vmName].needRAM;
-
-	// 减少资源 (preSvSet & mySerCopy)
-	if (isNew) {
-		if (node) {
-			server.preSvSet[serID].aIdleCPU -= reqCPU;
-			server.preSvSet[serID].aIdleRAM -= reqRAM;
-		}
-		else {
-			server.preSvSet[serID].bIdleCPU -= reqCPU;
-			server.preSvSet[serID].bIdleRAM -= reqRAM;
-		}
-	}
-	else {
-		if (node) {
-			server.mySerCopy[serID].aIdleCPU -= reqCPU;
-			server.mySerCopy[serID].aIdleRAM -= reqRAM;
-		}
-		else {
-			server.mySerCopy[serID].bIdleCPU -= reqCPU;
-			server.mySerCopy[serID].bIdleRAM -= reqRAM;
-		}
-	}
-
-	// 输入数据结构
-	sPreDeployItem onePreDeploy;
-
-	onePreDeploy.isNew = isNew;
-	onePreDeploy.serID = serID;
-	onePreDeploy.node = node;
-	onePreDeploy.vmName = vmName;
-
-	pair<string, sPreDeployItem> res(vmID, onePreDeploy);
-	preDeploy.insert(res);
-}
-
-void cVM::predp(string vmID, bool isNew, int serID, string vmName, cServer &server) {
-/* Fn: 预部署 双节点
-*/
-	int reqCPU = info[vmName].needCPU;
-	int reqRAM = info[vmName].needRAM;
-	
-	if (isNew) {
-		server.preSvSet[serID].aIdleCPU -= reqCPU/2;
-		server.preSvSet[serID].bIdleCPU -= reqCPU/2;
-		server.preSvSet[serID].aIdleRAM -= reqRAM/2;
-		server.preSvSet[serID].bIdleRAM -= reqRAM/2;
-	}
-	else {
-		server.mySerCopy[serID].aIdleCPU -= reqCPU/2;
-		server.mySerCopy[serID].bIdleCPU -= reqCPU/2;
-		server.mySerCopy[serID].aIdleRAM -= reqRAM/2;
-		server.mySerCopy[serID].bIdleRAM -= reqRAM/2;
-	}
-
-	sPreDeployItem onePreDeploy;
-
-	onePreDeploy.isNew = isNew;
-	onePreDeploy.serID = serID;
-	onePreDeploy.vmName = vmName;
-
-	pair<string, sPreDeployItem> res(vmID, onePreDeploy);
-	preDeploy.insert(res);
-}
-
-void cVM::preDltVM(cServer &server, string vmID) {
-	// 删除预部署的资源
-	string vmName = preDeploy[vmID].vmName;
-	int reqCPU = info[vmName].needCPU;
-	int reqRAM = info[vmName].needRAM;
-	bool isdouble = isDouble(vmName);
-	bool isNew;
-	int serID;
-	bool node;
-	bool isTodayDeployed;
-
-
-	if (preDeploy.count(vmID)) { // 是当天部署进去的
-		isTodayDeployed = true;
-		isNew = preDeploy[vmID].isNew;
-		serID = preDeploy[vmID].serID;
-		node = preDeploy[vmID].node;
-	}
-	else if (workingVmSet.count(vmID)) {
-		isTodayDeployed = false;
-		serID = workingVmSet[vmID].serverID;
-		node = workingVmSet[vmID].node;
-	}
-	else {
-		cout << "无法(预)删除不存在的虚拟机" << endl;
-		return;
-	}
-
-	if (isTodayDeployed && isNew) {
-		if (isdouble) {
-			server.preSvSet[serID].aIdleCPU += reqCPU/2;
-			server.preSvSet[serID].bIdleCPU += reqCPU/2;
-			server.preSvSet[serID].aIdleRAM += reqRAM/2;
-			server.preSvSet[serID].bIdleRAM += reqRAM/2;
-		}
-		else {
-			if (node) {
-				server.preSvSet[serID].aIdleCPU += reqCPU;
-				server.preSvSet[serID].aIdleRAM += reqRAM;
-			}
-			else {
-				server.preSvSet[serID].bIdleCPU += reqCPU;
-				server.preSvSet[serID].bIdleRAM += reqRAM;
-			}
-		}
-	}
-	else {
-		if (isdouble) {
-			server.mySerCopy[serID].aIdleCPU += reqCPU/2;
-			server.mySerCopy[serID].bIdleCPU += reqCPU/2;
-			server.mySerCopy[serID].aIdleRAM += reqRAM/2;
-			server.mySerCopy[serID].bIdleRAM += reqRAM/2;
-		}
-		else {
-			if (node) {
-				server.mySerCopy[serID].aIdleCPU += reqCPU;
-				server.mySerCopy[serID].aIdleRAM += reqRAM;
-			}
-			else {
-				server.mySerCopy[serID].bIdleCPU += reqCPU;
-				server.mySerCopy[serID].bIdleRAM += reqRAM;
-			}
-		}
-	}
-
-	// preDel.push_back(vmID);
-}
-
-int cVM::postDpWithDel(cServer &server, const cRequests &request, int iDay) {
-	int postid;
-	int bugID;
-	string vmID;
-	string vmName;
-	bool isdouble;
-	bool isNew;
-	int preid;
-	bool node;
-
-	for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) {
-		if (request.info[iDay][iTerm].type) { //
-			vmID = request.info[iDay][iTerm].vmID;
-			vmName = preDeploy[vmID].vmName;
-			isdouble = isDouble(vmName);
-			isNew = preDeploy[vmID].isNew;
-			preid = preDeploy[vmID].serID;
-			node = preDeploy[vmID].node;
-
-			// id 映射
-			if (isNew)
-				postid = server.idMap[preid];
-			else
-				postid = preid;
-
-			if (isdouble)
-				bugID = deploy(server, iDay, vmID, vmName, postid);
-			else
-				bugID = deploy(server, iDay, vmID, vmName, postid, node);
-
-			if (bugID) {
-				cout << "部署失败" << bugID << endl;
-				return -1;
-			}
-		}
-		else {
-			vmID = request.info[iDay][iTerm].vmID;
-			bugID = deleteVM(vmID, server);
-			if (bugID) {
-				cout << "删除失败" << bugID << endl;
-				return -1;
-			}
-		}
-	}
-
-	server.mySerCopy = server.myServerSet;
-	server.idMap.clear();
-	preDeploy.clear();
-
 	return 0;
 }

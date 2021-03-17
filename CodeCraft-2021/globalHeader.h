@@ -4,3 +4,4 @@
 // CMakeList -> release
 
 const int ALPHA = 400; // 价格加权参数
+const int KSSIZE = 10; // 背包算法的vm的分组最大个数

@@ -4,9 +4,73 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 /* Fn: SSP方法
 *	- 关于del的地方还可以优化
 *	- 双节点的问题
-*	- 背包问题：动态规划，tree分支定界
-*	- 有一些vm是可以放进已经买的服务器中的，可以改成dp
+*	- 背包问题：动态规划，tree分支定界，遗传算法
+*	- 有一些vm是可以放进已经买的服务器中的，可以改成dp 或者 排序firstFit
 */
+	bool vmIsDouble;
+	int serID;
+	bool serNode;
+	int vmReqCPU; 
+	int vmReqRAM;
+	int bugID;
+	// 记录那些还没被处理的add请求vmID {firstFit放不进去添加/背包部分部署删除}
+	unordered_set<string> addSet; 
+	unordered_set<string> curSet; // addSet的子集，最多server.ksSize个元素
+
+	for (int iDay=0; iDay<request.dayNum; iDay++) { // 每一天的请求
+		/*部分虚拟机装进已购买的服务器，能够处理的del请求（已经部署的vm）也直接处理*/
+		for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) { // 每一条请求
+			string vmID = request.info[iDay][iTerm].vmID;
+
+			if (request.info[iDay][iTerm].type) { // add
+				/*First fit 没排序版本*/
+				string vmName = request.info[iDay][iTerm].vmName;
+				vmIsDouble = VM.isDouble(vmName);
+				vmReqCPU = VM.reqCPU(vmName);
+				vmReqRAM = VM.reqRAM(vmName);
+
+				if (vmIsDouble) {
+					serID = server.firstFitDouble(vmReqCPU, vmReqRAM);
+				}
+				else {
+					tie(serID, serNode) = server.firstFitSingle(vmReqCPU, vmReqRAM);
+				}
+
+				if (serID != -1) { // 能直接装进去
+					if (vmIsDouble) 
+						bugID = deploy(server, iDay, vmID, vmName, serID);
+					else 
+						bugID = deploy(server, iDay, vmID, vmName, serID, serNode);
+					if (bugID) {
+						cout << "部署失败" << bugID << endl;
+						return;
+					}
+				}
+				else // 装不进去
+					addSet.insert(vmID);
+
+			}
+			else { // del
+				/*检查这个vm是否已经被部署 或者 在addSet中*/
+				if (VM.workingVmSet.count(vmID))
+					VM.deleteVM(vmID, server);
+				else if (!sddSet.count(vmID)) {
+					cout << "无法删除没有add请求的服务器" << endl;
+					return;
+				}
+			}
+		}
+
+		/*迭代把所有add请求的虚拟机，放进服务器，尽量用最少的cost。每次背包问题最多解N台vm，不然复杂度太高*/
+		/*由上至下，带记忆的动态规划*/
+		//
+
+	}
+
+
+
+
+
 	vector<pair<string, string>> addList; // <vmID, vmName> 初始化->预部署之后删除元素
 	// vector<pair<string, string>> delList;
 	// int addNum = 0;
@@ -89,3 +153,9 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 
 	}
 }
+
+void knapSack(cServer &server, unordered_set<string> curSet) {
+	// dp
+}
+
+void dp(int )
