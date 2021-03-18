@@ -7,8 +7,14 @@
 #include "globalHeader.h" // 全局常量
 using namespace std;
 
+#ifdef LOCAL
+    clock_t TIMEstart, TIMEend;
+#endif
 int main()
 {
+#ifdef LOCAL
+    TIMEstart = clock();
+#endif
     cServer server;
     cVM VM;
     cRequests request;

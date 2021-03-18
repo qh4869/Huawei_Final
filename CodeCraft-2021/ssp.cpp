@@ -26,7 +26,11 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 	vector<pair<string, string>> curSet; // addSet的子集，最多server.ksSize个元素 {遍历server之前更新}
 
 	for (int iDay=0; iDay<request.dayNum; iDay++) { // 每一天的请求
+#ifdef LOCAL
 		cout << iDay << endl;
+		TIMEend = clock();
+		cout<<(double)(TIMEend-TIMEstart)/CLOCKS_PER_SEC << endl;
+#endif
 		/*部分虚拟机装进已购买的服务器，能够处理的del请求（已经部署的vm）也直接处理*/
 		for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) { // 每一条请求
 			string vmID = request.info[iDay][iTerm].vmID;
@@ -73,6 +77,10 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 			}
 		}
 
+#ifdef LOCAL
+		TIMEend = clock();
+		cout<<(double)(TIMEend-TIMEstart)/CLOCKS_PER_SEC << endl;
+#endif
 		/*迭代把所有add请求的虚拟机，放进服务器，尽量用最少的cost。每次背包问题最多解N台vm，不然复杂度太高*/
 		/*由上至下递归，目前没写记忆*/
 		string vmName;
@@ -85,7 +93,9 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 		int bugID;
 
 		while (!addSet.empty()) {
+#ifdef LOCAL
 			cout << "当天剩余:" << addSet.size() << endl;
+#endif
 			/*更新curSet*/
 			curSet.clear();
 			cnt = 0;
@@ -144,7 +154,10 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 				}
 			}
 		}
-
+#ifdef LOCAL
+		TIMEend = clock();
+		cout<<(double)(TIMEend-TIMEstart)/CLOCKS_PER_SEC << endl;
+#endif
 		/*处理上一步部署后又del的请求，先处理add请求后处理del请求是次优的，
 			但是第二天又可以补上，目前认为影响不大*/
 		for (const auto &vmID : delSet) {
