@@ -1,11 +1,10 @@
-#include "io.h"
+ï»¿#include "io.h"
 #include "Server.h"
 #include "VM.h"
 #include "Request.h"
-#include "firstFit.h"
-#include "graphFit.h"
 #include <iostream>
-#include "globalHeader.h" // È«¾Ö³£Á¿
+#include "globalHeader.h" // å…¨å±€å¸¸é‡
+#include "graphFit.h"
 using namespace std;
 
 int main()
@@ -15,27 +14,26 @@ int main()
 	cRequests request;
 	void process(cServer &server, cVM &VM, const cRequests &request);
 
-	// ÊäÈë
-	tie(server, VM, request) = dataIn("training-1.txt");
+	// è¾“å…¥
+	tie(server, VM, request) = dataIn("training-2.txt");
 
-	// Êı¾İÔ¤´¦Àí
-	server.alpha = ALPHA;
-	server.rankServerByPrice(); // °´ÕÕ¼Û¸ñÅÅĞò È¨ÖØÎªalpha
-
-	// ¹ºÂò£¬Ç¨ÒÆ£¬²¿Êğ
+	// è´­ä¹°ï¼Œè¿ç§»ï¼Œéƒ¨ç½²
 	process(server, VM, request);
 
 #ifndef LOCAL
-	// Êä³ö
+	// è¾“å‡º
 	dataOut(server, VM, request);
 #endif
-	//dataOut(server, VM, request);
-	//cout << server.price << endl;
-	system("pause");
+	//system("pause");
 	return 0;
 }
 
 void process(cServer &server, cVM &VM, const cRequests &request) {
-	//firstFit(server, VM, request);
+	// æ•°æ®é¢„å¤„ç†
+	server.alpha = ALPHA;
+	server.rankServerByPrice(); // æŒ‰ç…§ä»·æ ¼æ’åº æƒé‡ä¸ºalpha
+
 	graphFit(server, VM, request);
+
+	server.idMapping(); // id map
 }

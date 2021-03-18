@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "Server.h"
 #include "VM.h"
 #include "Request.h"
@@ -9,8 +9,8 @@
 using namespace std;
 
 
-// ÊäÈëÊı¾İ¶ÁÈ¡
+// è¾“å…¥æ•°æ®è¯»å–
 std::tuple<cServer, cVM, cRequests> dataIn(string fileName);
 
-//½«½á¹ûÊä³öµ½±ê×¼Êä³ö
+//å°†ç»“æœè¾“å‡ºåˆ°æ ‡å‡†è¾“å‡º
 void dataOut(cServer &server, cVM &VM, const cRequests &request);

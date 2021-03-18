@@ -1,23 +1,19 @@
-#include "graphFit.h"
+ï»¿#include "graphFit.h"
 
 
+// æ ¹æ®å›¾çš„æœ€çŸ­è·¯å¾„æ¥éƒ¨ç½²
 void graphFit(cServer &server, cVM &VM, const cRequests &request) {
 
-	server.price = 0;
-	int engCostStas = 0; // ¼ÆËã¹¦ºÄ³É±¾
+	int engCostStas = 0; // è®¡ç®—åŠŸè€—æˆæœ¬
 	int hardCostStas = 0;
 	string costName;
 	for (int whichDay = 0; whichDay < request.dayNum; whichDay++) {
-		
-		if (whichDay == 2) {
-			int a = 1;
-		}
+
 		//cout << whichDay << endl;
-		server.dayServerNum.push_back(0);
 		if (whichDay == 0) {
 			server.alpha = request.dayNum;
 			//server.alpha = 400;
-			server.rankServerByPrice(true);
+			server.rankServerByPrice(true);  // ç¬¬ä¸€å¤©ä¸ºtrue
 		}
 		else {
 			server.alpha = request.dayNum - whichDay;
@@ -26,8 +22,6 @@ void graphFit(cServer &server, cVM &VM, const cRequests &request) {
 		}
 
 		dayGraphFit(server, VM, request, whichDay);
-		deployServerID(server, whichDay);
-		deployRecord(server, VM, request, whichDay);
 
 		for (int iServer = 0; iServer < (int)server.myServerSet.size(); iServer++) {
 			if (server.isOpen(iServer)) {
@@ -35,106 +29,100 @@ void graphFit(cServer &server, cVM &VM, const cRequests &request) {
 				engCostStas += server.info[costName].energyCost;
 			}
 		}
-		
+
 	}
 
 	for (int iServer = 0; iServer<(int)server.myServerSet.size(); iServer++) {
 		costName = server.myServerSet[iServer].serName;
 		hardCostStas += server.info[costName].hardCost;
 	}
-	cout << "³É±¾: " << engCostStas + hardCostStas << endl;
+	//cout << "æˆæœ¬: " << engCostStas + hardCostStas << endl;
 
 }
 
 
-// ½øĞĞÃ¿ÌìµÄ·şÎñÆ÷¹ºÂòºÍVM²¿Êğ
+// è¿›è¡Œæ¯å¤©çš„æœåŠ¡å™¨è´­ä¹°å’ŒVMéƒ¨ç½²
 void dayGraphFit(cServer &server, cVM &VM, const cRequests &request, int whichDay) {
 
-	int totalRequest = request.numEachDay[whichDay];   // µ±ÌìµÄÇëÇó×ÜÊı
-	int dividend = 1;   // ½«ÇëÇó·Ö×é£¬Ã¿¸ö·Ö×éÓĞdividendÌõÇëÇó
-	int quotient, remainder;   // ÉÌºÍÓàÊı
-	
-	quotient = totalRequest / dividend;   // Õû³ı
-	remainder = totalRequest % dividend;  // ÇóÓàÊı
+	int totalRequest = request.numEachDay[whichDay];   // å½“å¤©çš„è¯·æ±‚æ€»æ•°
+	int dividend = 1;   // å°†è¯·æ±‚åˆ†ç»„ï¼Œæ¯ä¸ªåˆ†ç»„æœ‰dividendæ¡è¯·æ±‚
+	int quotient, remainder;   // å•†å’Œä½™æ•°
 
-	if (quotient == 0) {   // ÉÌÎª0£¬Ö±½Ó·ÖÎªÒ»×é
+	quotient = totalRequest / dividend;   // æ•´é™¤
+	remainder = totalRequest % dividend;  // æ±‚ä½™æ•°
+
+	if (quotient == 0) {   // å•†ä¸º0ï¼Œç›´æ¥åˆ†ä¸ºä¸€ç»„
 		subGraphFit(server, VM, request, 0, totalRequest, whichDay);
 	}
 	else {
-
-		int begin = 0, end = dividend;   // ÓÃÓÚÖ¸¶¨requestItemµÄÆğÊ¼ºÍ½áÎ²
-
-		while (quotient > 0) {   // ¸ù¾İÉÌ·Ö×é£¬Ã¿×érequestItemÊıÁ¿Îªdividend
+		int begin = 0, end = dividend;   // ç”¨äºæŒ‡å®šrequestItemçš„èµ·å§‹å’Œç»“å°¾
+		while (quotient > 0) {   // æ ¹æ®å•†åˆ†ç»„ï¼Œæ¯ç»„requestItemæ•°é‡ä¸ºdividend
 			subGraphFit(server, VM, request, begin, end, whichDay);
 			begin = end;
 			end = end + dividend;
 			quotient--;
 		}
-		if (remainder != 0) {   // Ê£ÏÂµÄItem×÷ÎªÒ»×é
+		if (remainder != 0) {   // å‰©ä¸‹çš„Itemä½œä¸ºä¸€ç»„
 			end = end - dividend + remainder;
 			subGraphFit(server, VM, request, begin, end, whichDay);
 		}
-		
 	}
 
 }
 
-// Ã¿ÌìµÄËùÓĞrequestItem·ÖÎªÈô¸É×é×é³É×ÓÍ¼¿ªÊ¼Fit
+
+// æ¯å¤©çš„æ‰€æœ‰requestItemåˆ†ä¸ºè‹¥å¹²ç»„ç»„æˆå­å›¾å¼€å§‹Fit
 void subGraphFit(cServer &server, cVM &VM, const cRequests &request, int begin, int end, int whichDay) {
 
-	int alpha = server.alpha;    // ¼Û¸ñ¼ÓÈ¨ÏµÊı
-	int maxLoc = end - begin + 1;   // Í¼½ÚµãµÄ×î¶à¸öÊı£¨ËùÒÔ´Ó0¿ªÊ¼Ğè¶à1£¬ÎŞÓÃ½Úµã¶à1£¬ËùÒÔ±ÈÊµ¼ÊÌõÄ¿¶à2£©
+	int alpha = server.alpha;       // ä»·æ ¼åŠ æƒç³»æ•°
+	int maxLoc = end - begin + 1;   // å›¾èŠ‚ç‚¹çš„æœ€å¤šä¸ªæ•°ï¼ˆæ‰€ä»¥ä»0å¼€å§‹éœ€å¤š1ï¼Œæ— ç”¨èŠ‚ç‚¹å¤š1ï¼Œæ‰€ä»¥æ¯”å®é™…æ¡ç›®å¤š2ï¼‰
 
-	// Í¼ÖĞÃ¿¸ö½ÚµãµÄ×ªÒÆ¾ØÕó£¬²¢³õÊ¼»¯£¨´æ´¢¶ÔÓ¦µÄserver£©
+									// å›¾ä¸­æ¯ä¸ªèŠ‚ç‚¹çš„è½¬ç§»çŸ©é˜µï¼Œå¹¶åˆå§‹åŒ–ï¼ˆå­˜å‚¨å¯¹åº”çš„serverï¼‰
 	vector<vector<sServerItem>> transfer(maxLoc, vector<sServerItem>(maxLoc));
 	sServerItem maxServer;
-	maxServer.hardCost = INT_MAX;     // ³õÊ¼»¯ÖµÎªÒ»Ì¨¼Û¸ñÎªÎŞÇîµÄ·şÎñÆ÷
+	maxServer.hardCost = INT_MAX;     // åˆå§‹åŒ–å€¼ä¸ºä¸€å°ä»·æ ¼ä¸ºæ— ç©·çš„æœåŠ¡å™¨
 	for (int i = 0; i < maxLoc; i++) {
 		for (int j = 0; j < maxLoc; j++) {
 			transfer[i][j] = maxServer;
 		}
 	}
 
-	// ¼ÇÂ¼Ã¿¸ö½ÚµãµÄ×îĞ¡¼Û¸ñ£¬²¢³õÊ¼»¯
+	// è®°å½•æ¯ä¸ªèŠ‚ç‚¹çš„æœ€å°ä»·æ ¼ï¼Œå¹¶åˆå§‹åŒ–
 	vector<int> minCost(maxLoc);
 	for (int i = 0; i < maxLoc; i++) {
-		minCost[i] = 0; 
+		minCost[i] = 0;
 	}
 
-	unordered_map<string, sVmItem> workVm;   // ¼ÇÂ¼µ±Ìì»¹ÔÚ¹¤×÷µÄĞéÄâ»ú¼¯ºÏ£¨ID->VM£©
-	vector<pair<string, int>> restID;        // ¼ÇÂ¼¼ÓÈëĞÂ¹ºÂò·şÎñÆ÷µÄĞéÄâ»úIDÒÔ¼°Ë÷Òı£¨ID->Í¼ÖĞË÷Òı£©
-	sServerItem myServer;    // ¼ÇÂ¼Æ¥ÅäµÄ·şÎñÆ÷
-	vector<int> path(maxLoc);   // ¼ÇÂ¼×î¶ÌÂ·¾¶
-	path[0] = 0;   // ³õÊ¼»¯
-	bool isFirst = true;   // Í¼ÖĞµÚÒ»¸öÓĞĞ§½ÚµãµÄ×îĞ¡¼Û¸ñÖµÓ¦¸ÃÎª0
-	vector<bool> hasDeploy(maxLoc);   // ÓÃÓÚ¼ÇÂ¼VMÊÇ·ñ¼ÓÈëµ½ÁËÒÑ¹ºÂòµÄ·şÎñÆ÷ÖĞ£¬ÊÇÎªtrue
+	unordered_map<string, sVmItem> workVm;   // è®°å½•å½“å¤©è¿˜åœ¨å·¥ä½œçš„è™šæ‹Ÿæœºé›†åˆï¼ˆID->VMï¼‰
+	vector<pair<string, int>> restID;        // è®°å½•åŠ å…¥æ–°è´­ä¹°æœåŠ¡å™¨çš„è™šæ‹ŸæœºIDä»¥åŠç´¢å¼•ï¼ˆID->å›¾ä¸­ç´¢å¼•ï¼‰
+	sServerItem myServer;    // è®°å½•åŒ¹é…çš„æœåŠ¡å™¨
+	vector<int> path(maxLoc);   // è®°å½•æœ€çŸ­è·¯å¾„
+	path[0] = 0;   // åˆå§‹åŒ–
+	bool isFirst = true;   // å›¾ä¸­ç¬¬ä¸€ä¸ªæœ‰æ•ˆèŠ‚ç‚¹çš„æœ€å°ä»·æ ¼å€¼åº”è¯¥ä¸º0
+	vector<bool> hasDeploy(maxLoc);   // ç”¨äºè®°å½•VMæ˜¯å¦åŠ å…¥åˆ°äº†å·²è´­ä¹°çš„æœåŠ¡å™¨ä¸­ï¼Œæ˜¯ä¸ºtrue
 
-	for (int indexTerm = begin; indexTerm < end + 1; indexTerm++) {   // indexTerm ±íÊ¾¸ÃTermÔÚÃ¿ÌìµÄÊµ¼ÊË³Ğò
+	for (int indexTerm = begin; indexTerm < end + 1; indexTerm++) {   // indexTerm è¡¨ç¤ºè¯¥Termåœ¨æ¯å¤©çš„å®é™…é¡ºåº
 
-		if (indexTerm == 131) {
-			int a = 1;
-		}
+		int iTerm = indexTerm - begin;    // è¡¨ç¤ºè¯¥Termåœ¨å›¾ä¸­çš„å®é™…é¡ºåº
 
-		int iTerm = indexTerm - begin;    // ±íÊ¾¸ÃTermÔÚÍ¼ÖĞµÄÊµ¼ÊË³Ğò
-
-		// ²»ÊÇ×îºóÒ»¸ö½Úµã²ÅĞèÒª´¦Àí£¬×îºóÒ»¸ö½ÚµãÎŞÓÃ£¬ÔİÊ±²»ĞèÒª´¦Àí
-		if (iTerm < maxLoc - 1) {  
-			sRequestItem requestTerm = request.info[whichDay][indexTerm];  // ¸ù¾İÃ¿ÌìÊµ¼ÊË³ĞòÈ¡³öÇëÇó
-			if (!requestTerm.type) {   // ±íÊ¾ÒªÉ¾³ıĞéÄâ»ú
-				hasDeploy[iTerm] = true;    // É¾³ıµÄĞéÄâ»ú²»ĞèÒªÖØĞÂ²¿Êğ
+										  // ä¸æ˜¯æœ€åä¸€ä¸ªèŠ‚ç‚¹æ‰éœ€è¦å¤„ç†ï¼Œæœ€åä¸€ä¸ªèŠ‚ç‚¹æ— ç”¨ï¼Œæš‚æ—¶ä¸éœ€è¦å¤„ç†
+		if (iTerm < maxLoc - 1) {
+			sRequestItem requestTerm = request.info[whichDay][indexTerm];  // æ ¹æ®æ¯å¤©å®é™…é¡ºåºå–å‡ºè¯·æ±‚
+			if (!requestTerm.type) {   // è¡¨ç¤ºè¦åˆ é™¤è™šæ‹Ÿæœº
+				hasDeploy[iTerm] = true;    // åˆ é™¤çš„è™šæ‹Ÿæœºä¸éœ€è¦é‡æ–°éƒ¨ç½²(((((bug)))))
 				deleteVM(server, VM, requestTerm, workVm, restID);
 			}
-			else {   // ±íÊ¾Òª¼ÓÈëĞéÄâ»ú
+			else {   // è¡¨ç¤ºè¦åŠ å…¥è™šæ‹Ÿæœº
 				addVM(server, VM, requestTerm, hasDeploy, transfer, workVm, restID, whichDay, iTerm, indexTerm);
 			}
 		}
-		else {    // ´¦Àí×îºóÒ»¸ö½Úµã
-			restID.push_back(make_pair("", iTerm));   // ×îºóÒ»¸ö½ÚµãÖ»ĞèÒª¼ÓÈëÆäÊµ¼ÊÎ»ÖÃ¼´¿É
+		else {    // å¤„ç†æœ€åä¸€ä¸ªèŠ‚ç‚¹
+			restID.push_back(make_pair("", iTerm));   // æœ€åä¸€ä¸ªèŠ‚ç‚¹åªéœ€è¦åŠ å…¥å…¶å®é™…ä½ç½®å³å¯
 		}
 
-		// Èç¹ûÍ¼ÖĞ´æÔÚ½Úµã£¬²¢ÇÒ¸Ã½ÚµãÊÇĞÂ¼ÓÈëµÄ²ÅĞèÒª½øĞĞÈçÏÂ´¦Àí
+		// å¦‚æœå›¾ä¸­å­˜åœ¨èŠ‚ç‚¹ï¼Œå¹¶ä¸”è¯¥èŠ‚ç‚¹æ˜¯æ–°åŠ å…¥çš„æ‰éœ€è¦è¿›è¡Œå¦‚ä¸‹å¤„ç†
 		if (restID.size() > 0 && restID.back().second == iTerm) {
-			updateTransfer(server, workVm, restID, transfer, iTerm);     // ¸üĞÂtransfer
+			updateTransfer(server, workVm, restID, transfer, iTerm);     // æ›´æ–°transfer
 			updateMinCost(restID, transfer, path, minCost, iTerm, alpha, isFirst);
 		}
 		else {
@@ -143,30 +131,31 @@ void subGraphFit(cServer &server, cVM &VM, const cRequests &request, int begin, 
 
 	}
 
-	server.price += minCost.back();    // ·şÎñÆ÷Ò»Ö±¿ª×ÅµÄ¼Û¸ñ£¬Èç¹ûalphaÖµÎªÌØ¶¨ÖµÊ±
-
+	// å…¨éƒ¨éƒ½ç¡®å®šäº†å°±å¼€å§‹ä¹°æœåŠ¡å™¨å’Œéƒ¨ç½²VM
 	buyServer(server, VM, request, restID, transfer, hasDeploy, path, maxLoc, whichDay, begin);
 
 }
 
-// É¾³ıVM
-void deleteVM(cServer &server, cVM &VM, sRequestItem &requestTerm, unordered_map<string, sVmItem> &workVm, vector<pair<string, int>> &restID) {
 
-	sEachWorkingVM tempVm = VM.workingVmSet[requestTerm.vmID];  // É¾³ıÌõÄ¿ÖĞÃ»ÓĞ¼ÇÂ¼ĞéÄâ»ú£¬ËùÒÔÒªÍ¨¹ıÕâÖÖ·½Ê½È¡³öÀ´
-	sVmItem requestVm = VM.info[tempVm.vmName];    // ÌáÈ¡ÒªÉ¾³ıµÄĞéÄâ»ú
+// åˆ é™¤VMï¼ˆå¯èƒ½æ˜¯å½“å¤©çš„æœåŠ¡å™¨ï¼Œä¹Ÿå¯èƒ½æ˜¯ä¹‹å‰å·²è´­ä¹°çš„æœåŠ¡å™¨ï¼‰
+void deleteVM(cServer &server, cVM &VM, sRequestItem &requestTerm, unordered_map<string, sVmItem> &workVm,
+	vector<pair<string, int>> &restID) {
 
-	auto search = VM.workingVmSet.find(requestTerm.vmID);
-	if (search != VM.workingVmSet.end()) {      // ±íÊ¾¸ÃĞéÄâ»úÔÚÇ°¼¸ÌìµÄ·şÎñÆ÷Àï
+	sEachWorkingVM tempVm = VM.workingVmSet[requestTerm.vmID];  // åˆ é™¤æ¡ç›®ä¸­æ²¡æœ‰è®°å½•è™šæ‹Ÿæœºï¼Œæ‰€ä»¥è¦é€šè¿‡è¿™ç§æ–¹å¼å–å‡ºæ¥
+	sVmItem requestVm = VM.info[tempVm.vmName];    // æå–è¦åˆ é™¤çš„è™šæ‹Ÿæœºçš„ç±»å‹
 
-		int serID = VM.workingVmSet[requestTerm.vmID].serverID;    // ¼ÇÂ¼¸ÃĞéÄâ»ú·ÅÔÚÄÄÌ¨·şÎñÆ÷ÔËĞĞ
-		if (requestVm.nodeStatus) {   // Ë«½Úµã
+	auto search = VM.workingVmSet.find(requestTerm.vmID);   // åœ¨å·²è´­ä¹°æœåŠ¡å™¨ä¸­æŸ¥æ‰¾
+	if (search != VM.workingVmSet.end()) {      // è¡¨ç¤ºè¯¥è™šæ‹Ÿæœºåœ¨å‰å‡ å¤©çš„æœåŠ¡å™¨é‡Œ
+
+		int serID = VM.workingVmSet[requestTerm.vmID].serverID;    // è®°å½•è¯¥è™šæ‹Ÿæœºæ”¾åœ¨å“ªå°æœåŠ¡å™¨è¿è¡Œ
+		if (requestVm.nodeStatus) {   // åŒèŠ‚ç‚¹
 			server.myServerSet[serID].aIdleCPU += requestVm.needCPU / 2;
 			server.myServerSet[serID].bIdleCPU += requestVm.needCPU / 2;
 			server.myServerSet[serID].aIdleRAM += requestVm.needRAM / 2;
 			server.myServerSet[serID].bIdleRAM += requestVm.needRAM / 2;
 		}
-		else {    // µ¥½Úµã
-			if (VM.workingVmSet[requestTerm.vmID].node) {   // true ±íÊ¾a½Úµã
+		else {    // å•èŠ‚ç‚¹
+			if (VM.workingVmSet[requestTerm.vmID].node) {   // true è¡¨ç¤ºaèŠ‚ç‚¹
 				server.myServerSet[serID].aIdleCPU += requestVm.needCPU;
 				server.myServerSet[serID].aIdleRAM += requestVm.needRAM;
 			}
@@ -175,100 +164,86 @@ void deleteVM(cServer &server, cVM &VM, sRequestItem &requestTerm, unordered_map
 				server.myServerSet[serID].bIdleRAM += requestVm.needRAM;
 			}
 		}
-		//////////////////////////////////////////////////////////////////////////
-		server.updateRank(serID, false);   // ±íÊ¾´ÓÀïÃæÄÃ×ßVM
-		/////////////////////////////////////////////////////////////////////////
 	}
-	else {    // É¾³ıµÄĞéÄâ»ú²»ÔÚÒÑ¾­¹ºÂòµÄ·şÎñÆ÷ÖĞ
-
-		workVm.erase(requestTerm.vmID);   // ´Ó¹¤×÷ÖĞµÄĞéÄâ»ú¼¯ºÏÉ¾³ı¸ÃĞéÄâ»ú
-		int temp = 0;   // ÓÃÓÚ²éÕÒÕâ¸öĞéÄâ»úÔÚÄÇ¸öÎ»ÖÃ£¬ÕÒµ½²¢É¾³ı
-		while (restID[temp].first != requestTerm.vmID) {    // first ±íÊ¾ĞéÄâ»úID
+	else {    // åˆ é™¤çš„è™šæ‹Ÿæœºä¸åœ¨å·²ç»è´­ä¹°çš„æœåŠ¡å™¨ä¸­
+		workVm.erase(requestTerm.vmID);   // ä»å·¥ä½œä¸­çš„è™šæ‹Ÿæœºé›†åˆåˆ é™¤è¯¥è™šæ‹Ÿæœº
+		int temp = 0;   // ç”¨äºæŸ¥æ‰¾è¿™ä¸ªè™šæ‹Ÿæœºåœ¨é‚£ä¸ªä½ç½®ï¼Œæ‰¾åˆ°å¹¶åˆ é™¤
+		while (restID[temp].first != requestTerm.vmID) {    // first è¡¨ç¤ºè™šæ‹ŸæœºID
 			temp++;
 		}
 		restID.erase(restID.begin() + temp);
-
 	}
-
 }
 
-// Ôö¼ÓVM
+
+// æ·»åŠ è™šæ‹Ÿæœºï¼ˆå¯èƒ½æ·»åŠ åˆ°å½“å¤©è´­ä¹°çš„æœåŠ¡å™¨ï¼Œä¹Ÿå¯èƒ½æ˜¯å·²è´­ä¹°çš„æœåŠ¡å™¨ä¸­ï¼‰
 void addVM(cServer &server, cVM &VM, sRequestItem &requestTerm, vector<bool> &hasDeploy, vector<vector<sServerItem>> &transfer,
 	unordered_map<string, sVmItem> &workVm, vector<pair<string, int>> &restID, int whichDay, int iTerm, int indexTerm) {
 
-	sVmItem requestVm = VM.info[requestTerm.vmName];    // ÕÒµ½ĞèÒªÌí¼ÓµÄĞéÄâ»ú
-	sServerItem myServer = chooseServer(server, requestVm);   // ÕÒµ½Æ¥ÅäµÄ·şÎñÆ÷
+	sVmItem requestVm = VM.info[requestTerm.vmName];    // æ‰¾åˆ°éœ€è¦æ·»åŠ çš„è™šæ‹Ÿæœº
+	sServerItem myServer = chooseServer(server, requestVm);   // æ‰¾åˆ°åŒ¹é…çš„æœåŠ¡å™¨
 
-	if (myServer.energyCost < 0) {    // ±íÊ¾ÄÜ¼ÓÈëµ½ÒÑ¹ºÂòµÄ·şÎñÆ÷
+	if (myServer.energyCost < 0) {    // è¡¨ç¤ºèƒ½åŠ å…¥åˆ°å·²è´­ä¹°çš„æœåŠ¡å™¨
 
-		if (requestVm.nodeStatus) {   // true ±íÊ¾Ë«½Úµã
+		if (requestVm.nodeStatus) {   // true è¡¨ç¤ºåŒèŠ‚ç‚¹
 			hasDeploy[iTerm] = true;
-			//VM.deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID);
-			VM.deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID, indexTerm);
+			VM.deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID);  // deployä¸­çš„recordæ˜¯å“ˆå¸Œè¡¨
 		}
 		else {
 			hasDeploy[iTerm] = true;
-			//int flag = VM.deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID, true);  // a ½Úµã
-			int flag = VM.deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID, true, indexTerm);  // a ½Úµã
-			if (flag == 2) {
-				//VM.deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID, false);  // b ½Úµã
-				VM.deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID, false, indexTerm);  // b ½Úµã
+			if (myServer.node) {  // trueè¡¨ç¤ºaèŠ‚ç‚¹
+				VM.deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID, true);  // a node
+			}
+			else {  // false : b node
+				VM.deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID, false);  // b node
 			}
 		}
-		///////////////////////////////////////////////////////////////////////////
-		server.updateRank(myServer.buyID, true);   // ÍùÀï¼Ó
-		///////////////////////////////////////////////////////////////////////////
 	}
-	else {    // ±íÊ¾¼ÓÈëµ½ÕâÒ»ÂÖĞÂ¹ºÂòµÄ·şÎñÆ÷
-
-		hasDeploy[iTerm] = false;    // ÊôÓÚĞÂ¹ºÂòµÄ·şÎñÆ÷
-		workVm.insert({ requestTerm.vmID, requestVm });    // ¸ù¾İĞéÄâ»úID¼ÓÈëĞéÄâ»ú
-		transfer[iTerm][iTerm + 1] = myServer;    // ¸üĞÂ×ªÒÆ¾ØÕó
-		restID.push_back(make_pair(requestTerm.vmID, iTerm));    // ¸üĞÂrestID
-
+	else {    // è¡¨ç¤ºåŠ å…¥åˆ°è¿™ä¸€è½®æ–°è´­ä¹°çš„æœåŠ¡å™¨
+		hasDeploy[iTerm] = false;    // å±äºæ–°è´­ä¹°çš„æœåŠ¡å™¨,è¿˜æœªéƒ¨ç½²
+		workVm.insert({ requestTerm.vmID, requestVm });    // æ ¹æ®è™šæ‹ŸæœºIDåŠ å…¥è™šæ‹Ÿæœº
+		transfer[iTerm][iTerm + 1] = myServer;    // æ›´æ–°è½¬ç§»çŸ©é˜µ
+		restID.push_back(make_pair(requestTerm.vmID, iTerm));    // æ›´æ–°restID
 	}
-
 }
 
 
-// ¸üĞÂtransferµÄÖµ£¬¼´Ìí¼ÓÍ¼ÖĞµÄ±ß
+// æ›´æ–°transferçš„å€¼ï¼Œå³æ·»åŠ å›¾ä¸­çš„è¾¹
 void updateTransfer(cServer &server, unordered_map<string, sVmItem> &workVm, vector<pair<string, int>> &restID,
 	vector<vector<sServerItem>> &transfer, int iTerm) {
 
-    // Í¼ÖĞÓĞ¶à¸öµãÊ±ĞèÒª½øĞĞ¸Ã²Ù×÷
+	// å›¾ä¸­æœ‰å¤šä¸ªç‚¹æ—¶éœ€è¦è¿›è¡Œè¯¥æ“ä½œ
 	if (restID.size() > 1) {
-
 		sServerItem myServer;
-		for (int i = restID.size() - 2; i >= 0; i--) {   // °ÑÒ»¸öµÄÂß¼­Ò²¼ÓÁË½øÀ´
-			if (restID[i].second == iTerm - 1) {    // Õâ¸öÒÑ¾­ÔÚÌí¼Ó·şÎñÆ÷µÄÊ±ºò¸üĞÂÁË
+		for (int i = restID.size() - 2; i >= 0; i--) {   // æŠŠä¸€ä¸ªçš„é€»è¾‘ä¹ŸåŠ äº†è¿›æ¥
+			if (restID[i].second == iTerm - 1) {    // è¿™ä¸ªå·²ç»åœ¨æ·»åŠ æœåŠ¡å™¨çš„æ—¶å€™æ›´æ–°äº†
 				continue;
 			}
-			myServer = chooseServer(server, workVm, restID, i);
-			if (myServer.serName != "") {   // ±íÊ¾ÕÒµ½ÁË·ûºÏÒªÇóµÄ·şÎñÆ÷
+			myServer = chooseServer(server, workVm, restID, i);   // æ‰¾å‡ºä¸€å°èƒ½å¤Ÿè¿ç»­æ”¾å…¥iåˆ°iTermçš„æœåŠ¡å™¨
+			if (myServer.serName != "") {   // è¡¨ç¤ºæ‰¾åˆ°äº†ç¬¦åˆè¦æ±‚çš„æœåŠ¡å™¨
 				transfer[restID[i].second][iTerm] = myServer;    // second: index
 			}
 			else {
-				break;    // Õâ´ÎÕÒ²»µ½£¬ºóÃæµÄ¾Í¸üÕÒ²»µ½ÁË£¬Ö±½ÓÍË³ö
+				break;    // è¿™æ¬¡æ‰¾ä¸åˆ°ï¼Œåé¢çš„å°±æ›´æ‰¾ä¸åˆ°äº†ï¼Œç›´æ¥é€€å‡º
 			}
 		}
-
 	}
 
 }
 
 
-// ¸üĞÂ×îĞ¡µÄ¼Û¸ñÒÔ¼°Â·¾¶
-void updateMinCost(vector<pair<string, int>> &restID, vector<vector<sServerItem>> &transfer, 
+// æ›´æ–°æœ€å°çš„ä»·æ ¼ä»¥åŠè·¯å¾„
+void updateMinCost(vector<pair<string, int>> &restID, vector<vector<sServerItem>> &transfer,
 	vector<int> &path, vector<int> &minCost, int iTerm, int alpha, bool &isFirst) {
 
 	int minValue = INT_MAX;
-	int index = 0;    // ¼ÇÂ¼½ÚµãµÄÊµ¼ÊË÷Òı
-	int record = 0;   // ÓÃÓÚ¼ÇÂ¼Ç°Ïò½Úµã
-	int temp;    // ÓÃÓÚ¼ÇÂ¼ÁÙÊ±¼Û¸ñ
+	int index = 0;     // è®°å½•èŠ‚ç‚¹çš„å®é™…ç´¢å¼•
+	int record = 0;   // ç”¨äºè®°å½•å‰å‘èŠ‚ç‚¹
+	int temp;    // ç”¨äºè®°å½•ä¸´æ—¶ä»·æ ¼
 
 	for (int i = 0; i < int(restID.size()); i++) {
 		index = restID[i].second;   // second: index
-		if (transfer[index][iTerm].hardCost != INT_MAX) {   // ±íÊ¾´æÔÚ±ß
+		if (transfer[index][iTerm].hardCost != INT_MAX) {   // è¡¨ç¤ºå­˜åœ¨è¾¹
 			temp = minCost[index] + transfer[index][iTerm].hardCost + alpha * transfer[index][iTerm].energyCost;
 			if (temp < minValue) {
 				minValue = temp;
@@ -276,7 +251,6 @@ void updateMinCost(vector<pair<string, int>> &restID, vector<vector<sServerItem>
 			}
 		}
 	}
-
 	if (isFirst) {
 		minCost[iTerm] = 0;
 		path[iTerm] = 0;
@@ -286,16 +260,15 @@ void updateMinCost(vector<pair<string, int>> &restID, vector<vector<sServerItem>
 		minCost[iTerm] = minValue;
 		path[iTerm] = record;
 	}
-
 }
 
 
-// ¹ºÂò·şÎñÆ÷ºÍ²¿ÊğĞéÄâ»ú
+// è´­ä¹°æœåŠ¡å™¨å’Œéƒ¨ç½²è™šæ‹Ÿæœº
 void buyServer(cServer &server, cVM &VM, const cRequests &request, vector<pair<string, int>> &restID,
 	vector<vector<sServerItem>> &transfer, vector<bool> &hasDeploy, vector<int> &path, int maxLoc, int whichDay, int begin) {
 
-	vector<int> buy;    // ¼ÇÂ¼ÔÚÄÄĞ©½ÚµãÂò·şÎñÆ÷
-	buy.push_back(maxLoc - 1);   // ×îºóÒ»¸ö½ÚµãÈëÕ»
+	vector<int> buy;    // è®°å½•åœ¨å“ªäº›èŠ‚ç‚¹ä¹°æœåŠ¡å™¨
+	buy.push_back(maxLoc - 1);   // æœ€åä¸€ä¸ªèŠ‚ç‚¹å…¥æ ˆ
 	while (true) {
 		if (buy.back() == restID[0].second) {   // second: index
 			break;
@@ -305,7 +278,7 @@ void buyServer(cServer &server, cVM &VM, const cRequests &request, vector<pair<s
 		}
 	}
 
-	vector<sServerItem> buyServer;   // ±íÊ¾ÒªÂòµÄ·şÎñÆ÷
+	vector<sServerItem> buyServer;   // æ ¹æ®è¦ä¹°çš„èŠ‚ç‚¹ï¼Œä»è½¬ç§»çŸ©é˜µä¸­æå–å‡ºè®°å½•çš„æœåŠ¡å™¨
 	int first = 0;
 	int second = 0;
 	for (int i = buy.size() - 1; i >= 1; i--) {
@@ -314,20 +287,17 @@ void buyServer(cServer &server, cVM &VM, const cRequests &request, vector<pair<s
 		buyServer.push_back(transfer[first][second]);
 	}
 
-	int index = 0;    
-	int baseNum = server.myServerSet.size();   // ĞÂ¹ºÂòµÄ·şÎñÆ÷idÒªÔÚÒÑ¹ºÂòµÄ·şÎñÆ÷IDÉÏµş¼Ó
+	int index = 0;  // ç”¨äºè®°å½•æœåŠ¡å™¨idçš„å¢å€¼
+	int baseNum = server.myServerSet.size();   // æ–°è´­ä¹°çš„æœåŠ¡å™¨idè¦åœ¨å·²è´­ä¹°çš„æœåŠ¡å™¨IDä¸Šå åŠ 
 	for (int i = buy.size() - 1; i > 0; i--) {
 
 		server.purchase(buyServer[index].serName, whichDay);
 		deployVM(server, VM, request, index + baseNum, buy[i] + begin,
 			buy[i - 1] + begin, hasDeploy, whichDay, begin);
-		/////////////////////////////////////////////////////////////////////
 		int value = server.myServerSet[index + baseNum].aIdleCPU + server.myServerSet[index + baseNum].bIdleCPU
 			+ server.myServerSet[index + baseNum].aIdleRAM + server.myServerSet[index + baseNum].bIdleRAM;
 		pair<int, int> newOne = make_pair(index + baseNum, value);
-		server.rankServerByResource(newOne);
-		/////////////////////////////////////////////////////////////////////////
-		index++;
+		index++;  // æœåŠ¡å™¨id+1
 
 	}
 

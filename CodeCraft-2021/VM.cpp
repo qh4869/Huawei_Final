@@ -1,32 +1,31 @@
-#include "VM.h"
+ï»¿#include "VM.h"
 
-
-int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node, int indexTerm) {
-	/* Fn: µ¥½Úµã²¿ÊğÇé¿ö
-	* 	- ÒòÎªÒªÇóÊä³öµÄË³Ğò°´ÕÕÊäÈëĞéÄâ»úÇëÇóµÄË³Ğò£¬ËùÒÔÕâ¸öº¯ÊıµÄµ÷ÓÃ±ØĞë°´ÕÕaddÇëÇóµÄË³Ğò
+int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node) {
+	/* Fn: å•èŠ‚ç‚¹éƒ¨ç½²æƒ…å†µ
+	* 	- å› ä¸ºè¦æ±‚è¾“å‡ºçš„é¡ºåºæŒ‰ç…§è¾“å…¥è™šæ‹Ÿæœºè¯·æ±‚çš„é¡ºåºï¼Œæ‰€ä»¥è¿™ä¸ªå‡½æ•°çš„è°ƒç”¨å¿…é¡»æŒ‰ç…§addè¯·æ±‚çš„é¡ºåº
 	*
 	* In:
-	*	- server: server¶ÔÏó
-	*	- iDay: ÌìÊı
-	*	- VMid: ĞéÄâ»úID
-	*	- vmName: ĞéÄâ»úĞÍºÅ
-	*	- serID: ±»²¿Êğ·şÎñÆ÷ID
-	*	- node: µ¥½Úµã²¿ÊğµÄ½Úµã true±íÊ¾ a½Úµã
+	*	- server: serverå¯¹è±¡
+	*	- iDay: å¤©æ•°
+	*	- VMid: è™šæ‹ŸæœºID
+	*	- vmName: è™šæ‹Ÿæœºå‹å·
+	*	- serID: è¢«éƒ¨ç½²æœåŠ¡å™¨ID
+	*	- node: å•èŠ‚ç‚¹éƒ¨ç½²çš„èŠ‚ç‚¹ trueè¡¨ç¤º aèŠ‚ç‚¹
 	*
 	* Out:
-	*	- 0±íÊ¾Õı³£ÔËĞĞ£¬·ñÔò´æÔÚ´íÎó
+	*	- 0è¡¨ç¤ºæ­£å¸¸è¿è¡Œï¼Œå¦åˆ™å­˜åœ¨é”™è¯¯
 	*/
-	// ÅĞ¶Ïµ¥Ë«½ÚµãĞéÄâ»ú²¿ÊğÊ±ºò ÓĞÃ»ÓĞÊ¹ÓÃ´íÎó
+	// åˆ¤æ–­å•åŒèŠ‚ç‚¹è™šæ‹Ÿæœºéƒ¨ç½²æ—¶å€™ æœ‰æ²¡æœ‰ä½¿ç”¨é”™è¯¯
 	if (info[vmName].nodeStatus) {
-		cout << "Ë«½ÚµãĞéÄâ»ú²»ÄÜÖ¸¶¨½ÚµãÀàĞÍ£¬·ÖÅäÊ§°Ü" << endl;
+		cout << "åŒèŠ‚ç‚¹è™šæ‹Ÿæœºä¸èƒ½æŒ‡å®šèŠ‚ç‚¹ç±»å‹ï¼Œåˆ†é…å¤±è´¥" << endl;
 		return 1;
 	}
 
-	// ÅĞ¶Ï×ÊÔ´ÊÇ·ñ¹»·Ö
-	if (node == true) { // a ½Úµã²¿Êğ
+	// åˆ¤æ–­èµ„æºæ˜¯å¦å¤Ÿåˆ†
+	if (node == true) { // a èŠ‚ç‚¹éƒ¨ç½²
 		if (server.myServerSet[serID].aIdleCPU < info[vmName].needCPU \
 			|| server.myServerSet[serID].aIdleRAM < info[vmName].needRAM) {
-			//cout << "a single error" << endl;
+			//cout << "a node error" << endl;
 			return 2;
 		}
 		else {
@@ -37,7 +36,7 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 	else {
 		if (server.myServerSet[serID].bIdleCPU < info[vmName].needCPU \
 			|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM) {
-			cout << "b single error" << endl;
+			cout << "b node error" << endl;
 			return 2;
 		}
 		else {
@@ -54,7 +53,7 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		workingVmSet.insert(std::make_pair(VMid, oneVM));
 	}
 	else {
-		cout << "ĞéÄâ»úid³åÍ»£¡" << endl;
+		cout << "è™šæ‹Ÿæœºidå†²çªï¼" << endl;
 		return 3;
 	}
 
@@ -62,21 +61,20 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 	oneDeploy.serID = serID;
 	oneDeploy.isSingle = true;
 	oneDeploy.node = node;
-	oneDeploy.indexTerm = indexTerm;
 
-	deployRecord[iDay].push_back(oneDeploy);
+	deployRecord[iDay].insert(make_pair(VMid, oneDeploy));
 
 	return 0;
 }
 
-int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID, int indexTerm) {
+int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID) {
 	/*
-	* Fn: Ë«½Úµã²¿Êğ
-	* 	- ÒòÎªÒªÇóÊä³öµÄË³Ğò°´ÕÕÊäÈëĞéÄâ»úÇëÇóµÄË³Ğò£¬ËùÒÔÕâ¸öº¯ÊıµÄµ÷ÓÃ±ØĞë°´ÕÕaddÇëÇóµÄË³Ğò
-	*	- ÆäËû²Î¿¼ µ¥½Úµã²¿Êğ º¯Êı
+	* Fn: åŒèŠ‚ç‚¹éƒ¨ç½²
+	* 	- å› ä¸ºè¦æ±‚è¾“å‡ºçš„é¡ºåºæŒ‰ç…§è¾“å…¥è™šæ‹Ÿæœºè¯·æ±‚çš„é¡ºåºï¼Œæ‰€ä»¥è¿™ä¸ªå‡½æ•°çš„è°ƒç”¨å¿…é¡»æŒ‰ç…§addè¯·æ±‚çš„é¡ºåº
+	*	- å…¶ä»–å‚è€ƒ å•èŠ‚ç‚¹éƒ¨ç½² å‡½æ•°
 	*/
 	if (!info[vmName].nodeStatus) {
-		cout << "µ¥½ÚµãĞéÄâ»ú·ÖÅäÁ½¸ö½Úµã£¬·ÖÅäÊ§°Ü" << endl;
+		cout << "å•èŠ‚ç‚¹è™šæ‹Ÿæœºåˆ†é…ä¸¤ä¸ªèŠ‚ç‚¹ï¼Œåˆ†é…å¤±è´¥" << endl;
 		return 1;
 	}
 
@@ -84,7 +82,7 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		|| server.myServerSet[serID].bIdleCPU<info[vmName].needCPU / 2 \
 		|| server.myServerSet[serID].aIdleRAM < info[vmName].needRAM / 2 \
 		|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM / 2) {
-		cout << "·şÎñÆ÷×ÊÔ´²»¹»£¬·ÖÅäÊ§°Ü" << endl;
+		cout << "æœåŠ¡å™¨èµ„æºä¸å¤Ÿï¼Œåˆ†é…å¤±è´¥" << endl;
 		return 2;
 	}
 	else {
@@ -101,142 +99,31 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		workingVmSet.insert(std::make_pair(VMid, oneVM));
 	}
 	else {
-		cout << "ĞéÄâ»úid³åÍ»£¡" << endl;
+		cout << "è™šæ‹Ÿæœºidå†²çªï¼" << endl;
 		return 3;
 	}
 
 	sDeployItem oneDeploy;
 	oneDeploy.serID = serID;
 	oneDeploy.isSingle = false;
-	oneDeploy.indexTerm = indexTerm;
-	deployRecord[iDay].push_back(oneDeploy);
 
-	return 0;
-}
-
-int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node){
-/* Fn: µ¥½Úµã²¿ÊğÇé¿ö
-* 	- ÒòÎªÒªÇóÊä³öµÄË³Ğò°´ÕÕÊäÈëĞéÄâ»úÇëÇóµÄË³Ğò£¬ËùÒÔÕâ¸öº¯ÊıµÄµ÷ÓÃ±ØĞë°´ÕÕaddÇëÇóµÄË³Ğò
-*
-* In: 
-*	- server: server¶ÔÏó
-*	- iDay: ÌìÊı
-*	- VMid: ĞéÄâ»úID
-*	- vmName: ĞéÄâ»úĞÍºÅ
-*	- serID: ±»²¿Êğ·şÎñÆ÷ID
-*	- node: µ¥½Úµã²¿ÊğµÄ½Úµã true±íÊ¾ a½Úµã
-*
-* Out:
-*	- 0±íÊ¾Õı³£ÔËĞĞ£¬·ñÔò´æÔÚ´íÎó
-*/
-	// ÅĞ¶Ïµ¥Ë«½ÚµãĞéÄâ»ú²¿ÊğÊ±ºò ÓĞÃ»ÓĞÊ¹ÓÃ´íÎó
-	if(info[vmName].nodeStatus) {
-		cout << "Ë«½ÚµãĞéÄâ»ú²»ÄÜÖ¸¶¨½ÚµãÀàĞÍ£¬·ÖÅäÊ§°Ü" << endl;
-		return 1;
-	}
-
-	// ÅĞ¶Ï×ÊÔ´ÊÇ·ñ¹»·Ö
-	if (node==true) { // a ½Úµã²¿Êğ
-		if (server.myServerSet[serID].aIdleCPU < info[vmName].needCPU \
-			|| server.myServerSet[serID].aIdleRAM < info[vmName].needRAM) {
-			//cout << "a single error" << endl;
-			return 2;
-		}
-		else {
-			server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU;
-			server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM;
-		}
-	}
-	else {
-		if (server.myServerSet[serID].bIdleCPU < info[vmName].needCPU \
-			|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM) {
-			cout << "b single error" << endl;
-			return 2;
-		}
-		else {
-			server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU;
-			server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM;
-		}
-	}
-
-	sEachWorkingVM oneVM;
-	oneVM.vmName = vmName;
-	oneVM.serverID = serID;
-	oneVM.node = node;
-	if (!workingVmSet.count(VMid)) {
-		workingVmSet.insert(std::make_pair(VMid, oneVM));
-	}
-	else {
-		cout << "ĞéÄâ»úid³åÍ»£¡" << endl;
-		return 3;
-	}
-
-	sDeployItem oneDeploy;
-	oneDeploy.serID = serID;
-	oneDeploy.isSingle = true;
-	oneDeploy.node = node;
-
-	deployRecord[iDay].push_back(oneDeploy);
-
-	return 0;
-}
-
-int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID) {
-/*
-* Fn: Ë«½Úµã²¿Êğ
-* 	- ÒòÎªÒªÇóÊä³öµÄË³Ğò°´ÕÕÊäÈëĞéÄâ»úÇëÇóµÄË³Ğò£¬ËùÒÔÕâ¸öº¯ÊıµÄµ÷ÓÃ±ØĞë°´ÕÕaddÇëÇóµÄË³Ğò
-*	- ÆäËû²Î¿¼ µ¥½Úµã²¿Êğ º¯Êı
-*/
-	if(!info[vmName].nodeStatus) {
-		cout << "µ¥½ÚµãĞéÄâ»ú·ÖÅäÁ½¸ö½Úµã£¬·ÖÅäÊ§°Ü" << endl;
-		return 1;
-	}
-
-	if (server.myServerSet[serID].aIdleCPU<info[vmName].needCPU/2 \
-		|| server.myServerSet[serID].bIdleCPU<info[vmName].needCPU/2 \
-		|| server.myServerSet[serID].aIdleRAM < info[vmName].needRAM/2 \
-		|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM/2) {
-		cout << "·şÎñÆ÷×ÊÔ´²»¹»£¬·ÖÅäÊ§°Ü" << endl;
-			return 2;
-	}
-	else {
-		server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU/2;
-		server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM/2;
-		server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU/2;
-		server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM/2;
-	}
-
-	sEachWorkingVM oneVM;
-	oneVM.vmName = vmName;
-	oneVM.serverID = serID;
-	if (!workingVmSet.count(VMid)) {
-		workingVmSet.insert(std::make_pair(VMid, oneVM));
-	}
-	else {
-		cout << "ĞéÄâ»úid³åÍ»£¡" << endl;
-		return 3;
-	}
-
-	sDeployItem oneDeploy;
-	oneDeploy.serID = serID;
-	oneDeploy.isSingle = false;
-	deployRecord[iDay].push_back(oneDeploy);
+	deployRecord[iDay].insert(make_pair(VMid, oneDeploy));
 
 	return 0;
 }
 
 void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node) {
-/*
-* Fn: µ¥½ÚµãÇ¨ÒÆ£¬³öÈë²ÎÊı´íÎó¼ì²âÒÅÁô£¬°üÀ¨5%¡£µÄÒªÇóµÈ
-*/
+	/*
+	* Fn: å•èŠ‚ç‚¹è¿ç§»ï¼Œå‡ºå…¥å‚æ•°é”™è¯¯æ£€æµ‹é—ç•™ï¼ŒåŒ…æ‹¬5%ã€‚çš„è¦æ±‚ç­‰
+	*/
 	string vmName = workingVmSet[VMid].vmName;
 	int lastServerID = workingVmSet[VMid].serverID;
 	bool lastServerNode = workingVmSet[VMid].node;
 	int occupyCPU = info[vmName].needCPU;
 	int occupyRAM = info[vmName].needRAM;
 
-	// »Ö¸´Ç°Ò»¸ö·şÎñÆ÷µÄ×ÊÔ´
-	if (lastServerNode==true) { // A node
+	// æ¢å¤å‰ä¸€ä¸ªæœåŠ¡å™¨çš„èµ„æº
+	if (lastServerNode == true) { // A node
 		server.myServerSet[lastServerID].aIdleCPU += occupyCPU;
 		server.myServerSet[lastServerID].aIdleRAM += occupyRAM;
 	}
@@ -245,8 +132,8 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 		server.myServerSet[lastServerID].bIdleRAM += occupyRAM;
 	}
 
-	// Õ¼¾İĞÂ·şÎñÆ÷×ÊÔ´
-	if (node==true) {
+	// å æ®æ–°æœåŠ¡å™¨èµ„æº
+	if (node == true) {
 		server.myServerSet[serID].aIdleCPU -= occupyCPU;
 		server.myServerSet[serID].aIdleRAM -= occupyRAM;
 	}
@@ -255,7 +142,7 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 		server.myServerSet[serID].bIdleRAM -= occupyRAM;
 	}
 
-	// Ç¨ÒÆÌõÄ¿¸üĞÂ
+	// è¿ç§»æ¡ç›®æ›´æ–°
 	sTransVmItem oneTrans;
 	oneTrans.vmID = VMid;
 	oneTrans.serverID = serID;
@@ -265,27 +152,27 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 }
 
 void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
-/*
-* Fn: Ë«½ÚµãÇ¨ÒÆ£¬³öÈë²ÎÊı´íÎó¼ì²âÒÅÁô
-*/
+	/*
+	* Fn: åŒèŠ‚ç‚¹è¿ç§»ï¼Œå‡ºå…¥å‚æ•°é”™è¯¯æ£€æµ‹é—ç•™
+	*/
 	string vmName = workingVmSet[VMid].vmName;
 	int lastServerID = workingVmSet[VMid].serverID;
 	int occupyCPU = info[vmName].needCPU;
 	int occupyRAM = info[vmName].needRAM;
 
-	// »Ö¸´Ç°Ò»¸ö·şÎñÆ÷µÄ×ÊÔ´
-	server.myServerSet[lastServerID].aIdleCPU += occupyCPU/2;
-	server.myServerSet[lastServerID].aIdleRAM += occupyRAM/2;
-	server.myServerSet[lastServerID].bIdleCPU += occupyCPU/2;
-	server.myServerSet[lastServerID].bIdleRAM += occupyRAM/2;
+	// æ¢å¤å‰ä¸€ä¸ªæœåŠ¡å™¨çš„èµ„æº
+	server.myServerSet[lastServerID].aIdleCPU += occupyCPU / 2;
+	server.myServerSet[lastServerID].aIdleRAM += occupyRAM / 2;
+	server.myServerSet[lastServerID].bIdleCPU += occupyCPU / 2;
+	server.myServerSet[lastServerID].bIdleRAM += occupyRAM / 2;
 
-	// Õ¼¾İĞÂ·şÎñÆ÷×ÊÔ´
-	server.myServerSet[serID].aIdleCPU -= occupyCPU/2;
-	server.myServerSet[serID].aIdleRAM -= occupyRAM/2;
-	server.myServerSet[serID].bIdleCPU -= occupyCPU/2;
-	server.myServerSet[serID].bIdleRAM -= occupyRAM/2;
+	// å æ®æ–°æœåŠ¡å™¨èµ„æº
+	server.myServerSet[serID].aIdleCPU -= occupyCPU / 2;
+	server.myServerSet[serID].aIdleRAM -= occupyRAM / 2;
+	server.myServerSet[serID].bIdleCPU -= occupyCPU / 2;
+	server.myServerSet[serID].bIdleRAM -= occupyRAM / 2;
 
-	// Ç¨ÒÆÌõÄ¿¸üĞÂ
+	// è¿ç§»æ¡ç›®æ›´æ–°
 	sTransVmItem oneTrans;
 	oneTrans.vmID = VMid;
 	oneTrans.serverID = serID;
@@ -305,19 +192,25 @@ int cVM::reqRAM(string vmName) {
 	return info[vmName].needRAM;
 }
 
-void cVM::deleteVM(string vmID, cServer& server) {
+int cVM::deleteVM(string vmID, cServer& server) {
+	if (!workingVmSet.count(vmID)) {
+		cout << "ä¸èƒ½åˆ é™¤ä¸å­˜åœ¨çš„æœåŠ¡å™¨" << endl;
+		return -1;
+	}
+
+
 	string vmName = workingVmSet[vmID].vmName;
 	bool doubleStatus = isDouble(vmName);
 	int serID = workingVmSet[vmID].serverID;
 	int reqCPUs = reqCPU(vmName);
 	int reqRAMs = reqRAM(vmName);
 
-	// »Ö¸´·şÎñÆ÷×ÊÔ´
+	// æ¢å¤æœåŠ¡å™¨èµ„æº
 	if (doubleStatus) {
-		server.myServerSet[serID].aIdleCPU += reqCPUs/2;
-		server.myServerSet[serID].bIdleCPU += reqCPUs/2;
-		server.myServerSet[serID].aIdleRAM += reqRAMs/2;
-		server.myServerSet[serID].bIdleRAM += reqRAMs/2;
+		server.myServerSet[serID].aIdleCPU += reqCPUs / 2;
+		server.myServerSet[serID].bIdleCPU += reqCPUs / 2;
+		server.myServerSet[serID].aIdleRAM += reqRAMs / 2;
+		server.myServerSet[serID].bIdleRAM += reqRAMs / 2;
 	}
 	else {
 		if (workingVmSet[vmID].node) { // A
@@ -329,124 +222,7 @@ void cVM::deleteVM(string vmID, cServer& server) {
 			server.myServerSet[serID].bIdleRAM += reqRAMs;
 		}
 	}
-}
 
-void cVM::predp(string vmID, bool isNew, int serID, string vmName, cServer &server, bool node) {
-/* Fn: Ô¤²¿Êğ µ¥½Úµã
-*/
-	int reqCPU = info[vmName].needCPU;
-	int reqRAM = info[vmName].needRAM;
-
-	// ¼õÉÙ×ÊÔ´ (preSvSet & mySerCopy)
-	if (isNew) {
-		if (node) {
-			server.preSvSet[serID].aIdleCPU -= reqCPU;
-			server.preSvSet[serID].aIdleRAM -= reqRAM;
-		}
-		else {
-			server.preSvSet[serID].bIdleCPU -= reqCPU;
-			server.preSvSet[serID].bIdleRAM -= reqRAM;
-		}
-	}
-	else {
-		if (node) {
-			server.mySerCopy[serID].aIdleCPU -= reqCPU;
-			server.mySerCopy[serID].aIdleRAM -= reqRAM;
-		}
-		else {
-			server.mySerCopy[serID].bIdleCPU -= reqCPU;
-			server.mySerCopy[serID].bIdleRAM -= reqRAM;
-		}
-	}
-
-	// ÊäÈëÊı¾İ½á¹¹
-	sPreDeployItem onePreDeploy;
-
-	onePreDeploy.isNew = isNew;
-	onePreDeploy.serID = serID;
-	onePreDeploy.node = node;
-	onePreDeploy.vmName = vmName;
-
-	pair<string, sPreDeployItem> res(vmID, onePreDeploy);
-	preDeploy.insert(res);
-}
-
-void cVM::predp(string vmID, bool isNew, int serID, string vmName, cServer &server) {
-/* Fn: Ô¤²¿Êğ Ë«½Úµã
-*/
-	int reqCPU = info[vmName].needCPU;
-	int reqRAM = info[vmName].needRAM;
-	
-	if (isNew) {
-		server.preSvSet[serID].aIdleCPU -= reqCPU/2;
-		server.preSvSet[serID].bIdleCPU -= reqCPU/2;
-		server.preSvSet[serID].aIdleRAM -= reqRAM/2;
-		server.preSvSet[serID].bIdleRAM -= reqRAM/2;
-	}
-	else {
-		server.mySerCopy[serID].aIdleCPU -= reqCPU/2;
-		server.mySerCopy[serID].bIdleCPU -= reqCPU/2;
-		server.mySerCopy[serID].aIdleRAM -= reqRAM/2;
-		server.mySerCopy[serID].bIdleRAM -= reqRAM/2;
-	}
-
-	sPreDeployItem onePreDeploy;
-
-	onePreDeploy.isNew = isNew;
-	onePreDeploy.serID = serID;
-	onePreDeploy.vmName = vmName;
-
-	pair<string, sPreDeployItem> res(vmID, onePreDeploy);
-	preDeploy.insert(res);
-}
-
-void cVM::preDltVM(cServer &server, string vmID) {
-	preDel.push_back(vmID);
-}
-
-int cVM::postDpWithDel(cServer &server, const cRequests &request, int iDay) {
-	int postid;
-	int bugID;
-	string vmID;
-	string vmName;
-	bool isdouble;
-	bool isNew;
-	int preid;
-	bool node;
-
-	for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) {
-		if (request.info[iDay][iTerm].type) { //
-			vmID = request.info[iDay][iTerm].vmID;
-			vmName = preDeploy[vmID].vmName;
-			isdouble = isDouble(vmName);
-			isNew = preDeploy[vmID].isNew;
-			preid = preDeploy[vmID].serID;
-			node = preDeploy[vmID].node;
-
-			// id Ó³Éä
-			if (isNew)
-				postid = server.idMap[preid];
-			else
-				postid = preid;
-
-			if (isdouble)
-				bugID = deploy(server, iDay, vmID, vmName, postid);
-			else
-				bugID = deploy(server, iDay, vmID, vmName, postid, node);
-
-			if (bugID) {
-				cout << "²¿ÊğÊ§°Ü" << bugID << endl;
-				return -1;
-			}
-		}
-		else {
-			vmID = request.info[iDay][iTerm].vmID;
-			deleteVM(vmID, server);
-		}
-	}
-
-	server.mySerCopy = server.myServerSet;
-	server.idMap.clear();
-
+	workingVmSet.erase(vmID);
 	return 0;
 }

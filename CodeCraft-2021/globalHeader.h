@@ -1,7 +1,7 @@
-#pragma once
+ï»¿#pragma once
 
-#define LOCAL // ÉÏ´«°ÑÕâĞĞ×¢ÊÍµô
-#define INT_MAX 1000000
+//#define LOCAL // ä¸Šä¼ æŠŠè¿™è¡Œæ³¨é‡Šæ‰
+#define INT_MAX 1000000000
 // CMakeList -> release
 
-const int ALPHA = 400; // ¼Û¸ñ¼ÓÈ¨²ÎÊı
+const int ALPHA = 400; // ä»·æ ¼åŠ æƒå‚æ•°

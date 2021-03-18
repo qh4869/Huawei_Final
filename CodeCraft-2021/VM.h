@@ -1,87 +1,68 @@
-#pragma once
+ï»¿#pragma once
 #include <unordered_map>
 #include "Server.h"
 #include <iostream>
 #include "globalHeader.h"
 using namespace std;
 
-struct sVmItem { // hash map µÄ value²¿·Ö
-    int needCPU;
-    int needRAM;
-    bool nodeStatus; // true±íÊ¾Ë«½Úµã
+struct sVmItem { // hash map çš„ valueéƒ¨åˆ†
+	int needCPU;
+	int needRAM;
+	bool nodeStatus; // trueè¡¨ç¤ºåŒèŠ‚ç‚¹
 };
 
 struct sEachWorkingVM {
 	string vmName;
 	int serverID;
-	bool node; // true ±íÊ¾a½Úµã false ±íÊ¾b½Úµã
+	bool node; // true è¡¨ç¤ºaèŠ‚ç‚¹ false è¡¨ç¤ºbèŠ‚ç‚¹
 };
 
 struct sTransVmItem {
 	string vmID;
 	int serverID;
-    bool isSingle;
-	bool node; // Ë«½ÚµãµÄĞéÄâ»úÕâ¸ö±äÁ¿Ã»ÓĞÒâÒå
+	bool isSingle;
+	bool node; // åŒèŠ‚ç‚¹çš„è™šæ‹Ÿæœºè¿™ä¸ªå˜é‡æ²¡æœ‰æ„ä¹‰
 };
 
 struct sDeployItem {
 	int serID;
 	bool isSingle;
-	bool node; // true a½Úµã
-	int indexTerm;
+	bool node; // true aèŠ‚ç‚¹
 };
 
 struct sPreDeployItem {
-    bool isNew; // ÊÇ·ñĞÂÂò·şÎñÆ÷
-    int serID;
-    bool node; // true: node a
-    string vmName;
+	bool isNew; // æ˜¯å¦æ–°ä¹°æœåŠ¡å™¨
+	int serID;
+	bool node; // true: node a
+	string vmName;
 };
 
 class cVM {
 public:
-    int vmTypeNum;
-    unordered_map<string, sVmItem> info; // hash map: type->info
-    unordered_map<string, sEachWorkingVM> workingVmSet; // ¹¤×÷ÖĞµÄĞéÄâ»ú ¹şÏ£±í£º ĞéÄâ»úID -> ¸ÃĞéÄâ»úĞÅÏ¢
-    unordered_map<string ,sPreDeployItem> preDeploy; // Ô¤²¿Êğ vmID->ÆäËû
-    vector<string> preDel; // Ô¤É¾³ı vmID
+	int vmTypeNum;
+	unordered_map<string, sVmItem> info; // æ¯ä¸€ç±»è™šæ‹Ÿæœºä¿¡æ¯: type->info
+	unordered_map<string, sEachWorkingVM> workingVmSet; // å·¥ä½œä¸­çš„è™šæ‹Ÿæœº å“ˆå¸Œè¡¨ï¼š è™šæ‹ŸæœºID -> è¯¥è™šæ‹Ÿæœºä¿¡æ¯
 
-    vector<vector<sTransVmItem>> transVmRecord; // Ã¿Ìì Ã¿Ìõ Ç¨ÒÆ¼ÇÂ¼ ÓÃÓÚÊä³ö
-    vector<vector<sDeployItem>> deployRecord; // Ã¿Ìì Ã¿Ìõ ĞéÄâ»ú²¿Êğ¼ÇÂ¼ ÓÃÓÚÊä³ö
-	vector<vector<sDeployItem>> realDeployRecord; // Ã¿Ìì Ã¿Ìõ ĞéÄâ»ú²¿Êğ¼ÇÂ¼ ÓÃÓÚÊä³ö
+	vector<vector<sTransVmItem>> transVmRecord; // æ¯å¤© è¿ç§»è®°å½• ç”¨äºè¾“å‡º (æ³¨æ„è¿ç§»æ˜¯æœ‰å…ˆåé¡ºåºçš„)
+	vector<unordered_map<string, sDeployItem>> deployRecord; // æ¯å¤© è™šæ‹Ÿæœºéƒ¨ç½²è®°å½• ç”¨äºè¾“å‡º vmID -> éƒ¨ç½²è¯¦æƒ…
 
-    // µ¥½ÚµãÔ¤²¿Êğ
-    void predp(string vmID, bool isNew, int serID, string vmName, cServer &server, bool node);
-    // Ë«½ÚµãÔ¤²¿Êğ
-    void predp(string vmID, bool isNew, int serID, string vmName, cServer &server);
+															 // å•èŠ‚ç‚¹éƒ¨ç½²
+	int deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node);
+	// åŒèŠ‚ç‚¹éƒ¨ç½²
+	int deploy(cServer &server, int iDay, string VMid, string vmName, int serID);
 
-    // Ô¤É¾³ıĞéÄâ»ú
-    void preDltVM(cServer &server, string vmID);
+	// delete VM
+	int deleteVM(string vmID, cServer& server);
 
-    // ºó²¿Êğ
-    int postDpWithDel(cServer &server, const cRequests &request, int iDay);
+	// å•èŠ‚ç‚¹è™šæ‹Ÿæœºè¿ç§»
+	void transfer(cServer &server, int iDay, string VMid, int serID, bool node);
+	// åŒèŠ‚ç‚¹è™šæ‹Ÿæ¥è¿ç§»
+	void transfer(cServer &server, int iDay, string VMid, int serID);
 
-    // µ¥½Úµã²¿Êğ
-    int deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node);
-    // Ë«½Úµã²¿Êğ
-    int deploy(cServer &server, int iDay, string VMid, string vmName, int serID);
-
-    // delete VM
-    void deleteVM(string vmID, cServer& server);
-
-    // µ¥½ÚµãĞéÄâ»úÇ¨ÒÆ
-    void transfer(cServer &server, int iDay, string VMid, int serID, bool node);
-    // Ë«½ÚµãĞéÄâ½ÓÇ¨ÒÆ
-    void transfer(cServer &server, int iDay, string VMid, int serID);
-
-    // ÊäÈëĞéÄâ»úÃû×Ö£¬·µ»ØÊÇ·ñÊÇ Ë«½Úµã²¿Êğ
-    bool isDouble(string vmName);
-    // ÊäÈëĞéÄâ»úÃû×Ö£¬·µ»ØĞèÒªCPU
-    int reqCPU(string vmName);
-    // ÊäÈëĞéÄâ»úÃû×Ö£¬·µ»ØĞèÒªRAM
-    int reqRAM(string vmName);
-
-	// CYT
-	int deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node, int indexTerm);
-	int deploy(cServer &server, int iDay, string VMid, string vmName, int serID, int indexTerm);
+	// è¾“å…¥è™šæ‹Ÿæœºåå­—ï¼Œè¿”å›æ˜¯å¦æ˜¯ åŒèŠ‚ç‚¹éƒ¨ç½²
+	bool isDouble(string vmName);
+	// è¾“å…¥è™šæ‹Ÿæœºåå­—ï¼Œè¿”å›éœ€è¦CPU
+	int reqCPU(string vmName);
+	// è¾“å…¥è™šæ‹Ÿæœºåå­—ï¼Œè¿”å›éœ€è¦RAM
+	int reqRAM(string vmName);
 };

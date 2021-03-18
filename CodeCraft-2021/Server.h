@@ -1,5 +1,4 @@
-#pragma once
-#pragma once
+ï»¿#pragma once
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -15,15 +14,14 @@ struct sServerItem {
 	int totalRAM;
 	int hardCost; // hardware cost
 	int energyCost; // energy Cost per day
-	// cyt
-	string serName;  // ·şÎñÆ÷ÀàĞÍ
-	int buyID;  // ÓÃÓÚ¼ÇÂ¼ÒÑ¹ºÂò·şÎñÆ÷µÄID
-	bool node;   // true : a ½Úµã
+	string serName;   // æœåŠ¡å™¨ç±»å‹
+	int buyID;   // ç”¨äºè®°å½•å·²è´­ä¹°æœåŠ¡å™¨çš„ID
+	bool node;   // åˆ¤æ–­æ˜¯aèŠ‚ç‚¹éƒ¨ç½²è¿˜æ˜¯bèŠ‚ç‚¹éƒ¨ç½²ï¼Œtrue : aèŠ‚ç‚¹
 };
 
 struct sMyEachServer {
 	string serName;
-	int aIdleCPU; // ¸÷¸önode ¿ÕÏĞ×ÊÔ´
+	int aIdleCPU; // å„ä¸ªnode ç©ºé—²èµ„æº
 	int bIdleCPU;
 	int aIdleRAM;
 	int bIdleRAM;
@@ -31,50 +29,43 @@ struct sMyEachServer {
 
 class cServer {
 public:
-
 	int serverTypeNum;
-	unordered_map<string, sServerItem> info; // ·şÎñÆ÷ĞÍºÅ -> ÆäËûĞÅÏ¢
-	int alpha; // ¼Û¸ñ¼ÓÈ¨²ÎÊı
-	vector<pair<string, int>> priceOrder; // ËùÓĞ·şÎñÆ÷¼Û¸ñ´ÓĞ¡µ½´óÅÅĞò£¬ÆäÖĞ´¢´æ <·şÎñÆ÷µÄĞÍºÅ, ¼ÓÈ¨¼Û¸ñ>
-	vector<sMyEachServer> myServerSet; // µ±Ç°ÒÑ¾­¹ºÂòµÄ·şÎñÆ÷ ·şÎñÆ÷id¾ÍÊÇvectorµÄindex
-	vector<sMyEachServer> preSvSet; // Ô¤¹ºÂò·şÎñÆ÷vector£¬²»¼ÓÈëµ½myServerSetÖĞ£¬cVM::buyº¯ÊıÖĞÇåÁã
-	vector<sMyEachServer> mySerCopy; // myServerSetµÄ¸±±¾£¬ÓÃÓÚÔ¤¹ºÂòºÍÔ¤²¿ÊğÆÚ¼ä£¬cVM::postDpWithDelº¯ÊıÖĞÍ¬²½
-	unordered_map<int, int> idMap; // ĞÂ¾ÉidµÄÓ³Éä¹ØÏµ
+	unordered_map<string, sServerItem> info; // æœåŠ¡å™¨å‹å· -> å…¶ä»–ä¿¡æ¯
+	int alpha; // ä»·æ ¼åŠ æƒå‚æ•°
+	vector<pair<string, int>> priceOrder; // æ‰€æœ‰æœåŠ¡å™¨ä»·æ ¼ä»å°åˆ°å¤§æ’åºï¼Œå…¶ä¸­å‚¨å­˜ <æœåŠ¡å™¨çš„å‹å·, åŠ æƒä»·æ ¼>
+	vector<pair<int, int>> myServerOrder; // å·²è´­ä¹°æœåŠ¡å™¨çš„æŸç§æ’åº
+	vector<pair<int, double>> myServerOrderDB;
+	vector<sMyEachServer> myServerSet; // å½“å‰å·²ç»è´­ä¹°çš„æœåŠ¡å™¨ æœåŠ¡å™¨idå°±æ˜¯vectorçš„index
 
-	vector<int> newServerNum; // ÓÃÓÚÊä³ö: Ã¿Ìì¹ºÂòµÄ·şÎñÆ÷ÖÖÀàÊı 
-							  // vector<unordered_map<string, int>> buyRecord; // ÓÃÓÚÊä³ö: Ã¿Ìì ¹ºÂòµÄÃ¿ÖÖ·şÎñÆ÷ ¹ºÂò¼ÇÂ¼ (hash: ·şÎñÆ÷ĞÍºÅ->ÊıÄ¿)
-	//vector<vector<pair<string, int>>> buyRecord; // Ã¿Ìì ¹ºÂò·şÎñÆ÷¼ÇÂ¼
-	vector<unordered_map<string, int>> buyRecord; // Ã¿Ìì ¹ºÂòµÄÃ¿ÖÖ·şÎñÆ÷ ¹ºÂò¼ÇÂ¼ ÓÃÓÚÊä³ö (hash: ·şÎñÆ÷ĞÍºÅ->ÊıÄ¿)
+	unordered_map<int, int> idMap; // æ–°æ—§idçš„æ˜ å°„å…³ç³»
 
-												 // °´ÕÕ¼Û¸ñÅÅĞò
+	vector<unordered_map<string, int>> buyRecord; // ç”¨äºè¾“å‡º: æ¯å¤©è´­ä¹°çš„æ¯ç§æœåŠ¡å™¨è´­ä¹°è®°å½• æœåŠ¡å™¨å‹å·->æ•°ç›®
+
+												  // æœåŠ¡å™¨æ’åº
 	static bool mycomp(pair<string, int> i, pair<string, int> j);
+	static bool mycompID(pair<int, int> i, pair<int, int> j);
+	static bool mycompIDDB(pair<int, double> i, pair<int, double> j);
 	void rankServerByPrice();
-	void rankServerByPrice(bool flag);   // alpha±íÊ¾È¨ÖØ£¬flag±íÊ¾ÊÇ·ñÊÇµÚÒ»´ÎÉú³É£¬²»ÊÇµÄ»°¿ÉÒÔ½µµÍÒ»µãµã¸´ÔÓ¶È
+	void rankServerByPrice(bool flag);   // flagè¡¨ç¤ºæ˜¯å¦ç¬¬ä¸€æ¬¡ï¼Œä¸ºtrueè¡¨ç¤ºç¬¬ä¸€æ¬¡ï¼Œéœ€æ„é€ å˜é‡ï¼Œfalseä¸æ˜¯ç¬¬ä¸€æ¬¡ï¼Œå¯å‡å°‘æ—¶é—´
+	void rankMyserverbyRatio();
+	void rankMyServerbyOccupied();
+	void rankMyServerbyIdle();
 
-	// ¼ÆËãÄ³Ì¨·şÎñÆ÷ÊÇ·ñÎª¿ª»ú×´Ì¬
+	// è®¡ç®—æŸå°æœåŠ¡å™¨æ˜¯å¦ä¸ºå¼€æœºçŠ¶æ€
 	bool isOpen(int serID);
 
-	int prePurchase(string name); // Ô¤¹ºÂò·şÎñÆ÷
-	//int purchase(string serName, int iDay); // ¹ºÂò·şÎñÆ÷ id°´ÕÕ¹ºÂòË³Ğò·ÖÅä£¨¿ÉÄÜ²»·ûºÏÊä³öÒªÇó
-	void purchase(string serName, int iDay); // ¹ºÂò·şÎñÆ÷
-	void buy(int iDay);// Ô¤¹ºÂò×ªÎªÕıÊ½¹ºÂò
-	
-	// First Fit£¬´Ó0ºÅ·şÎñÆ÷¿ªÊ¼ÕÒÒ»Ì¨ÄÜ×°½øÈ¥µÄ·şÎñÆ÷ID, ÕÒ²»µ½·µ»Ø-1¡£
-	pair<bool, int> firstFitDouble(int reqCPU, int reqRAM); // Ë«½Úµã²¿Êğ
-	std::tuple<pair<bool, int>, bool> firstFitSingle(int reqCPU, int reqRAM); // µ¥½Úµã²¿Êğ
-	// Ñ¡¹º·şÎñÆ÷£¬´ÓÄ³¸öÅÅĞòºóµÄ·şÎñÆ÷ÁĞ±íÀï£¬°´Ë³ĞòÕÒÄÜ¹»·ûºÏĞéÄâ»úÒªÇó ¶øÇÒ×î±ãÒËµÄ·şÎñÆ÷ (²»¿ÉÄÜÕÒ²»µ½)
+	// First Fitï¼Œä»0å·æœåŠ¡å™¨å¼€å§‹æ‰¾ä¸€å°èƒ½è£…è¿›å»çš„æœåŠ¡å™¨ID, æ‰¾ä¸åˆ°è¿”å›-1ã€‚
+	int firstFitDouble(int reqCPU, int reqRAM); // åŒèŠ‚ç‚¹éƒ¨ç½²
+	std::tuple<int, bool> firstFitSingle(int reqCPU, int reqRAM); // å•èŠ‚ç‚¹éƒ¨ç½²
+	int firstFitByIdleOrdDouble(int reqCPU, int reqRAM);
+	std::tuple<int, bool> firstFitByIdleOrdSingle(int reqCPU, int reqRAM);
+
+	// é€‰è´­æœåŠ¡å™¨ï¼Œä»æŸä¸ªæ’åºåçš„æœåŠ¡å™¨åˆ—è¡¨é‡Œï¼ŒæŒ‰é¡ºåºæ‰¾èƒ½å¤Ÿç¬¦åˆè™šæ‹Ÿæœºè¦æ±‚ è€Œä¸”æœ€ä¾¿å®œçš„æœåŠ¡å™¨ (ä¸å¯èƒ½æ‰¾ä¸åˆ°)
 	string chooseSer(int reqCPU, int reqRAM, bool isDoubleNode);
 
-	// CYT 
-	int price;
-	// ·şÎñÆ÷×ÊÔ´´ÓĞ¡µ½´óÅÅĞò£¬µÚÒ»¸öint±íÊ¾ÒÑ¹ºÂò·şÎñÆ÷µÄid£¬·½±ãÓëmyServerSetÓ³Éä£¬µÚ¶ş±íÊ¾×ÊÔ´Êı
-	vector<pair<int, int>> resourceOrder;     
-	vector<int> dayServerNum;   // Ã¿ÌìÔö¼ÓµÄ·şÎñÆ÷ÊıÁ¿
-	unordered_map<int, int> realToVir; // ÕæÊµµÄID¶ÔÓ¦ĞéÄâµÄID
-	unordered_map<int, int> virToReal; //ĞéÄâµÄID¶ÔÓ¦ÕæÊµµÄID
+	// è´­ä¹°æœåŠ¡å™¨
+	int purchase(string serName, int iDay); // è´­ä¹°æœåŠ¡å™¨ idæŒ‰ç…§è´­ä¹°é¡ºåºåˆ†é…ï¼ˆå¯èƒ½ä¸ç¬¦åˆè¾“å‡ºè¦æ±‚
 
-	static bool rescomp(pair<int, int> i, pair<int, int> j);    // ÓÃÓÚ×ÊÔ´µÄÅÅĞò
-	bool rescomp_equal(pair<int, int> i, pair<int, int> j);
-	void rankServerByResource(pair<int, int> newOne);    // ¶Ô×ÊÔ´½øĞĞÅÅĞò
-	void updateRank(int pos, bool flag);   // ´«Èë¸üĞÂµÄÎ»ÖÃ
+											// id æ˜ å°„
+	int idMapping();
 };
