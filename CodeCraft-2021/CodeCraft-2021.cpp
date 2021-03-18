@@ -21,7 +21,7 @@ int main()
     void process(cServer &server, cVM &VM, const cRequests &request);
 
     // 输入
-    tie(server, VM, request) = dataIn("../CodeCraft-2021/myTr.txt");
+    tie(server, VM, request) = dataIn("../CodeCraft-2021/training-2.txt");
 
     // 购买，迁移，部署
     process(server, VM, request);

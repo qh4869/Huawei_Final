@@ -22,7 +22,11 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 	int bugID;
 
 	for (int iDay=0; iDay<request.dayNum; iDay++) {
+#ifdef LOCAL
 		cout << iDay << endl;
+		TIMEend = clock();
+		cout<<(double)(TIMEend-TIMEstart)/CLOCKS_PER_SEC << 's' << endl;
+#endif
 		for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) {
 			// 预购买和预部署
 			if (request.info[iDay][iTerm].type) { // add 请求
@@ -35,10 +39,10 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 
 				// 搜索已有的服务器 排序的版本没优化程序，运行可能慢一点
 				if (vmIsDouble) { // 双节点
-					serId = server.firstFitByIdleOrdDouble(vmReqCPU, vmReqRAM);
+					serId = server.firstFitDouble(vmReqCPU, vmReqRAM);
 				}
 				else {
-					tie(serId, serNode) = server.firstFitByIdleOrdSingle(vmReqCPU, vmReqRAM);
+					tie(serId, serNode) = server.firstFitSingle(vmReqCPU, vmReqRAM);
 				}
 
 				// 根据搜索结果预购买或预部署

@@ -25,9 +25,10 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 	int vmReqRAM;
 	int bugID;
 
-	/* 背包算法要处理的vm add请求集合，最多server.ksSize个元素 
-	 {不能直接装入现有服务器的vm插入/deploy后的元素删除} */
+	/* 背包算法要处理的vm add请求集合，最多server.ksSize个元素 */
 	vector<pair<string, string>> curSet;
+	/*还在curSet中的请求如果又来了del请求，那么就先放到这个里*/
+	vector<pair<string, string>> delSet;
 
 	for (int iDay=0; iDay<request.dayNum; iDay++) { // 每一天的请求
 #ifdef LOCAL
@@ -39,6 +40,7 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 		for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) { // 每一条请求
 			string vmID = request.info[iDay][iTerm].vmID;
 
+			/*firstFit*/
 			if (request.info[iDay][iTerm].type) { // add
 				/*First fit 没排序版本*/
 				string vmName = request.info[iDay][iTerm].vmName;
@@ -64,113 +66,63 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 					}
 				}
 				else // 装不进去
-					curSet.insert(make_pair(vmID, vmName));
-
+					curSet.push_back(make_pair(vmID, vmName));
 			}
 			else { // del
-				/*检查这个vm是否已经被部署 或者 在addSet中*/
+				/*检查这个vm是否已经被部署 或者 在curSet中*/
 				if (VM.workingVmSet.count(vmID))
 					VM.deleteVM(vmID, server);
-				else if (addSet.count(vmID))
-					delSet.insert(vmID);
 				else {
-					cout << "删除不存在的虚拟机" << endl;
-					return;
-				}
-
-			}
-		}
-
-#ifdef LOCAL
-		TIMEend = clock();
-		cout<<(double)(TIMEend-TIMEstart)/CLOCKS_PER_SEC << endl;
-#endif
-		/*迭代把所有add请求的虚拟机，放进服务器，尽量用最少的cost。每次背包问题最多解N台vm，不然复杂度太高*/
-		/*由上至下递归，目前没写记忆*/
-		string vmName;
-		string serName;
-		queue<int> path;
-		int serID;
-		int action;
-		string vmID;
-		int cnt; // {每次更新curSet时候更新}
-		int bugID;
-
-		while (!addSet.empty()) {
-#ifdef LOCAL
-			cout << "当天剩余:" << addSet.size() << endl;
-#endif
-			/*更新curSet*/
-			curSet.clear();
-			cnt = 0;
-			for (auto it=addSet.begin(); it!=addSet.end() && cnt<server.ksSize; it++) {
-				curSet.push_back(make_pair(it->first, it->second));
-				cnt++;
-			}
-
-			// 选择最优背包
-			tie(serName, path) = knapSack(server, VM, curSet, iDay);
-
-			/*部署*/
-			serID = server.purchase(serName, iDay);
-			for (int iVM=0; iVM<(int)curSet.size(); iVM++) {
-				action = path.front();
-				path.pop();
-				vmID = curSet[iVM].first;
-				vmName = curSet[iVM].second;
-				switch (action) 
-				{
-					case 0:
-						break;
-					case 1:
-						bugID = VM.deploy(server, iDay, vmID, vmName, serID);
-						if (bugID) {
-							cout << "服务器部署失败" << bugID << endl;
+					bool flag = false;
+					for (const auto &x : curSet) {
+						if (x.first==vmID) { // 在curSet中
+							delSet.push_back(x);
+							flag = true;
+							break;
 						}
-						bugID = addSet.erase(vmID);
-						if (bugID==0) {
-							cout << "没有请求的服务器却被部署" << endl;
-							return;
-						}
-						break;
-					case 2:
-						bugID = VM.deploy(server, iDay, vmID, vmName, serID, true);
-						if (bugID) {
-							cout << "服务器部署失败" << bugID << endl;
-						}
-						bugID = addSet.erase(vmID);
-						if (bugID==0) {
-							cout << "没有请求的服务器却被部署" << endl;
-							return;
-						}
-						break;
-					case 3:
-						bugID = VM.deploy(server, iDay, vmID, vmName, serID, false);
-						if (bugID) {
-							cout << "服务器部署失败" << bugID << endl;
-						}
-						bugID = addSet.erase(vmID);
-						if (bugID==0) {
-							cout << "没有请求的服务器却被部署" << endl;
-							return;
-						}
-						break;
+					}
+					if (flag == false) {
+						cout << "不能删除不存在的虚拟机2" << endl;
+					}
 				}
 			}
+
+			/*knapSack*/
+			if ((int)curSet.size() == server.ksSize) { // 可以执行背包算法了
+				packAndDeploy(server, VM, curSet, iDay);
+			}
+
+			/*delSet遗留问题，训练集数据都没出现这个情况*/
+			for (auto it=delSet.begin(); it!=delSet.end(); ) {
+				string vmID = it->first;
+				if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
+					VM.deleteVM(vmID, server);
+					it = delSet.erase(it);
+				}
+				else
+					it++;
+			}
 		}
-#ifdef LOCAL
-		TIMEend = clock();
-		cout<<(double)(TIMEend-TIMEstart)/CLOCKS_PER_SEC << endl;
-#endif
-		/*处理上一步部署后又del的请求，先处理add请求后处理del请求是次优的，
-			但是第二天又可以补上，目前认为影响不大*/
-		for (const auto &vmID : delSet) {
-			VM.deleteVM(vmID, server);
+
+		/*curSet中还遗留部分vm*/
+		if (curSet.size())
+			packAndDeploy(server, VM, curSet, iDay);
+		for (auto it=delSet.begin(); it!=delSet.end(); ) {
+			string vmID = it->first;
+			if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
+				VM.deleteVM(vmID, server);
+				it = delSet.erase(it);
+			}
+			else
+				it++;
 		}
-		delSet.clear();
+		if (delSet.size()) {
+			cout << "某（些）需要删除的服务器没有被部署" << endl;
+			return;
+		}
 
 #ifdef LOCAL
-		// 一天结束统计功耗成本
+		/*一天结束统计功耗成本*/
 		for (int iServer=0; iServer<(int)server.myServerSet.size(); iServer++) {
 			if (server.isOpen(iServer)) {
 				costName = server.myServerSet[iServer].serName;
@@ -180,7 +132,7 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 #endif
 	}
 #ifdef LOCAL
-	// 计算买服务器总成本
+	/*计算买服务器总成本*/
 	for (int iServer=0; iServer<(int)server.myServerSet.size(); iServer++) {
 		costName = server.myServerSet[iServer].serName;
 		hardCostStas += server.info[costName].hardCost;
@@ -314,4 +266,70 @@ tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int b
 	}
 
 	return make_tuple(res, resPath);
+}
+
+void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSet, int iDay) {
+	string serName;
+	queue<int> path;
+	vector<bool> isDeployed(curSet.size(), false);
+	int serID;
+	int action;
+	string vmID; // 临时变量，和上面的冲突了
+	string vmName;
+	int bugID;
+
+	// 选择最优背包
+	tie(serName, path) = knapSack(server, VM, curSet, iDay);
+
+	// 买服务器
+	serID = server.purchase(serName, iDay); 
+
+	/*部署*/
+	for (int iVM=0; iVM<(int)curSet.size(); iVM++) {
+		action = path.front();
+		path.pop();
+		vmID = curSet[iVM].first;
+		vmName = curSet[iVM].second;
+		switch (action) 
+		{
+			case 0:
+				break;
+			case 1:
+				bugID = VM.deploy(server, iDay, vmID, vmName, serID);
+				if (bugID) {
+					cout << "服务器部署失败" << bugID << endl;
+					return;
+				}
+				isDeployed[iVM] = true;
+				break;
+			case 2:
+				bugID = VM.deploy(server, iDay, vmID, vmName, serID, true);
+				if (bugID) {
+					cout << "服务器部署失败" << bugID << endl;
+					return;
+				}
+				isDeployed[iVM] = true;
+				break;
+			case 3:
+				bugID = VM.deploy(server, iDay, vmID, vmName, serID, false);
+				if (bugID) {
+					cout << "服务器部署失败" << bugID << endl;
+					return;
+				}
+				isDeployed[iVM] = true;
+				break;
+		}
+	}
+
+	/*已经部署的服务器从curSet中删除*/
+	auto itIndicator = isDeployed.begin();
+	auto it=curSet.begin();
+	while (it != curSet.end()) {
+		if (*itIndicator == true) {
+			it = curSet.erase(it);
+		}
+		else
+			it++;
+		itIndicator++;
+	}
 }
