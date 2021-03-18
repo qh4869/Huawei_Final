@@ -158,6 +158,11 @@ void dataOut(cServer& server, cVM& VM, const cRequests& request) {
                 continue;
 
             string vmID = reqItem.vmID;
+            if (!VM.deployRecord[iDay].count(vmID)) {
+                cout << "有一条add请求没有被处理" << endl;
+                return;
+            }
+
             int serID = server.idMap.at(VM.deployRecord[iDay][vmID].serID);
             bool isSingle = VM.deployRecord[iDay][vmID].isSingle;
             bool node = VM.deployRecord[iDay][vmID].node;
