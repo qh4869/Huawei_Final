@@ -8,4 +8,4 @@
 #endif
 
 const int ALPHA = 400; // 价格加权参数
-const int KSSIZE = 1; // 背包算法的vm的分组最大个数
+const int KSSIZE = 3; // 背包算法的vm的分组最大个数

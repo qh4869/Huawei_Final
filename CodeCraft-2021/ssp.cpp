@@ -6,6 +6,10 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 *	- 双节点的问题
 *	- 背包问题：动态规划，tree分支定界，遗传算法
 *	- 有一些vm是可以放进已经买的服务器中的，可以改成dp 或者 排序firstFit
+*	
+* Update 03.18
+*	- firstFit 和 knapSack 结构互相迭代
+*	- del及时处理
 */
 #ifdef LOCAL
 	// 估计成本变量
@@ -20,10 +24,10 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 	int vmReqCPU; 
 	int vmReqRAM;
 	int bugID;
-	// 记录那些还没被处理的add请求<vmID, vmName> {firstFit放不进去添加/部署删除}
-	unordered_map<string, string> addSet;
-	unordered_set<string> delSet; // 在addSet中，还要delete的vm集合 {发现del请求时候更新/处理请求后删除}
-	vector<pair<string, string>> curSet; // addSet的子集，最多server.ksSize个元素 {遍历server之前更新}
+
+	/* 背包算法要处理的vm add请求集合，最多server.ksSize个元素 
+	 {不能直接装入现有服务器的vm插入/deploy后的元素删除} */
+	vector<pair<string, string>> curSet;
 
 	for (int iDay=0; iDay<request.dayNum; iDay++) { // 每一天的请求
 #ifdef LOCAL
@@ -60,7 +64,7 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 					}
 				}
 				else // 装不进去
-					addSet.insert(make_pair(vmID, vmName));
+					curSet.insert(make_pair(vmID, vmName));
 
 			}
 			else { // del
