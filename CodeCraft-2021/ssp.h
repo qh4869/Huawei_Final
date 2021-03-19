@@ -5,8 +5,14 @@
 #include <tuple>
 #include <unordered_set>
 #include <queue>
-#include <time.h>
 using namespace std;
+
+#ifdef LOCAL
+#include <time.h>
+#include <fstream>
+#include <numeric>
+#endif
+
 
 struct sVmNode {
 	string vmID;

@@ -13,4 +13,5 @@ fi
 
 rm -f CodeCraft-2021.zip
 zip -r CodeCraft-2021.zip * -rx ".git/*" "bin/*" "build/*" .gitignore myZip.sh \
-	CodeCraft-2021/training-1.txt CodeCraft-2021/training-2.txt CodeCraft-2021/myTr.txt
+	CodeCraft-2021/training-1.txt CodeCraft-2021/training-2.txt CodeCraft-2021/myTr.txt \
+	"stat/*"

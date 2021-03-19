@@ -16,6 +16,20 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 	int engCostStas = 0; // 计算功耗成本
 	int hardCostStas = 0;
 	string costName;
+
+	ofstream svout;
+	svout.open("svOut.txt");
+	int svcnt_ = 0;
+	int svcnt = 0;
+	int wksvcnt = 0;
+	vector<double> cpuidle;
+	vector<double> ramidle;
+	vector<double> cpuall;
+	vector<double> ramall;
+	int addcnt = 0;
+	int delcnt = 0;
+	svout << "天数" << " " << "结余" << " " << "购买" << " " << "工作中" \
+		" " << "cpuRatio" << " " << "ramRatio" << " " << "addcnt" << " " << "delcnt" << endl;
 #endif
 
 	bool vmIsDouble;
@@ -42,6 +56,9 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 
 			/*firstFit*/
 			if (request.info[iDay][iTerm].type) { // add
+#ifdef LOCAL
+				addcnt ++;
+#endif
 				/*First fit 没排序版本*/
 				string vmName = request.info[iDay][iTerm].vmName;
 				vmIsDouble = VM.isDouble(vmName);
@@ -69,6 +86,9 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 					curSet.push_back(make_pair(vmID, vmName));
 			}
 			else { // del
+#ifdef LOCAL
+				delcnt++;
+#endif
 				/*检查这个vm是否已经被部署 或者 在curSet中*/
 				if (VM.workingVmSet.count(vmID))
 					VM.deleteVM(vmID, server);
@@ -105,16 +125,17 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 		}
 
 		/*curSet中还遗留部分vm*/
-		if (curSet.size())
+		while (curSet.size()) {
 			packAndDeploy(server, VM, curSet, iDay);
-		for (auto it=delSet.begin(); it!=delSet.end(); ) {
-			string vmID = it->first;
-			if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
-				VM.deleteVM(vmID, server);
-				it = delSet.erase(it);
+			for (auto it=delSet.begin(); it!=delSet.end(); ) {
+				string vmID = it->first;
+				if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
+					VM.deleteVM(vmID, server);
+					it = delSet.erase(it);
+				}
+				else
+					it++;
 			}
-			else
-				it++;
 		}
 		if (delSet.size()) {
 			cout << "某（些）需要删除的服务器没有被部署" << endl;
@@ -129,6 +150,37 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 				engCostStas += server.info[costName].energyCost;
 			}
 		}
+
+		// out
+		cpuidle.clear();
+		ramidle.clear();
+		cpuall.clear();
+		ramall.clear();
+		for (int iServer=0; iServer<(int)server.myServerSet.size(); iServer++) {
+			if (server.isOpen(iServer)) {
+				wksvcnt++;
+				cpuidle.push_back(server.myServerSet[iServer].aIdleCPU + server.myServerSet[iServer].bIdleCPU);
+				ramidle.push_back(server.myServerSet[iServer].aIdleRAM + server.myServerSet[iServer].bIdleRAM);
+				cpuall.push_back(server.info.at(server.myServerSet[iServer].serName).totalCPU);
+				ramall.push_back(server.info.at(server.myServerSet[iServer].serName).totalRAM);
+			}
+		}
+
+		for (int iServer=0; iServer<(int)server.myServerSet.size(); iServer++) {
+			costName = server.myServerSet[iServer].serName;
+			svcnt += server.info[costName].hardCost;
+		}
+		double cpu1 = accumulate(cpuidle.begin(),cpuidle.end(),0);
+		double cpu2 = accumulate(cpuall.begin(),cpuall.end(),0);
+		double ram1 = accumulate(ramidle.begin(),ramidle.end(),0);
+		double ram2 = accumulate(ramall.begin(),ramall.end(),0);
+		svout << iDay << " " << svcnt << " " << svcnt - svcnt_ << " " << wksvcnt << " "  \
+			<< cpu1/cpu2 << " " << ram1/ram2 << " " << addcnt << " " << delcnt << endl;
+		svcnt_ = svcnt;
+		wksvcnt = 0;
+		addcnt = 0;
+		delcnt = 0;
+		svcnt = 0;
 #endif
 	}
 #ifdef LOCAL
