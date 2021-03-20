@@ -44,6 +44,9 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 	/*还在curSet中的请求如果又来了del请求，那么就先放到这个里*/
 	vector<pair<string, string>> delSet;
 
+	/*生成infoV，向量*/
+	server.genInfoV();
+
 	for (int iDay=0; iDay<request.dayNum; iDay++) { // 每一天的请求
 #ifdef LOCAL
 		cout << iDay << endl;
@@ -198,34 +201,55 @@ tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
 {
 /* Fn: 遍历所有服务器选择性价比最高的那一台
 *	- 价格是按照剩余天数加权的
+*	
+* Out:
+*	- string: vmName
+*	- queue<int> curSet中每台vm的部署策略 0不部署 1双节点部署 2nodeA单节点 3nodeB单节点
+*		队列头部对应curSet的头部
 */
-	string serName;
-	int totalCPU;
-	int totalRAM;
-	double unity_ = 0;
-	double unity; // 遍历目标，装入资源/加权价格
-	int ocpRes; // 装入资源
-	// 记录装入的虚拟机，栈顶表示curSet0号的处理结果，编号:0-不装 1-双节点部署 2-nodeA单节点 3-nodeB单节点
-	queue<int> vmPath; 
-	string bestSer;
-	queue<int> bestPath;
-	int dayNum = server.buyRecord.size();
+	static omp_lock_t lock;
+	omp_init_lock(&lock);
 
-	for (const auto &xSer : server.info) {
-		serName = xSer.first;
-		totalCPU = xSer.second.totalCPU;
-		totalRAM = xSer.second.totalRAM;
+	const int dayNum = server.buyRecord.size(); // 总天数
+
+	/*2个线程*/
+	vector<double> utility(2); 
+	vector<double> utility_(2);
+	vector<string> bestSer(2);
+	vector<queue<int>> bestPath(2);
+
+	#pragma omp parallel for num_threads(2)
+	for (int iSer=0; iSer<server.serverTypeNum; iSer++) {
+		// omp_set_lock(&lock);
+
+		queue<int> vmPath;
+		int ocpRes; // 装入的资源
+		string serName = server.infoV[iSer].first;
+		int totalCPU = server.infoV[iSer].second.totalCPU;
+		int totalRAM = server.infoV[iSer].second.totalRAM;
+		int hardprice = server.infoV[iSer].second.hardCost;
+		int engprice = server.infoV[iSer].second.energyCost;
+
 		tie(ocpRes, vmPath) = dp(curSet.size()-1, totalCPU / 2, totalRAM / 2, totalCPU / 2, totalRAM / 2, \
 			curSet, VM);
-		unity = (double)ocpRes / (xSer.second.hardCost + xSer.second.energyCost * (dayNum - iDay));
-		if (unity > unity_) {
-			unity_ = unity;
-			bestSer = serName;
-			bestPath = vmPath;
+		
+		utility[omp_get_thread_num()] = (double)ocpRes / (hardprice + engprice * (dayNum - iDay));
+		if (utility[omp_get_thread_num()] > utility_[omp_get_thread_num()]) {
+			utility_[omp_get_thread_num()] = utility[omp_get_thread_num()];
+			bestSer[omp_get_thread_num()] = serName;
+			bestPath[omp_get_thread_num()] = vmPath;
 		}
+
+		// omp_unset_lock(&lock);
 	}
 
-	return make_tuple(bestSer, bestPath);
+	omp_destroy_lock(&lock);
+	
+	/*两个线程结果汇总*/
+	if (utility[0] >= utility[1]) 
+		return make_tuple(bestSer[0], bestPath[0]);
+	else
+		return make_tuple(bestSer[1], bestPath[1]);
 }
 
 tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int bIdleRAM, \

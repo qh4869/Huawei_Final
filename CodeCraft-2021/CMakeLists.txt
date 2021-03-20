@@ -27,3 +27,7 @@ aux_source_directory(. DIR_SRCS)
 
 # 指定生成目标
 add_executable(CodeCraft-2021 ${DIR_SRCS})
+
+# 多线程
+find_package(OpenMP REQUIRED)
+target_link_libraries(CodeCraft-2021 PUBLIC OpenMP::OpenMP_CXX)

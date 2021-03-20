@@ -226,3 +226,8 @@ void cServer::rankMyserverbyRatio() {
 
 	sort(myServerOrderDB.begin(), myServerOrderDB.end(), cServer::mycompIDDB);
 }
+
+void cServer::genInfoV() {
+	for (const auto &xSer : info) 
+		infoV.push_back(make_pair(xSer.first, xSer.second));
+}

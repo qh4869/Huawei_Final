@@ -5,6 +5,7 @@
 #include <tuple>
 #include <unordered_set>
 #include <queue>
+#include <omp.h>
 using namespace std;
 
 #ifdef LOCAL
