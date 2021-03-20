@@ -148,7 +148,6 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 			cout << "migrate b node error" << endl;
 		}
 	}
-	server.serverVMSet[lastServerID].erase(VMid);    // 从迁出的服务器中删除该虚拟机
 
 	// 占据新服务器资源
 	if (node == true) {
@@ -157,7 +156,6 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 		if (server.myServerSet[serID].aIdleCPU < 0 || server.myServerSet[serID].aIdleRAM < 0) {
 			cout << "exit a node" << endl;
 		}
-		server.serverVMSet[serID].insert({ VMid, 0 });    // 往迁入的服务器中加入该虚拟机
 	}
 	else {
 		server.myServerSet[serID].bIdleCPU -= occupyCPU;
@@ -165,7 +163,6 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 		if (server.myServerSet[serID].bIdleCPU < 0 || server.myServerSet[serID].bIdleRAM < 0) {
 			cout << "exit b node" << endl;
 		}
-		server.serverVMSet[serID].insert({ VMid, 1 });    // 往迁入的服务器中加入该虚拟机
 	}
 
 	// 迁移条目更新
@@ -197,7 +194,6 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 	server.myServerSet[lastServerID].aIdleRAM += occupyRAM / 2;
 	server.myServerSet[lastServerID].bIdleCPU += occupyCPU / 2;
 	server.myServerSet[lastServerID].bIdleRAM += occupyRAM / 2;
-	server.serverVMSet[lastServerID].erase(VMid);    // 从迁出的服务器中移除虚拟机
 
 	if (server.myServerSet[lastServerID].aIdleCPU > outServer.totalCPU / 2 ||
 		server.myServerSet[lastServerID].bIdleCPU > outServer.totalCPU / 2 ||
@@ -211,7 +207,6 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 	server.myServerSet[serID].aIdleRAM -= occupyRAM / 2;
 	server.myServerSet[serID].bIdleCPU -= occupyCPU / 2;
 	server.myServerSet[serID].bIdleRAM -= occupyRAM / 2;
-	server.serverVMSet[serID].insert({ VMid, 2 });   // 从迁入的服务器中加入虚拟机
 
 	if (server.myServerSet[serID].aIdleCPU < 0 ||
 		server.myServerSet[serID].bIdleCPU < 0 ||
