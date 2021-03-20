@@ -208,19 +208,24 @@ tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
 *		队列头部对应curSet的头部
 */
 
-	const int dayNum = server.buyRecord.size(); // 总天数
+	int dayNum = server.buyRecord.size(); // 总天数
 
 	/*2个线程*/
-	vector<double> utility(2); 
-	vector<double> utility_(2);
-	vector<string> bestSer(2);
-	vector<queue<int>> bestPath(2);
+	// vector<double> utility(2); 
+	// vector<double> utility_(2);
+	// vector<string> bestSer(2);
+	// vector<queue<int>> bestPath(2);
+	double utility_[2] = {0};
+	string bestSer[2];
+	queue<int> bestPath[2];
 
 	#pragma omp parallel for num_threads(2)
 	for (int iSer=0; iSer<server.serverTypeNum; iSer++) {
 
 		queue<int> vmPath;
 		int ocpRes; // 装入的资源
+		double utility;
+
 		string serName = server.infoV[iSer].first;
 		int totalCPU = server.infoV[iSer].second.totalCPU;
 		int totalRAM = server.infoV[iSer].second.totalRAM;
@@ -230,9 +235,9 @@ tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
 		tie(ocpRes, vmPath) = dp(curSet.size()-1, totalCPU / 2, totalRAM / 2, totalCPU / 2, totalRAM / 2, \
 			curSet, VM);
 		
-		utility[omp_get_thread_num()] = (double)ocpRes / (hardprice + engprice * (dayNum - iDay));
-		if (utility[omp_get_thread_num()] > utility_[omp_get_thread_num()]) {
-			utility_[omp_get_thread_num()] = utility[omp_get_thread_num()];
+		utility = (double)ocpRes / (hardprice + engprice * (dayNum - iDay));
+		if (utility > utility_[omp_get_thread_num()]) {
+			utility_[omp_get_thread_num()] = utility;
 			bestSer[omp_get_thread_num()] = serName;
 			bestPath[omp_get_thread_num()] = vmPath;
 		}

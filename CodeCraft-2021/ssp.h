@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <queue>
 #include <omp.h>
+#include <algorithm>
 using namespace std;
 
 #ifdef LOCAL
