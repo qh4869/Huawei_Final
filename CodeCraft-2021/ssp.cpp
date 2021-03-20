@@ -246,7 +246,7 @@ tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
 	omp_destroy_lock(&lock);
 	
 	/*两个线程结果汇总*/
-	if (utility[0] >= utility[1]) 
+	if (utility_[0] >= utility_[1]) 
 		return make_tuple(bestSer[0], bestPath[0]);
 	else
 		return make_tuple(bestSer[1], bestPath[1]);
