@@ -207,8 +207,6 @@ tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
 *	- queue<int> curSet中每台vm的部署策略 0不部署 1双节点部署 2nodeA单节点 3nodeB单节点
 *		队列头部对应curSet的头部
 */
-	static omp_lock_t lock;
-	omp_init_lock(&lock);
 
 	const int dayNum = server.buyRecord.size(); // 总天数
 
@@ -220,7 +218,6 @@ tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
 
 	#pragma omp parallel for num_threads(2)
 	for (int iSer=0; iSer<server.serverTypeNum; iSer++) {
-		// omp_set_lock(&lock);
 
 		queue<int> vmPath;
 		int ocpRes; // 装入的资源
@@ -240,10 +237,7 @@ tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
 			bestPath[omp_get_thread_num()] = vmPath;
 		}
 
-		// omp_unset_lock(&lock);
 	}
-
-	omp_destroy_lock(&lock);
 	
 	/*两个线程结果汇总*/
 	if (utility_[0] >= utility_[1]) 
