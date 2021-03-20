@@ -5,11 +5,11 @@
 #include "globalHeader.h"
 using namespace std;
 
-struct sVmItem { // hash map 的 value部分
-	int needCPU;
-	int needRAM;
-	bool nodeStatus; // true表示双节点
-};
+//struct sVmItem { // hash map 的 value部分
+//	int needCPU;
+//	int needRAM;
+//	bool nodeStatus; // true表示双节点
+//};
 
 struct sEachWorkingVM {
 	string vmName;

@@ -21,6 +21,10 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		return 1;
 	}
 
+	if (serID == 126) {
+		int a = 1;
+	}
+
 	// 判断资源是否够分
 	if (node == true) { // a 节点部署
 		if (server.myServerSet[serID].aIdleCPU < info[vmName].needCPU \
@@ -31,6 +35,8 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		else {
 			server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU;
 			server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM;
+			server.serverVMSet[serID].insert({ VMid, 0 });
+			server.updatVmSourceOrder(info[vmName], serID, true);
 		}
 	}
 	else {
@@ -42,6 +48,8 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		else {
 			server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU;
 			server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM;
+			server.serverVMSet[serID].insert({ VMid, 1 });
+			server.updatVmSourceOrder(info[vmName], serID, true);
 		}
 	}
 
@@ -78,6 +86,10 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		return 1;
 	}
 
+	if (serID == 126) {
+		int a = 1;
+	}
+
 	if (server.myServerSet[serID].aIdleCPU<info[vmName].needCPU / 2 \
 		|| server.myServerSet[serID].bIdleCPU<info[vmName].needCPU / 2 \
 		|| server.myServerSet[serID].aIdleRAM < info[vmName].needRAM / 2 \
@@ -90,6 +102,8 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM / 2;
 		server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU / 2;
 		server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM / 2;
+		server.serverVMSet[serID].insert({ VMid, 2});
+		server.updatVmSourceOrder(info[vmName], serID, true);
 	}
 
 	sEachWorkingVM oneVM;
@@ -122,24 +136,54 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 	int occupyCPU = info[vmName].needCPU;
 	int occupyRAM = info[vmName].needRAM;
 
+	if (serID == 126 || lastServerID == 126) {
+		int a = 1;
+	}
+
+	// 更改该虚拟机现在的位置
+	workingVmSet[VMid].serverID = serID;
+	workingVmSet[VMid].node = node;
+
+	//////////////////////////用于检测错误///////////////////////////////
+	sServerItem outServer = server.info[server.myServerSet[lastServerID].serName];
+	sServerItem inServer = server.info[server.myServerSet[serID].serName];
+	///////////////////////////////////////////////////////////////
+
 	// 恢复前一个服务器的资源
 	if (lastServerNode == true) { // A node
 		server.myServerSet[lastServerID].aIdleCPU += occupyCPU;
 		server.myServerSet[lastServerID].aIdleRAM += occupyRAM;
+		if (server.myServerSet[lastServerID].aIdleCPU > outServer.totalCPU / 2 ||
+			server.myServerSet[lastServerID].aIdleRAM > outServer.totalRAM / 2) {
+			cout << "migrate a node error" << endl;
+		}
 	}
 	else {
 		server.myServerSet[lastServerID].bIdleCPU += occupyCPU;
 		server.myServerSet[lastServerID].bIdleRAM += occupyRAM;
+		if (server.myServerSet[lastServerID].bIdleCPU > outServer.totalCPU / 2 ||
+			server.myServerSet[lastServerID].bIdleRAM > outServer.totalRAM / 2) {
+			cout << "migrate b node error" << endl;
+		}
 	}
+	server.serverVMSet[lastServerID].erase(VMid);    // 从迁出的服务器中删除该虚拟机
 
 	// 占据新服务器资源
 	if (node == true) {
 		server.myServerSet[serID].aIdleCPU -= occupyCPU;
 		server.myServerSet[serID].aIdleRAM -= occupyRAM;
+		if (server.myServerSet[serID].aIdleCPU < 0 || server.myServerSet[serID].aIdleRAM < 0) {
+			cout << "exit a node" << endl;
+		}
+		server.serverVMSet[serID].insert({ VMid, 0 });    // 往迁入的服务器中加入该虚拟机
 	}
 	else {
 		server.myServerSet[serID].bIdleCPU -= occupyCPU;
 		server.myServerSet[serID].bIdleRAM -= occupyRAM;
+		if (server.myServerSet[serID].bIdleCPU < 0 || server.myServerSet[serID].bIdleRAM < 0) {
+			cout << "exit b node" << endl;
+		}
+		server.serverVMSet[serID].insert({ VMid, 1 });    // 往迁入的服务器中加入该虚拟机
 	}
 
 	// 迁移条目更新
@@ -160,17 +204,43 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 	int occupyCPU = info[vmName].needCPU;
 	int occupyRAM = info[vmName].needRAM;
 
+	workingVmSet[VMid].serverID = serID;
+
+	if (serID == 126 || lastServerID == 126) {
+		int a = 1;
+	}
+
+	//////////////////////////////////////////////////////////////
+	sServerItem outServer = server.info[server.myServerSet[lastServerID].serName];
+	//////////////////////////////////////////////////////////
+
 	// 恢复前一个服务器的资源
 	server.myServerSet[lastServerID].aIdleCPU += occupyCPU / 2;
 	server.myServerSet[lastServerID].aIdleRAM += occupyRAM / 2;
 	server.myServerSet[lastServerID].bIdleCPU += occupyCPU / 2;
 	server.myServerSet[lastServerID].bIdleRAM += occupyRAM / 2;
+	server.serverVMSet[lastServerID].erase(VMid);    // 从迁出的服务器中移除虚拟机
+
+	if (server.myServerSet[lastServerID].aIdleCPU > outServer.totalCPU / 2 ||
+		server.myServerSet[lastServerID].bIdleCPU > outServer.totalCPU / 2 ||
+		server.myServerSet[lastServerID].aIdleRAM > outServer.totalRAM / 2 ||
+		server.myServerSet[lastServerID].bIdleRAM > outServer.totalRAM / 2) {
+		cout << "double migrate error" << endl;
+	}
 
 	// 占据新服务器资源
 	server.myServerSet[serID].aIdleCPU -= occupyCPU / 2;
 	server.myServerSet[serID].aIdleRAM -= occupyRAM / 2;
 	server.myServerSet[serID].bIdleCPU -= occupyCPU / 2;
 	server.myServerSet[serID].bIdleRAM -= occupyRAM / 2;
+	server.serverVMSet[serID].insert({ VMid, 2 });   // 从迁入的服务器中加入虚拟机
+
+	if (server.myServerSet[serID].aIdleCPU < 0 ||
+		server.myServerSet[serID].bIdleCPU < 0 ||
+		server.myServerSet[serID].aIdleRAM < 0 ||
+		server.myServerSet[serID].bIdleRAM < 0 ) {
+		cout << "double exit error" << endl;
+	}
 
 	// 迁移条目更新
 	sTransVmItem oneTrans;

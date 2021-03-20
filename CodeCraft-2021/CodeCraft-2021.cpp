@@ -5,6 +5,7 @@
 #include <iostream>
 #include "globalHeader.h" // 全局常量
 #include "graphFit.h"
+#include "judge.h"
 using namespace std;
 
 int main()
@@ -15,16 +16,19 @@ int main()
 	void process(cServer &server, cVM &VM, const cRequests &request);
 
 	// 输入
-	tie(server, VM, request) = dataIn("training-2.txt");
+	tie(server, VM, request) = dataIn("test.txt");
 
 	// 购买，迁移，部署
+	//requestOrder(VM, request);
 	process(server, VM, request);
 
 #ifndef LOCAL
 	// 输出
 	dataOut(server, VM, request);
 #endif
-	//system("pause");
+	dataOut(server, VM, request);
+	//runJudger("test.txt", "out.txt");
+	system("pause");
 	return 0;
 }
 

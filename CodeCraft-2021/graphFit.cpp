@@ -6,9 +6,12 @@ void graphFit(cServer &server, cVM &VM, const cRequests &request) {
 
 	int engCostStas = 0; // 计算功耗成本
 	int hardCostStas = 0;
+	int vmTotalNum;    // 迁移前的虚拟机总量
 	string costName;
+	unordered_map<string, int> dayWorkingVM;
 	for (int whichDay = 0; whichDay < request.dayNum; whichDay++) {
 
+		server.serverNum.push_back(0);   // 初始化第N天的服务器数量
 		//cout << whichDay << endl;
 		if (whichDay == 0) {
 			server.alpha = request.dayNum;
@@ -21,7 +24,13 @@ void graphFit(cServer &server, cVM &VM, const cRequests &request) {
 			server.rankServerByPrice(false);
 		}
 
-		dayGraphFit(server, VM, request, whichDay);
+		vmTotalNum = VM.workingVmSet.size();
+		dayGraphFit(server, VM, request, whichDay, dayWorkingVM);
+
+		if (whichDay > 0) {
+			migrateVM(server, VM, whichDay, dayWorkingVM, vmTotalNum);
+		}
+		dayWorkingVM.clear();
 
 		for (int iServer = 0; iServer < (int)server.myServerSet.size(); iServer++) {
 			if (server.isOpen(iServer)) {
@@ -42,29 +51,30 @@ void graphFit(cServer &server, cVM &VM, const cRequests &request) {
 
 
 // 进行每天的服务器购买和VM部署
-void dayGraphFit(cServer &server, cVM &VM, const cRequests &request, int whichDay) {
+void dayGraphFit(cServer &server, cVM &VM, const cRequests &request, int whichDay, 
+	unordered_map<string, int> &dayWorkingVM) {
 
 	int totalRequest = request.numEachDay[whichDay];   // 当天的请求总数
-	int dividend = 1;   // 将请求分组，每个分组有dividend条请求
+	int dividend = 1;   // 将请求分组，每个分组有dividend条请求 // 10 训练集可达到6.08
 	int quotient, remainder;   // 商和余数
 
 	quotient = totalRequest / dividend;   // 整除
 	remainder = totalRequest % dividend;  // 求余数
 
 	if (quotient == 0) {   // 商为0，直接分为一组
-		subGraphFit(server, VM, request, 0, totalRequest, whichDay);
+		subGraphFit(server, VM, request, 0, totalRequest, whichDay, dayWorkingVM);
 	}
 	else {
 		int begin = 0, end = dividend;   // 用于指定requestItem的起始和结尾
 		while (quotient > 0) {   // 根据商分组，每组requestItem数量为dividend
-			subGraphFit(server, VM, request, begin, end, whichDay);
+			subGraphFit(server, VM, request, begin, end, whichDay, dayWorkingVM);
 			begin = end;
 			end = end + dividend;
 			quotient--;
 		}
 		if (remainder != 0) {   // 剩下的Item作为一组
 			end = end - dividend + remainder;
-			subGraphFit(server, VM, request, begin, end, whichDay);
+			subGraphFit(server, VM, request, begin, end, whichDay, dayWorkingVM);
 		}
 	}
 
@@ -72,7 +82,8 @@ void dayGraphFit(cServer &server, cVM &VM, const cRequests &request, int whichDa
 
 
 // 每天的所有requestItem分为若干组组成子图开始Fit
-void subGraphFit(cServer &server, cVM &VM, const cRequests &request, int begin, int end, int whichDay) {
+void subGraphFit(cServer &server, cVM &VM, const cRequests &request, 
+	int begin, int end, int whichDay, unordered_map<string, int> &dayWorkingVM) {
 
 	int alpha = server.alpha;       // 价格加权系数
 	int maxLoc = end - begin + 1;   // 图节点的最多个数（所以从0开始需多1，无用节点多1，所以比实际条目多2）
@@ -113,6 +124,7 @@ void subGraphFit(cServer &server, cVM &VM, const cRequests &request, int begin, 
 				deleteVM(server, VM, requestTerm, workVm, restID);
 			}
 			else {   // 表示要加入虚拟机
+				dayWorkingVM.insert({ requestTerm.vmID, 1 });   // 直接加入
 				addVM(server, VM, requestTerm, hasDeploy, transfer, workVm, restID, whichDay, iTerm, indexTerm);
 			}
 		}
@@ -148,6 +160,11 @@ void deleteVM(cServer &server, cVM &VM, sRequestItem &requestTerm, unordered_map
 	if (search != VM.workingVmSet.end()) {      // 表示该虚拟机在前几天的服务器里
 
 		int serID = VM.workingVmSet[requestTerm.vmID].serverID;    // 记录该虚拟机放在哪台服务器运行
+
+		if (serID == 126) {
+			int a = 1;
+		}
+
 		if (requestVm.nodeStatus) {   // 双节点
 			server.myServerSet[serID].aIdleCPU += requestVm.needCPU / 2;
 			server.myServerSet[serID].bIdleCPU += requestVm.needCPU / 2;
@@ -164,6 +181,9 @@ void deleteVM(cServer &server, cVM &VM, sRequestItem &requestTerm, unordered_map
 				server.myServerSet[serID].bIdleRAM += requestVm.needRAM;
 			}
 		}
+		server.serverVMSet[serID].erase(requestTerm.vmID);
+		VM.workingVmSet.erase(requestTerm.vmID);
+		server.updatVmSourceOrder(requestVm, serID, false);   // 删除:更新VM数量排序
 	}
 	else {    // 删除的虚拟机不在已经购买的服务器中
 		workVm.erase(requestTerm.vmID);   // 从工作中的虚拟机集合删除该虚拟机

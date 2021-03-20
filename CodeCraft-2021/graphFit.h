@@ -5,11 +5,11 @@
 void graphFit(cServer &server, cVM &VM, const cRequests &request);
 
 // 每天都构造图来实现部署
-void dayGraphFit(cServer &server, cVM &VM, const cRequests &request, int whichDay);
+void dayGraphFit(cServer &server, cVM &VM, const cRequests &request, int whichDay, unordered_map<string, int> &dayWorkingVM);
 
 // 每天分为多个子图，防止当天节点过多，1w个节点就离谱
 void subGraphFit(cServer &server, cVM &VM, const cRequests &request,
-	int begin, int end, int whichDay);
+	int begin, int end, int whichDay, unordered_map<string, int> &dayWorkingVM);
 
 // 删除虚拟机（可能从当天新买的服务器删除，也可能是已购买的服务器中删除）
 void deleteVM(cServer &server, cVM &VM, sRequestItem &requestTerm, unordered_map<string, sVmItem> &workVm,

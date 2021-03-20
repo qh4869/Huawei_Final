@@ -68,4 +68,10 @@ public:
 
 											// id 映射
 	int idMapping();
+
+	// CYT
+	vector<int> serverNum;   // 每天的服务器数量
+	vector<unordered_map<string, int>> serverVMSet;   // 每台服务器对应的虚拟机ID集合(string:VMid, int:0(a),1(b),2(double))
+	vector<pair<int, int>> vmSourceOrder;    // 记录服务器中虚拟机数量的排序 : serID->虚拟机资源
+	void updatVmSourceOrder(sVmItem &requestVm, int serID, bool flag);   // flag: true(add), false(delete)
 };
