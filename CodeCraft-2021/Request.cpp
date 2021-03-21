@@ -1,23 +1,23 @@
-#include "Request.h"
+ï»¿#include "Request.h"
 
 void cRequest::getNumEachDay() {
-	/* Fn: ¼ÆËãÃ¿ÌìµÄadd/deleteÇëÇóÊıÁ¿, ½á¹û×°ÈënumAddEachDayºÍnumDelEachDay
+	/* Fn: è®¡ç®—æ¯å¤©çš„add/deleteè¯·æ±‚æ•°é‡, ç»“æœè£…å…¥numAddEachDayå’ŒnumDelEachDay
 	*/
-	// ÓëÌìÊıÓĞ¹ØµÄvector³õÊ¼»¯
+	// ä¸å¤©æ•°æœ‰å…³çš„vectoråˆå§‹åŒ–
 	numAddEachDay.resize(dayNum);
 	numDelEachDay.resize(dayNum);
 
 	for (int iDay = 0; iDay < dayNum; iDay++) {
-		//³õÊ¼»¯Ã¿ÌìµÄaddºÍdeleteÇëÇóÊıÁ¿
+		//åˆå§‹åŒ–æ¯å¤©çš„addå’Œdeleteè¯·æ±‚æ•°é‡
 		numAddEachDay[iDay] = 0;
 		numDelEachDay[iDay] = 0;
 
 		for (int iTerm = 0; iTerm < numEachDay[iDay]; iTerm++) {
-			//ÇóºÍ
-			if (info[iDay][iTerm].type) { // add ÇëÇó
+			//æ±‚å’Œ
+			if (info[iDay][iTerm].type) { // add è¯·æ±‚
 				numAddEachDay[iDay]++;
 			}
-			else { // delete ÇëÇó
+			else { // delete è¯·æ±‚
 				numDelEachDay[iDay]++;
 			}
 		}
@@ -25,7 +25,7 @@ void cRequest::getNumEachDay() {
 }
 
 void cRequest::getVarAdd() {
-	/* Fn: Çó³öAddÇëÇóµÄ·½²î£¬½á¹û×°Èë varAdd
+	/* Fn: æ±‚å‡ºAddè¯·æ±‚çš„æ–¹å·®ï¼Œç»“æœè£…å…¥ varAdd
 	*/
 	varAdd = 0;
 	double meanAdd = 0;
@@ -41,7 +41,7 @@ void cRequest::getVarAdd() {
 }
 
 void cRequest::getVarDel() {
-	/* Fn: Êä³ödeleteÇëÇóµÄ·½²î£¬½á¹û×°Èë varDel
+	/* Fn: è¾“å‡ºdeleteè¯·æ±‚çš„æ–¹å·®ï¼Œç»“æœè£…å…¥ varDel
 	*/
 	varDel = 0;
 	double meanDel = 0;
