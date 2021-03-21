@@ -24,9 +24,10 @@ void cRequests::getNumEachDay() {
 	}
 }
 
-void cRequests::getVarAdd() {
+double cRequests::getVarAdd() {
 	/* Fn: 求出Add请求的方差，结果装入 varAdd
 	*/
+	getNumEachDay();
 	varAdd = 0;
 	double meanAdd = 0;
 	for (int iDay = 0; iDay < dayNum; iDay++) {
@@ -38,11 +39,14 @@ void cRequests::getVarAdd() {
 		varAdd += (numAddEachDay[iDay] - meanAdd) * (numAddEachDay[iDay] - meanAdd);
 		varAdd /= (dayNum - 1);
 	}
+	//cout << varAdd << endl;
+	return varAdd;
 }
 
-void cRequests::getVarDel() {
+double cRequests::getVarDel() {
 	/* Fn: 输出delete请求的方差，结果装入 varDel
 	*/
+	getNumEachDay();
 	varDel = 0;
 	double meanDel = 0;
 	for (int iDay = 0; iDay < dayNum; iDay++) {
@@ -54,4 +58,6 @@ void cRequests::getVarDel() {
 		varDel += (numDelEachDay[iDay] - meanDel) * (numDelEachDay[iDay] - meanDel);
 		varDel /= (dayNum - 1);
 	}
+	//cout << varDel << endl;
+	return varDel;
 }

@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include "globalHeader.h"
+#include <iostream>
 using namespace std;
 
 struct sRequestItem {
@@ -24,8 +25,8 @@ public:
     void getNumEachDay();
 
     //计算Add请求的方差
-    void getVarAdd();
+    double getVarAdd();
 
     //计算delete请求的方差
-    void getVarDel();
+    double getVarDel();
 };
