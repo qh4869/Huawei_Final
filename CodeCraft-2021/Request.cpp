@@ -1,8 +1,10 @@
 ﻿#include "Request.h"
 
-void cRequests::getNumEachDay() {
-	/* Fn: 计算每天的add/delete请求数量, 结果装入numAddEachDay和numDelEachDay
+std::tuple<double, double> cRequests::getVarRequest() {
+	/* Fn: 计算add和delete请求的方差值
 	*/
+
+	//计算每天的add/delete请求数量, 结果装入numAddEachDay和numDelEachDay
 	// 与天数有关的vector初始化
 	numAddEachDay.resize(dayNum);
 	numDelEachDay.resize(dayNum);
@@ -22,12 +24,8 @@ void cRequests::getNumEachDay() {
 			}
 		}
 	}
-}
 
-double cRequests::getVarAdd() {
-	/* Fn: 求出Add请求的方差，结果装入 varAdd
-	*/
-	getNumEachDay();
+	//求出Add请求的方差，结果装入 varAdd
 	varAdd = 0;
 	double meanAdd = 0;
 	for (int iDay = 0; iDay < dayNum; iDay++) {
@@ -39,14 +37,8 @@ double cRequests::getVarAdd() {
 		varAdd += (numAddEachDay[iDay] - meanAdd) * (numAddEachDay[iDay] - meanAdd);
 		varAdd /= (dayNum - 1);
 	}
-	//cout << varAdd << endl;
-	return varAdd;
-}
 
-double cRequests::getVarDel() {
-	/* Fn: 输出delete请求的方差，结果装入 varDel
-	*/
-	getNumEachDay();
+	//输出delete请求的方差，结果装入 varDel
 	varDel = 0;
 	double meanDel = 0;
 	for (int iDay = 0; iDay < dayNum; iDay++) {
@@ -58,6 +50,5 @@ double cRequests::getVarDel() {
 		varDel += (numDelEachDay[iDay] - meanDel) * (numDelEachDay[iDay] - meanDel);
 		varDel /= (dayNum - 1);
 	}
-	//cout << varDel << endl;
-	return varDel;
+	return make_tuple(varAdd, varDel);
 }

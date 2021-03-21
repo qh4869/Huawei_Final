@@ -3,6 +3,7 @@
 #include <vector>
 #include "globalHeader.h"
 #include <iostream>
+#include <tuple>
 using namespace std;
 
 struct sRequestItem {
@@ -21,12 +22,5 @@ public:
     vector<int> numAddEachDay; // 每天的add请求数量
     vector<int> numDelEachDay; // 每天的delete请求数量
 
-        //计算每天的add/delete请求数量, 
-    void getNumEachDay();
-
-    //计算Add请求的方差
-    double getVarAdd();
-
-    //计算delete请求的方差
-    double getVarDel();
+    std::tuple<double, double> getVarRequest();  //计算add和delete请求的方差值
 };
