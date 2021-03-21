@@ -1,6 +1,6 @@
 ﻿#include "Request.h"
 
-void cRequest::getNumEachDay() {
+void cRequests::getNumEachDay() {
 	/* Fn: 计算每天的add/delete请求数量, 结果装入numAddEachDay和numDelEachDay
 	*/
 	// 与天数有关的vector初始化
@@ -24,7 +24,7 @@ void cRequest::getNumEachDay() {
 	}
 }
 
-void cRequest::getVarAdd() {
+void cRequests::getVarAdd() {
 	/* Fn: 求出Add请求的方差，结果装入 varAdd
 	*/
 	varAdd = 0;
@@ -40,7 +40,7 @@ void cRequest::getVarAdd() {
 	}
 }
 
-void cRequest::getVarDel() {
+void cRequests::getVarDel() {
 	/* Fn: 输出delete请求的方差，结果装入 varDel
 	*/
 	varDel = 0;
