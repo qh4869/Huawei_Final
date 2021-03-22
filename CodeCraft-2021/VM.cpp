@@ -1,4 +1,4 @@
-﻿#include "VM.h"
+#include "VM.h"
 
 int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node){
 /* Fn: 单节点部署情况

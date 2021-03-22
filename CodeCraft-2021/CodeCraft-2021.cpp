@@ -1,4 +1,4 @@
-﻿#include "io.h"
+#include "io.h"
 #include "Server.h"
 #include "VM.h"
 #include "Request.h"

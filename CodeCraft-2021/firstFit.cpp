@@ -1,4 +1,4 @@
-﻿#include "firstFit.h"
+#include "firstFit.h"
 
 void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 /* Fn: first fit算法部署和购买，不迁移

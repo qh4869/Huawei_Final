@@ -1,4 +1,4 @@
-﻿#include "io.h"
+#include "io.h"
 using namespace std;
 
 std::tuple<cServer, cVM, cRequests> dataIn(string fileName) {

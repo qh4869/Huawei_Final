@@ -1,4 +1,4 @@
-﻿#include "Server.h"
+#include "Server.h"
 #include <iostream>
 
 int cServer::purchase(string name, int iDay) {
