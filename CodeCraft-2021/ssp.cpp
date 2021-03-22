@@ -1,4 +1,4 @@
-#include "ssp.h"
+﻿#include "ssp.h"
 
 void ssp(cServer &server, cVM &VM, const cRequests &request) {
 /* Fn: SSP方法
@@ -62,17 +62,16 @@ void ssp(cServer &server, cVM &VM, const cRequests &request) {
 #ifdef LOCAL
 				addcnt ++;
 #endif
-				/*First fit 没排序版本*/
+				/*最新版的选择策略*/
 				string vmName = request.info[iDay][iTerm].vmName;
+				sVmItem requestVM = VM.info[vmName];
 				vmIsDouble = VM.isDouble(vmName);
-				vmReqCPU = VM.reqCPU(vmName);
-				vmReqRAM = VM.reqRAM(vmName);
 
 				if (vmIsDouble) {
-					serID = server.firstFitDouble(vmReqCPU, vmReqRAM);
+					serID = srchInMyServerDouble(server, requestVM);
 				}
 				else {
-					tie(serID, serNode) = server.firstFitSingle(vmReqCPU, vmReqRAM);
+					tie(serID, serNode) = srchInMyServerSingle(server, requestVM);
 				}
 
 				if (serID != -1) { // 能直接装进去
@@ -407,4 +406,99 @@ void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSe
 			it++;
 		itIndicator++;
 	}
+}
+
+cyt::sServerItem bestFit(cServer &server, sVmItem &requestVM) {
+/* Fn: cyt写的，best fit，源程序在cyt分支的tools.cpp中
+*/
+
+	cyt::sServerItem myServer;
+	myServer.hardCost = 1;   // 可通过hardCost来判断是否找到了服务器
+
+	if (server.myServerSet.size() > 0) {   // 有服务器才开始找
+
+		sMyEachServer tempServer;
+		int restCPU;
+		int restRAM;
+		int minValue = INT_MAX;
+		int tempValue;
+
+		for (unsigned i = 0; i < server.myServerSet.size(); i++) {
+
+			tempServer = server.myServerSet[i];   // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
+
+			if (!requestVM.nodeStatus) {    // 单节点
+				if (tempServer.aIdleCPU >= requestVM.needCPU && tempServer.aIdleRAM >= requestVM.needRAM) {    // a节点
+					restCPU = tempServer.aIdleCPU - requestVM.needCPU;
+					restRAM = tempServer.aIdleRAM - requestVM.needRAM;
+					tempValue = restCPU + restRAM + abs(restCPU - 0.3 * restRAM) * 1;
+					if (tempValue < minValue) {
+						minValue = tempValue;
+						myServer.energyCost = -1;
+						myServer.hardCost = -1;
+						myServer.buyID = i;   // 记录该服务器
+						myServer.node = true;   // 返回false表示b 节点
+					}
+				}
+				// 两个节点都要查看，看看放哪个节点更合适
+				if (tempServer.bIdleCPU >= requestVM.needCPU && tempServer.bIdleRAM >= requestVM.needRAM) {  // b 节点
+					restCPU = tempServer.bIdleCPU - requestVM.needCPU;
+					restRAM = tempServer.bIdleRAM - requestVM.needRAM;
+					tempValue = restCPU + restRAM + abs(restCPU - 0.3 * restRAM) * 1;
+					if (tempValue < minValue) {
+						minValue = tempValue;
+						myServer.energyCost = -1;
+						myServer.hardCost = -1;
+						myServer.buyID = i;   // 记录服务器
+						myServer.node = false;   // 返回false表示b 节点
+					}
+				}
+			}
+			else {     // 双节点
+				if (tempServer.aIdleCPU >= requestVM.needCPU / 2 && tempServer.aIdleRAM >= requestVM.needRAM / 2
+					&& tempServer.bIdleCPU >= requestVM.needCPU / 2 && tempServer.bIdleRAM >= requestVM.needRAM / 2) {
+					restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
+					restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
+					tempValue = restCPU + restRAM + abs(restCPU - 0.3 * restRAM) * 1;
+					if (tempValue < minValue) {
+						minValue = tempValue;
+						myServer.energyCost = -1;
+						myServer.hardCost = -1;
+						myServer.buyID = i;   // 记录服务器
+					}
+				}
+			}
+		}
+	}
+
+	return myServer;  // 运行到这表示没找到,hardCost为1
+
+}
+
+int srchInMyServerDouble(cServer &server, sVmItem &requestVM) {
+/* Fn: 从已购买的服务器中找一台，来部署这台VM
+*
+* Out:
+*	- 返回服务器id（id映射前），若找不到合适的SV，返回-1
+*/
+	cyt::sServerItem myServer = bestFit(server, requestVM);
+
+	if (myServer.hardCost == -1) {    // 找到了服务器
+		return myServer.buyID;
+	}
+
+	return -1;
+}
+
+std::tuple<int, bool> srchInMyServerSingle(cServer &server, sVmItem &requestVM) {
+/* Fn: 功能同上，单节点部署类型，不是单节点部署抛异常
+*
+*/
+	cyt::sServerItem myServer = bestFit(server, requestVM);
+
+	if (myServer.hardCost == -1) {    // 找到了服务器
+		return make_tuple(myServer.buyID, myServer.node);
+	}
+
+	return make_tuple(-1, false);
 }
