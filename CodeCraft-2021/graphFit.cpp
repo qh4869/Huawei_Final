@@ -2,35 +2,57 @@
 
 
 // 根据图的最短路径来部署
-void graphFit(cServer &server, cVM &VM, const cRequests &request) {
+void graphFit(cServer &server, cVM &VM, cRequests &request) {
+
+	// 自适应参数
+	double addVar, delVar;
+	vector<double> args(4);   // (节点数, ratio)
+	tie(addVar, delVar) = request.getVarRequest();
+	if (delVar < 7) {
+		args[0] = 8;
+		args[1] = 3.0;
+		args[2] = 0.3;
+		args[3] = 1.0;
+  	}
+	else {
+		args[0] = 3;
+		args[1] = 1.5;
+		args[2] = 0.3;
+		args[3] = 1.2;
+	}
 
 	int engCostStas = 0; // 计算功耗成本
 	int hardCostStas = 0;
 	int vmTotalNum;    // 迁移前的虚拟机总量
 	string costName;
 	unordered_map<string, int> dayWorkingVM;
+	unordered_map<string, sEachWorkingVM> dayDeleteVM;   // 当天删除的虚拟机(该虚拟机在已购买的服务器中)
+	unordered_map<int, sMyEachServer> delSerSet;   // 用于恢复有删除操作服务器的实际容量
+
 	for (int whichDay = 0; whichDay < request.dayNum; whichDay++) {
 
 		server.serverNum.push_back(0);   // 初始化第N天的服务器数量
-		//cout << whichDay << endl;
+		cout << whichDay << endl;
 		if (whichDay == 0) {
 			server.alpha = request.dayNum;
-			//server.alpha = 400;
 			server.rankServerByPrice(true);  // 第一天为true
 		}
 		else {
 			server.alpha = request.dayNum - whichDay;
-			//server.alpha = 400;
 			server.rankServerByPrice(false);
 		}
 
 		vmTotalNum = VM.workingVmSet.size();
-		dayGraphFit(server, VM, request, whichDay, dayWorkingVM);
+		dayGraphFit(server, VM, request, whichDay, dayWorkingVM, dayDeleteVM, args);
 
+
+		delSerSet = recoverDelSerSet(server, VM, dayDeleteVM);
 		if (whichDay > 0) {
-			migrateVM(server, VM, whichDay, dayWorkingVM, vmTotalNum);
+			migrateVM(server, VM, whichDay, dayWorkingVM, vmTotalNum, delSerSet, args);
 		}
 		dayWorkingVM.clear();
+		dayDeleteVM.clear();
+		delSerSet.clear();
 
 		for (int iServer = 0; iServer < (int)server.myServerSet.size(); iServer++) {
 			if (server.isOpen(iServer)) {
@@ -45,36 +67,36 @@ void graphFit(cServer &server, cVM &VM, const cRequests &request) {
 		costName = server.myServerSet[iServer].serName;
 		hardCostStas += server.info[costName].hardCost;
 	}
-	//cout << "成本: " << engCostStas + hardCostStas << endl;
+	cout << "成本: " << engCostStas + hardCostStas << endl;
 
 }
 
 
 // 进行每天的服务器购买和VM部署
-void dayGraphFit(cServer &server, cVM &VM, const cRequests &request, int whichDay, 
-	unordered_map<string, int> &dayWorkingVM) {
+void dayGraphFit(cServer &server, cVM &VM, cRequests &request, int whichDay, unordered_map<string, int> &dayWorkingVM, 
+	unordered_map<string, sEachWorkingVM> &dayDeleteVM, vector<double> &args) {
 
 	int totalRequest = request.numEachDay[whichDay];   // 当天的请求总数
-	int dividend = 1;   // 将请求分组，每个分组有dividend条请求 // 10 训练集可达到6.08
+	int dividend = (int)args[0];   // 将请求分组，每个分组有dividend条请求 // 10 训练集可达到6.08
 	int quotient, remainder;   // 商和余数
 
 	quotient = totalRequest / dividend;   // 整除
 	remainder = totalRequest % dividend;  // 求余数
 
 	if (quotient == 0) {   // 商为0，直接分为一组
-		subGraphFit(server, VM, request, 0, totalRequest, whichDay, dayWorkingVM);
+		subGraphFit(server, VM, request, 0, totalRequest, whichDay, dayWorkingVM, dayDeleteVM, args);
 	}
 	else {
 		int begin = 0, end = dividend;   // 用于指定requestItem的起始和结尾
 		while (quotient > 0) {   // 根据商分组，每组requestItem数量为dividend
-			subGraphFit(server, VM, request, begin, end, whichDay, dayWorkingVM);
+			subGraphFit(server, VM, request, begin, end, whichDay, dayWorkingVM, dayDeleteVM, args);
 			begin = end;
 			end = end + dividend;
 			quotient--;
 		}
 		if (remainder != 0) {   // 剩下的Item作为一组
 			end = end - dividend + remainder;
-			subGraphFit(server, VM, request, begin, end, whichDay, dayWorkingVM);
+			subGraphFit(server, VM, request, begin, end, whichDay, dayWorkingVM, dayDeleteVM, args);
 		}
 	}
 
@@ -82,8 +104,9 @@ void dayGraphFit(cServer &server, cVM &VM, const cRequests &request, int whichDa
 
 
 // 每天的所有requestItem分为若干组组成子图开始Fit
-void subGraphFit(cServer &server, cVM &VM, const cRequests &request, 
-	int begin, int end, int whichDay, unordered_map<string, int> &dayWorkingVM) {
+void subGraphFit(cServer &server, cVM &VM, cRequests &request, int begin, int end,
+	int whichDay, unordered_map<string, int> &dayWorkingVM, unordered_map<string, sEachWorkingVM> &dayDeleteVM,
+	vector<double> &args) {
 
 	int alpha = server.alpha;       // 价格加权系数
 	int maxLoc = end - begin + 1;   // 图节点的最多个数（所以从0开始需多1，无用节点多1，所以比实际条目多2）
@@ -119,13 +142,16 @@ void subGraphFit(cServer &server, cVM &VM, const cRequests &request,
 										  // 不是最后一个节点才需要处理，最后一个节点无用，暂时不需要处理
 		if (iTerm < maxLoc - 1) {
 			sRequestItem requestTerm = request.info[whichDay][indexTerm];  // 根据每天实际顺序取出请求
+			if (requestTerm.vmID == "622635153") {
+				int a = 1;
+			}
 			if (!requestTerm.type) {   // 表示要删除虚拟机
 				hasDeploy[iTerm] = true;    // 删除的虚拟机不需要重新部署(((((bug)))))
-				deleteVM(server, VM, requestTerm, workVm, restID);
+				deleteVM(server, VM, requestTerm, workVm, restID, dayDeleteVM);
 			}
 			else {   // 表示要加入虚拟机
 				dayWorkingVM.insert({ requestTerm.vmID, 1 });   // 直接加入
-				addVM(server, VM, requestTerm, hasDeploy, transfer, workVm, restID, whichDay, iTerm, indexTerm);
+				addVM(server, VM, requestTerm, hasDeploy, transfer, workVm, restID, whichDay, iTerm, indexTerm, args);
 			}
 		}
 		else {    // 处理最后一个节点
@@ -151,7 +177,7 @@ void subGraphFit(cServer &server, cVM &VM, const cRequests &request,
 
 // 删除VM（可能是当天的服务器，也可能是之前已购买的服务器）
 void deleteVM(cServer &server, cVM &VM, sRequestItem &requestTerm, unordered_map<string, sVmItem> &workVm,
-	vector<pair<string, int>> &restID) {
+	vector<pair<string, int>> &restID, unordered_map<string, sEachWorkingVM> &dayDeleteVM) {
 
 	sEachWorkingVM tempVm = VM.workingVmSet[requestTerm.vmID];  // 删除条目中没有记录虚拟机，所以要通过这种方式取出来
 	sVmItem requestVm = VM.info[tempVm.vmName];    // 提取要删除的虚拟机的类型
@@ -160,10 +186,7 @@ void deleteVM(cServer &server, cVM &VM, sRequestItem &requestTerm, unordered_map
 	if (search != VM.workingVmSet.end()) {      // 表示该虚拟机在前几天的服务器里
 
 		int serID = VM.workingVmSet[requestTerm.vmID].serverID;    // 记录该虚拟机放在哪台服务器运行
-
-		if (serID == 126) {
-			int a = 1;
-		}
+		dayDeleteVM.insert({ requestTerm.vmID, tempVm });
 
 		if (requestVm.nodeStatus) {   // 双节点
 			server.myServerSet[serID].aIdleCPU += requestVm.needCPU / 2;
@@ -198,10 +221,11 @@ void deleteVM(cServer &server, cVM &VM, sRequestItem &requestTerm, unordered_map
 
 // 添加虚拟机（可能添加到当天购买的服务器，也可能是已购买的服务器中）
 void addVM(cServer &server, cVM &VM, sRequestItem &requestTerm, vector<bool> &hasDeploy, vector<vector<sServerItem>> &transfer,
-	unordered_map<string, sVmItem> &workVm, vector<pair<string, int>> &restID, int whichDay, int iTerm, int indexTerm) {
+	unordered_map<string, sVmItem> &workVm, vector<pair<string, int>> &restID, int whichDay, int iTerm, int indexTerm,
+	vector<double> &args) {
 
 	sVmItem requestVm = VM.info[requestTerm.vmName];    // 找到需要添加的虚拟机
-	sServerItem myServer = chooseServer(server, requestVm);   // 找到匹配的服务器
+	sServerItem myServer = chooseServer(server, requestVm, args);   // 找到匹配的服务器
 
 	if (myServer.energyCost < 0) {    // 表示能加入到已购买的服务器
 
@@ -284,7 +308,7 @@ void updateMinCost(vector<pair<string, int>> &restID, vector<vector<sServerItem>
 
 
 // 购买服务器和部署虚拟机
-void buyServer(cServer &server, cVM &VM, const cRequests &request, vector<pair<string, int>> &restID,
+void buyServer(cServer &server, cVM &VM, cRequests &request, vector<pair<string, int>> &restID,
 	vector<vector<sServerItem>> &transfer, vector<bool> &hasDeploy, vector<int> &path, int maxLoc, int whichDay, int begin) {
 
 	vector<int> buy;    // 记录在哪些节点买服务器

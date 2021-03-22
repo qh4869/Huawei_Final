@@ -260,7 +260,7 @@ void cServer::updatVmSourceOrder(sVmItem &requestVm, int serID, bool flag) {  //
 		vmSourceOrder.push_back(make_pair(serID, value));   // 最开始直接初始化
 		return;
 	}
-	else if (serID > vmSourceOrder.size() - 1) {   // 新加入的服务器
+	else if (serID > (int)vmSourceOrder.size() - 1) {   // 新加入的服务器
 		if (!flag) {
 			cout << "sort error" << endl;
 		}
@@ -268,7 +268,7 @@ void cServer::updatVmSourceOrder(sVmItem &requestVm, int serID, bool flag) {  //
 		pos = 0;
 	}
 	else {
-		for (int i = 0; i < vmSourceOrder.size(); i++) {
+		for (int i = 0; i < (int)vmSourceOrder.size(); i++) {
 			if (vmSourceOrder[i].first == serID) {   // 找到对应的位置
 				pos = i;
 				break;
@@ -291,7 +291,7 @@ void cServer::updatVmSourceOrder(sVmItem &requestVm, int serID, bool flag) {  //
 		auto ite = vmSourceOrder.begin();
 		if (pos - 1 < 0 || mycompID(vmSourceOrder[pos - 1], temp)) {  // pos - 1 < 0表示是第一个元素
 			if (pos != vmSourceOrder.size() - 1) {   // 不是最后一个元素
-				for (int i = pos + 1; i < vmSourceOrder.size(); i++) {
+				for (int i = pos + 1; i < (int)vmSourceOrder.size(); i++) {
 					if (i == vmSourceOrder.size() - 1 && mycompID(vmSourceOrder[i], temp)) {  // 最后一个元素还是小
 						vmSourceOrder.erase(ite + pos);
 						vmSourceOrder.push_back(temp);

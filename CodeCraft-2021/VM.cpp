@@ -136,10 +136,6 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 	int occupyCPU = info[vmName].needCPU;
 	int occupyRAM = info[vmName].needRAM;
 
-	if (serID == 126 || lastServerID == 126) {
-		int a = 1;
-	}
-
 	// 更改该虚拟机现在的位置
 	workingVmSet[VMid].serverID = serID;
 	workingVmSet[VMid].node = node;

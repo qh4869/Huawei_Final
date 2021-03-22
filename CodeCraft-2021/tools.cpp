@@ -82,18 +82,18 @@ bool isFitServer(sServerItem &serverItem, vector<sVmItem> &vmSet) {
 
 
 // 加入单个虚拟机时，找到能放进该虚拟机的最便宜的服务器
-sServerItem chooseServer(cServer &server, sVmItem &requestVM) {
+sServerItem chooseServer(cServer &server, sVmItem &requestVM, vector<double> &args) {
 
 	int minCost = INT_MAX;
 	sServerItem myServer;
 
-	myServer = chooseBuyServer(server, requestVM);   // 从已经购买的服务器中挑选合适的
+	myServer = chooseBuyServer(server, requestVM, args);   // 从已经购买的服务器中挑选合适的
 	if (myServer.hardCost == -1) {    // 找到了服务器
 		return myServer;
 	}
 
 	// 已购买服务器中没有满足条件的，需要买新的服务器
-	for (int i = 0; (int)i < server.priceOrder.size(); i++) {
+	for (int i = 0; i < (int)server.priceOrder.size(); i++) {
 
 		myServer = server.info[server.priceOrder[i].first];   // 根据名称取出服务器
 		if (!requestVM.nodeStatus && requestVM.needCPU <= myServer.totalCPU / 2   // 单节点
@@ -112,6 +112,7 @@ sServerItem chooseServer(cServer &server, sVmItem &requestVM) {
 
 
 // 有多个虚拟机，查看是否有符合条件的服务器，有的话，查找价格最便宜的那个
+// 在使用图的方法中使用该函数
 sServerItem chooseServer(cServer &server, unordered_map<string, sVmItem> &workVm,
 	vector<pair<string, int>> &restID, int begin) {
 
@@ -125,7 +126,7 @@ sServerItem chooseServer(cServer &server, unordered_map<string, sVmItem> &workVm
 	int minCost = INT_MAX;
 	sServerItem myServer;
 	// 从最便宜的开始找
-	for (int i = 0; (int)i < server.priceOrder.size(); i++) {
+	for (int i = 0; i < (int)server.priceOrder.size(); i++) {
 		myServer = server.info[server.priceOrder[i].first];    // 根据名称取出服务器
 		if (isFitServer(myServer, vmSet)) {    // 如果找到了的话直接返回，此时价格已经是最低的了
 			return myServer;
@@ -136,7 +137,7 @@ sServerItem chooseServer(cServer &server, unordered_map<string, sVmItem> &workVm
 }
 
 // 从已购买的服务器中挑选最合适的服务器
-sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM) {
+sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM, vector<double> &args) {
 
 	sServerItem myServer;
 	myServer.hardCost = 1;   // 可通过hardCost来判断是否找到了服务器
@@ -157,7 +158,7 @@ sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM) {
 				if (tempServer.aIdleCPU >= requestVM.needCPU && tempServer.aIdleRAM >= requestVM.needRAM) {    // a节点
 					restCPU = tempServer.aIdleCPU - requestVM.needCPU;
 					restRAM = tempServer.aIdleRAM - requestVM.needRAM;
-					tempValue = restCPU + restRAM + abs(restCPU - 0.3 * restRAM) * 1;
+					tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 					if (tempValue < minValue) {
 						minValue = tempValue;
 						myServer.energyCost = -1;
@@ -170,7 +171,7 @@ sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM) {
 				if (tempServer.bIdleCPU >= requestVM.needCPU && tempServer.bIdleRAM >= requestVM.needRAM) {  // b 节点
 					restCPU = tempServer.bIdleCPU - requestVM.needCPU;
 					restRAM = tempServer.bIdleRAM - requestVM.needRAM;
-					tempValue = restCPU + restRAM + abs(restCPU - 0.3 * restRAM) * 1;
+					tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 					if (tempValue < minValue) {
 						minValue = tempValue;
 						myServer.energyCost = -1;
@@ -185,7 +186,7 @@ sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM) {
 					&& tempServer.bIdleCPU >= requestVM.needCPU / 2 && tempServer.bIdleRAM >= requestVM.needRAM / 2) {
 					restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
 					restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
-					tempValue = restCPU + restRAM + abs(restCPU - 0.3 * restRAM) * 1;
+					tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 					if (tempValue < minValue) {
 						minValue = tempValue;
 						myServer.energyCost = -1;
@@ -236,40 +237,40 @@ void deployVM(cServer &server, cVM &VM, const cRequests &request, int index, int
 
 
 // 开始编写迁移函数
-void migrateVM(cServer &server, cVM &VM, int whichDay, unordered_map<string, int> &dayWorkingVM, int vmTotalNum) {
+void migrateVM(cServer &server, cVM &VM, int whichDay, unordered_map<string, int> &dayWorkingVM, 
+	int vmTotalNum, unordered_map<int, sMyEachServer> &delSerSet, vector<double> &args) {
 
 	int migrateNum = vmTotalNum * 5 / 1000;
-	//int migrateNum = (VM.workingVmSet.size() - dayWorkingVM.size()) * 5 / 1000;   // 允许的最大迁移数量
-	int serID;   // 迁出的服务器id
+	int serID;            // 迁出的服务器id
 	sServerItem myServer;   // 迁入的服务器
 	sVmItem requestVM;   // 需要迁移的虚拟机
 	string vmID;    // 需要迁出的虚拟机ID
 	int count = 0;   // 成功迁移的虚拟机数量统计
 
-	int totalServer = 0;
+	int totalServer = 0;   // 这天之前一共买了多少服务器，用来标识哪些服务器时当天买的
 	for (int i = 0; i < whichDay; i++) {
 		totalServer += server.serverNum[i]; 
 	}
 
-	for (int i = 0; i < server.vmSourceOrder.size(); i++) {
+	for (int i = 0; i < (int)server.vmSourceOrder.size() / 1; i++) {
 
 		serID = server.vmSourceOrder[i].first;   // 迁出的服务器id
-		if (serID >= totalServer) {
-			continue;    // 表示该服务器是在当天购买的，不能迁移
-		}
+		// 表示该服务器是在当天购买的，不能迁移
+		if (serID >= totalServer) { continue; }
+
 		int num = server.serverVMSet[serID].size();  // 该服务器里的虚拟机数量
 		for (int j = 0; j < num; j++) {
 
-			if (count >= migrateNum) {
-				return;
-			}
+			if (count >= migrateNum) { return; }   // 数量达到限制，直接退出
 
 			vmID = server.serverVMSet[serID].begin()->first;    // 需要迁出的虚拟机ID
-			if (dayWorkingVM.count(vmID) == 1) {    // 该虚拟机时当天购买的，所以不迁移
-				continue;
-			}
+			// 该虚拟机是当天购买的，所以不迁移
+			if (dayWorkingVM.count(vmID) == 1) { continue; }
+
+			// 取出该虚拟机并判断是否有合适的服务器可以放入
 			requestVM = VM.info[VM.workingVmSet[vmID].vmName];
-			myServer = chooseBuyServer(server, requestVM, i);   // 找到合适的服务器
+			// 找到合适的服务器
+			myServer = chooseBuyServer(server, requestVM, VM, i, delSerSet, totalServer, args);  // 指定ratio   
 			if (myServer.hardCost == -1) {   // 表示找到了服务器
 				count++;    // 迁移数量+1
 				if (requestVM.nodeStatus) {   // true表示双节点
@@ -278,6 +279,14 @@ void migrateVM(cServer &server, cVM &VM, int whichDay, unordered_map<string, int
 				else {    // false表示单节点
 					VM.transfer(server, whichDay, vmID, myServer.buyID, myServer.node);
 				}
+
+				if (delSerSet.count(myServer.buyID) == 1) {   // 迁入的服务器当天有删除操作
+					updateDelSerSet(delSerSet, requestVM, myServer.node, myServer.buyID, true);  // 添加虚拟机
+				}
+				else if (delSerSet.count(serID) == 1) {   // 迁出的服务器当天有删除操作
+					updateDelSerSet(delSerSet, requestVM, myServer.node, serID, false);   // 删除虚拟机
+				}
+
 				server.updatVmSourceOrder(requestVM, serID, false);
 				server.updatVmSourceOrder(requestVM, myServer.buyID, true);
 			} 
@@ -292,8 +301,53 @@ void migrateVM(cServer &server, cVM &VM, int whichDay, unordered_map<string, int
 }
 
 
+// 更新有删除操作的服务器的CPU和RAM
+void updateDelSerSet(unordered_map<int, sMyEachServer> &delSerSet, 
+	sVmItem &requestVM, bool node, int serID, bool flag) {
+
+	if (flag) {   // add
+		if (requestVM.nodeStatus) {   // true : double
+			delSerSet[serID].aIdleCPU -= requestVM.needCPU / 2;
+			delSerSet[serID].bIdleCPU -= requestVM.needCPU / 2;
+			delSerSet[serID].aIdleRAM -= requestVM.needRAM / 2;
+			delSerSet[serID].bIdleRAM -= requestVM.needRAM / 2;
+		} 
+		else {   // false : single
+			if (node) {  // a node
+				delSerSet[serID].aIdleCPU -= requestVM.needCPU;
+				delSerSet[serID].aIdleRAM -= requestVM.needRAM;
+			}
+			else {   // b node
+				delSerSet[serID].bIdleCPU -= requestVM.needCPU;
+				delSerSet[serID].bIdleRAM -= requestVM.needRAM;
+			}
+		}
+	}
+	else {   // delete
+		if (requestVM.nodeStatus) {   // true : double
+			delSerSet[serID].aIdleCPU += requestVM.needCPU / 2;
+			delSerSet[serID].bIdleCPU += requestVM.needCPU / 2;
+			delSerSet[serID].aIdleRAM += requestVM.needRAM / 2;
+			delSerSet[serID].bIdleRAM += requestVM.needRAM / 2;
+		}
+		else {   // false : single
+			if (node) {  // a node
+				delSerSet[serID].aIdleCPU += requestVM.needCPU;
+				delSerSet[serID].aIdleRAM += requestVM.needRAM;
+			}
+			else {   // b node
+				delSerSet[serID].bIdleCPU += requestVM.needCPU;
+				delSerSet[serID].bIdleRAM += requestVM.needRAM;
+			}
+		}
+	}
+
+}
+
+
 // 迁移使用的函数，需要指定index
-sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM, int index) {
+sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM, cVM &VM, int index,
+	unordered_map<int, sMyEachServer> &delSerSet, int totalServer, vector<double> &args) {
 
 	sServerItem myServer;
 	myServer.hardCost = 1;   // 可通过hardCost来判断是否找到了服务器
@@ -306,24 +360,31 @@ sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM, int index) {
 		int minValue = INT_MAX;
 		int tempValue;
 		int serID;      // 要迁入的id
-		double first = (double)server.vmSourceOrder[index].second;
-		double second;
+		double first = (double)server.vmSourceOrder[index].second;   // 迁出服务器的资源数
+		double second;   // 迁入服务器的资源数
 
 		for (unsigned i = server.vmSourceOrder.size() - 1; i > index; i--) {   // 从后面往前找
 
 			second = (double)server.vmSourceOrder[i].second;
-			if (second / first < 2.0) {
-				break;
-			}
+			// 当占用资源数是迁出的N倍时结束（这时可能更容易超出限制，所以直接退出）
+			if (second / first < args[1]) { break; }
 
 			serID = server.vmSourceOrder[i].first;      // 取出下一个的id
-			tempServer = server.myServerSet[serID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
+			if (serID >= totalServer) { continue; }   // 表示这个要迁入的服务器时当天购买的，不能迁入
+
+			if (delSerSet.count(serID) == 1) {   // 该服务器在当天有删除操作
+				tempServer = delSerSet[serID];
+			}
+			else {  // 表示这台服务器当天没有删除操作
+				tempServer = server.myServerSet[serID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
+			}
 
 			if (!requestVM.nodeStatus) {    // 单节点
 				if (tempServer.aIdleCPU >= requestVM.needCPU && tempServer.aIdleRAM >= requestVM.needRAM) {    // a节点
+					tempServer = server.myServerSet[serID];   // 最后算比较值的时候还是得用myServerSet里的值
 					restCPU = tempServer.aIdleCPU - requestVM.needCPU;
 					restRAM = tempServer.aIdleRAM - requestVM.needRAM;
-					tempValue = restCPU + restRAM + abs(restCPU - 0.3 * restRAM) * 1;
+					tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 					if (tempValue < minValue) {
 						minValue = tempValue;
 						myServer.energyCost = -1;
@@ -332,11 +393,20 @@ sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM, int index) {
 						myServer.node = true;   // 返回true表示a 节点
 					}
 				}
+
+				if (delSerSet.count(serID) == 1) {   // 该服务器在当天有删除操作
+					tempServer = delSerSet[serID];
+				}
+				else {  // 表示这台服务器当天没有删除操作
+					tempServer = server.myServerSet[serID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
+				}
+
 				// 两个节点都要查看，看看放哪个节点更合适
 				if (tempServer.bIdleCPU >= requestVM.needCPU && tempServer.bIdleRAM >= requestVM.needRAM) {  // b 节点
+					tempServer = server.myServerSet[serID];   // 最后算比较值的时候还是得用myServerSet里的值
 					restCPU = tempServer.bIdleCPU - requestVM.needCPU;
 					restRAM = tempServer.bIdleRAM - requestVM.needRAM;
-					tempValue = restCPU + restRAM + abs(restCPU - 0.3 * restRAM) * 1;
+					tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 					if (tempValue < minValue) {
 						minValue = tempValue;
 						myServer.energyCost = -1;
@@ -349,9 +419,10 @@ sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM, int index) {
 			else {     // 双节点
 				if (tempServer.aIdleCPU >= requestVM.needCPU / 2 && tempServer.aIdleRAM >= requestVM.needRAM / 2
 					&& tempServer.bIdleCPU >= requestVM.needCPU / 2 && tempServer.bIdleRAM >= requestVM.needRAM / 2) {
+					tempServer = server.myServerSet[serID];   // 最后算比较值的时候还是得用myServerSet里的值
 					restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
 					restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
-					tempValue = restCPU + restRAM + abs(restCPU - 0.3 * restRAM) * 1;
+					tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 					if (tempValue < minValue) {
 						minValue = tempValue;
 						myServer.energyCost = -1;
@@ -366,6 +437,68 @@ sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM, int index) {
 	return myServer;  // 运行到这表示没找到,hardCost为1
 
 }
+
+
+// 有删除操作的服务器需要把被删除的虚拟机容量加回去
+unordered_map<int, sMyEachServer> recoverDelSerSet(cServer &server, cVM &VM,
+	unordered_map<string, sEachWorkingVM> &dayDeleteVM) {
+
+	unordered_map<int, sMyEachServer> delSerSet;
+	sMyEachServer myServer;
+	sEachWorkingVM workVM;
+	sVmItem requestVM;
+	int serID;   // 服务器ID
+
+	for (auto ite = dayDeleteVM.begin(); ite != dayDeleteVM.end(); ite++) {
+		workVM = ite->second;   
+		serID = workVM.serverID;
+		requestVM = VM.info[workVM.vmName];
+
+		if (delSerSet.count(serID) == 1) {    // 该服务器之前已经删过虚拟机了
+			myServer = delSerSet[serID];
+		}
+		else {   // 该服务器第一次删除虚拟机
+			myServer = server.myServerSet[serID];
+		}
+
+		if (requestVM.nodeStatus) {   // true : double node
+			myServer.aIdleCPU -= requestVM.needCPU / 2;
+			myServer.bIdleCPU -= requestVM.needCPU / 2;
+			myServer.aIdleRAM -= requestVM.needRAM / 2;
+			myServer.bIdleRAM -= requestVM.needRAM / 2;
+		}
+		else {  // false : single node
+			if (workVM.node) {   // true : a node
+				myServer.aIdleCPU -= requestVM.needCPU;
+				myServer.aIdleRAM -= requestVM.needRAM;
+			}
+			else {    // false : b node
+				myServer.bIdleCPU -= requestVM.needCPU;
+				myServer.bIdleRAM -= requestVM.needRAM;
+			}
+		}
+		if (delSerSet.count(serID) == 1) {   // 存在的话就直接修改值
+			delSerSet[serID] = myServer;
+		}
+		else {    // 不存在的话就添加新的键
+			delSerSet.insert({ serID, myServer });
+		}
+	}
+
+	return delSerSet;
+
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 // 对每天的请求按照资源的大小进行排序

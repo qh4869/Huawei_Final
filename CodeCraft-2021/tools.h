@@ -7,13 +7,14 @@ bool isFitServer(sMyEachServer &myServer, vector<sVmItem> &vmSet);
 bool isFitServer(sServerItem &serverItem, vector<sVmItem> &vmSet);
 
 // 给单个VM选择最优的服务器
-sServerItem chooseServer(cServer &server, sVmItem &requestVM);
+sServerItem chooseServer(cServer &server, sVmItem &requestVM, vector<double> &args);
 
 // 从已经购买的服务器中选择最优的服务器
-sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM);
+sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM, vector<double> &args);
 
 // 迁移使用的服务器选择函数
-sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM, int index);
+sServerItem chooseBuyServer(cServer &server, sVmItem &requestVM, cVM &VM, int index, 
+	unordered_map<int, sMyEachServer> &dayDeleteVM, int totalServer, vector<double> &args);
 
 // 看看几个连续的VM是否能放入一台服务其中，begin:表示从哪个节点开始的连续节点
 sServerItem chooseServer(cServer &server, unordered_map<string, sVmItem> &workVm,
@@ -24,8 +25,14 @@ void deployVM(cServer &server, cVM &VM, const cRequests &request, int index, int
 	int whichDay, int baseNum);
 
 // 迁移函数
-void migrateVM(cServer &server, cVM &VM, int whichDay, unordered_map<string, int> &dayWorkingVM, int vmTotalNum);
+void migrateVM(cServer &server, cVM &VM, int whichDay, unordered_map<string, int> &dayWorkingVM,
+	int vmTotalNum, unordered_map<int, sMyEachServer> &delSerSet, vector<double> &args);
 
+unordered_map<int, sMyEachServer> recoverDelSerSet(cServer &server, cVM &VM, unordered_map<string, sEachWorkingVM> &dayDeleteVM);
+
+void updateDelSerSet(unordered_map<int, sMyEachServer> &delSerSet, sVmItem &requestVM, bool node, int serID, bool flag);
+
+////////////////////////////////////////////////////////////////////////
 /////////////////////// 下面这几个函数还没改完bug
 bool mycomp(pair<int, int> i, pair<int, int> j);
 
