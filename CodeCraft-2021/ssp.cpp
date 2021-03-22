@@ -1,5 +1,6 @@
 ﻿#include "ssp.h"
 double gBeta, gGamma; // best fit中的自适应参数
+double gRamWeight;
 
 void ssp(cServer &server, cVM &VM, cRequests &request) {
 /* Fn: SSP方法
@@ -19,11 +20,13 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 		server.ksSize = 6;
 		gBeta = 0.3;
 		gGamma = 1;
+		gRamWeight = 1;
 	}
 	else {
 		server.ksSize = 1;
 		gBeta = 0.5;
 		gGamma = 1;
+		gRamWeight = 1;
 	}
 
 #ifdef LOCAL
@@ -47,11 +50,10 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 		" " << "cpuRatio" << " " << "ramRatio" << " " << "addcnt" << " " << "delcnt" << endl;
 #endif
 
-	bool vmIsDouble;
-	int serID;
-	bool serNode;
+	// bool vmIsDouble;
+	// int serID;
+	// bool serNode;
 	int bugID;
-
 	/* 背包算法要处理的vm add请求集合，最多server.ksSize个元素 */
 	vector<pair<string, string>> curSet;
 	/*还在curSet中的请求如果又来了del请求，那么就先放到这个里*/
@@ -66,89 +68,112 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 		TIMEend = clock();
 		cout<<(double)(TIMEend-TIMEstart)/CLOCKS_PER_SEC << endl;
 #endif
-		/*部分虚拟机装进已购买的服务器，能够处理的del请求（已经部署的vm）也直接处理*/
-		for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) { // 每一条请求
-			string vmID = request.info[iDay][iTerm].vmID;
+		int reqNum = request.numEachDay[iDay];
+		vector<sRequestItem> dailyReqs = request.info[iDay];
+		vector<bool> isSolved(reqNum); // {deploy和del时候更新}
 
-			/*firstFit*/
-			if (request.info[iDay][iTerm].type) { // add
-#ifdef LOCAL
-				addcnt ++;
-#endif
-				/*最新版的选择策略*/
-				string vmName = request.info[iDay][iTerm].vmName;
-				sVmItem requestVM = VM.info[vmName];
-				vmIsDouble = VM.isDouble(vmName);
+		bool dayEnd = false;
+		while (dayEnd == false) {
+			/*已经购买的服务器找当天的add请求，bin-centric best-fit with dot-product*/
+			for (int iSV=0; iSV<(int)server.myServerSet.size(); iSV++) {
+				int bestReq;
+				bool bestNode;
 
-				if (vmIsDouble) {
-					serID = srchInMyServerDouble(server, requestVM);
-				}
-				else {
-					tie(serID, serNode) = srchInMyServerSingle(server, requestVM);
-				}
+				tie(bestReq, bestNode) = reqFitServer(server.myServerSet[iSV], dailyReqs, isSolved, VM);
 
-				if (serID != -1) { // 能直接装进去
+				if (bestReq != -1) { // 可以找到，找不到就无事发生
+					string vmName = dailyReqs[bestReq].vmName;
+					string vmID = dailyReqs[bestReq].vmID;
+					bool vmIsDouble = VM.isDouble(vmName);
+
 					if (vmIsDouble) 
-						bugID = VM.deploy(server, iDay, vmID, vmName, serID);
+						bugID = VM.deploy(server, iDay, vmID, vmName, iSV);
 					else 
-						bugID = VM.deploy(server, iDay, vmID, vmName, serID, serNode);
+						bugID = VM.deploy(server, iDay, vmID, vmName, iSV, bestNode);
+					isSolved[bestReq] = true;
 					if (bugID) {
 						cout << "部署失败" << bugID << endl;
 						return;
 					}
 				}
-				else // 装不进去
-					curSet.push_back(make_pair(vmID, vmName));
 			}
-			else { // del
-#ifdef LOCAL
-				delcnt++;
-#endif
-				/*检查这个vm是否已经被部署 或者 在curSet中*/
-				if (VM.workingVmSet.count(vmID))
-					VM.deleteVM(vmID, server);
-				else {
-					bool flag = false;
-					for (const auto &x : curSet) {
-						if (x.first==vmID) { // 在curSet中
-							delSet.push_back(x);
-							flag = true;
-							break;
+
+			int iTerm = 0;
+			while (1) {
+				if (iTerm >= request.numEachDay[iDay]) {
+					dayEnd = true;
+					break;
+				}
+
+				string vmID = request.info[iDay][iTerm].vmID;
+
+				if (request.info[iDay][iTerm].type) { // add
+					if (isSolved[iTerm]==false) {
+						string vmName = request.info[iDay][iTerm].vmName;
+						curSet.push_back(make_pair(vmID, vmName));
+						isSolved[iTerm] = true;
+					}
+				}
+				else { // del
+					if (isSolved[iTerm]==false) {
+						/*检查这个vm是否已经被部署 或者 在curSet中*/
+						if (VM.workingVmSet.count(vmID)) {
+							VM.deleteVM(vmID, server);
+							isSolved[iTerm] = true;
+						}
+						else {
+							bool flag = false;
+							for (const auto &x : curSet) {
+								if (x.first==vmID) { // 在curSet中
+									delSet.push_back(x);
+									isSolved[iTerm] = true;
+									flag = true;
+									break;
+								}
+							}
+							if (flag == false) {
+								cout << "不能删除不存在的虚拟机2" << endl;
+							}
 						}
 					}
-					if (flag == false) {
-						cout << "不能删除不存在的虚拟机2" << endl;
+				}
+
+				/*knapSack*/
+				if ((int)curSet.size() == server.ksSize) { // 可以执行背包算法了
+
+					packAndDeploy(server, VM, curSet, iDay);
+
+					/*delSet遗留问题*/
+					auto it = delSet.begin();
+					while (it != delSet.end()) {
+						string vmID = it->first;
+						if (VM.workingVmSet.count(vmID)) {
+							VM.deleteVM(vmID, server);
+							it = delSet.erase(it);
+						}
+						else 
+							it++;
 					}
+					break;
 				}
-			}
 
-			/*knapSack*/
-			if ((int)curSet.size() == server.ksSize) { // 可以执行背包算法了
-				packAndDeploy(server, VM, curSet, iDay);
-			}
-
-			/*delSet遗留问题，训练集数据都没出现这个情况*/
-			for (auto it=delSet.begin(); it!=delSet.end(); ) {
-				string vmID = it->first;
-				if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
-					VM.deleteVM(vmID, server);
-					it = delSet.erase(it);
-				}
-				else
-					it++;
+				iTerm++;
 			}
 		}
 
 		/*curSet中还遗留部分vm*/
 		while (curSet.size()) {
 			packAndDeploy(server, VM, curSet, iDay);
-			for (auto it=delSet.begin(); it!=delSet.end(); ) {
+
+			/*delSet遗留问题*/
+			auto it = delSet.begin();
+			while (it != delSet.end()) {
 				string vmID = it->first;
-				if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
+				if (VM.workingVmSet.count(vmID)) {
 					VM.deleteVM(vmID, server);
 					it = delSet.erase(it);
 				}
-				else
+				else 
 					it++;
 			}
 		}
@@ -356,12 +381,13 @@ tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int b
 }
 
 void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSet, int iDay) {
+
 	string serName;
 	queue<int> path;
 	vector<bool> isDeployed(curSet.size(), false);
 	int serID;
 	int action;
-	string vmID; // 临时变量，和上面的冲突了
+	string vmID; 
 	string vmName;
 	int bugID;
 
@@ -410,12 +436,12 @@ void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSe
 
 	/*已经部署的服务器从curSet中删除*/
 	auto itIndicator = isDeployed.begin();
-	auto it=curSet.begin();
+	auto it = curSet.begin();
 	while (it != curSet.end()) {
 		if (*itIndicator == true) {
 			it = curSet.erase(it);
 		}
-		else
+		else 
 			it++;
 		itIndicator++;
 	}
@@ -514,4 +540,82 @@ std::tuple<int, bool> srchInMyServerSingle(cServer &server, sVmItem &requestVM) 
 	}
 
 	return make_tuple(-1, false);
+}
+
+tuple<int, bool> reqFitServer(sMyEachServer &thisSV, vector<sRequestItem> &dailyReqs, vector<bool> &isSolved, \
+	cVM &VM) {
+/* Fn: 对于一台已经购买的服务器，找到一台当天最适合装进去的VM add请求
+*
+* In:
+*	- thisSV: 某一台虚拟机
+*	- dailyReqs: 当天的请求向量
+*	- isSolved: 当天请求的处理情况 true:已被处理
+*
+* Out: 返回当天请求的顺序号,如果找不到返回-1; node a节点部署返回true，双节点bool无意义
+*/
+	int bestReq = -1; // output
+	int deployType = -1; // 0表示双节点部署，1表示A节点，2表示B节点
+	int maxDotProd = 0;
+
+	/*这台服务器的资料*/
+	const int aIdleCPU = thisSV.aIdleCPU;
+	const int aIdleRAM = thisSV.aIdleRAM;
+	const int bIdleCPU = thisSV.bIdleCPU;
+	const int bIdleRAM = thisSV.bIdleRAM;
+
+	for (int iReq=0; iReq<(int)dailyReqs.size(); iReq++) { // 每一条请求
+		if (dailyReqs[iReq].type == false || isSolved[iReq] == true) // del请求或者已被处理
+			continue;
+
+		/*这台虚拟机的资料*/
+		string vmName = dailyReqs[iReq].vmName;
+		int needCPU = VM.info[vmName].needCPU;
+		int needRAM = VM.info[vmName].needRAM;
+		bool vmIsDouble = VM.info[vmName].nodeStatus;
+
+		if (vmIsDouble) {
+			if (aIdleCPU >= needCPU / 2 && aIdleRAM >= needRAM / 2 \
+				&& bIdleCPU >= needCPU / 2 && bIdleRAM >= needRAM / 2) {
+				/*计算内积，四维度，cpu权重等于1，ram权重等于gRamWeight*/
+				int curDotProd = aIdleCPU * (needCPU / 2) + aIdleRAM * (needRAM / 2) * gRamWeight \
+					+ bIdleCPU * (needCPU / 2) + bIdleRAM * (needRAM / 2) * gRamWeight;
+				if (curDotProd > maxDotProd) {
+					maxDotProd = curDotProd;
+					bestReq = iReq;
+					deployType = 0;
+				}
+			}
+		}
+		else { // 单节点部署两个节点都要算
+			/*Node A*/
+			if (aIdleCPU >= needCPU && aIdleRAM >= needRAM) {
+				int curDotProd = aIdleCPU * needCPU + aIdleRAM * needRAM * gRamWeight;
+				if (curDotProd > maxDotProd) {
+					maxDotProd = curDotProd;
+					bestReq = iReq;
+					deployType = 1;
+				}
+			}
+			/*Node B*/
+			if (bIdleCPU >= needCPU && bIdleRAM >= needRAM) {
+				int curDotProd = bIdleCPU * needCPU + bIdleRAM * needRAM * gRamWeight;
+				if (curDotProd > maxDotProd) {
+					maxDotProd = curDotProd;
+					bestReq = iReq;
+					deployType = 2;
+				}
+			}
+		}
+	}
+
+	switch (deployType) {
+		case 0:
+			return make_tuple(bestReq, false);
+		case 1:
+			return make_tuple(bestReq, true);
+		case 2:
+			return make_tuple(bestReq, false);
+		default:
+			return make_tuple(-1, false);
+	}
 }

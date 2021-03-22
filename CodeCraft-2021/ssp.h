@@ -46,3 +46,6 @@ tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int b
 cyt::sServerItem bestFit(cServer &server, sVmItem &requestVM);
 int srchInMyServerDouble(cServer &server, sVmItem &requestVM);
 std::tuple<int, bool> srchInMyServerSingle(cServer &server, sVmItem &requestVM);
+
+/*bin-centric best-fit with dot-product*/
+tuple<int, bool> reqFitServer(sMyEachServer &thisSV, vector<sRequestItem> &dailyReqs, vector<bool> &isSolved, cVM &VM);
