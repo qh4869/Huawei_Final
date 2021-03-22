@@ -17,7 +17,6 @@ using namespace std;
 extern clock_t TIMEstart, TIMEend;
 #endif
 
-
 struct sVmNode {
 	string vmID;
 	string vmName;

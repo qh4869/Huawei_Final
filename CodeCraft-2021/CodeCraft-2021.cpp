@@ -5,6 +5,10 @@
 #include "ssp.h"
 #include <iostream>
 #include "globalHeader.h" // 全局常量
+#ifdef LOCAL
+#include<time.h>
+#endif
+
 using namespace std;
 
 #ifdef LOCAL
@@ -36,12 +40,6 @@ int main()
 
 void process(cServer &server, cVM &VM, cRequests &request) {
 
-    // 数据预处理
-    // server.alpha = ALPHA;
-    server.ksSize = KSSIZE;
-    // server.rankServerByPrice(); // 按照价格排序 权重为alpha
-
-	// firstFit(server, VM, request);
     ssp(server, VM, request);
 
     server.idMapping(); // id map

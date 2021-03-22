@@ -1,4 +1,5 @@
 ﻿#include "ssp.h"
+double gBeta, gGamma; // best fit中的自适应参数
 
 void ssp(cServer &server, cVM &VM, cRequests &request) {
 /* Fn: SSP方法
@@ -11,6 +12,20 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 *	- firstFit 和 knapSack 结构互相迭代
 *	- del及时处理
 */
+	/*自适应参数*/
+	double addVar, delVar;
+	tie(addVar, delVar) = request.getVarRequest();
+	if (delVar < 7) {
+		server.ksSize = 6;
+		gBeta = 0.3;
+		gGamma = 1;
+	}
+	else {
+		server.ksSize = 1;
+		gBeta = 0.5;
+		gGamma = 1;
+	}
+
 #ifdef LOCAL
 	// 估计成本变量
 	int engCostStas = 0; // 计算功耗成本
@@ -35,8 +50,6 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 	bool vmIsDouble;
 	int serID;
 	bool serNode;
-	int vmReqCPU; 
-	int vmReqRAM;
 	int bugID;
 
 	/* 背包算法要处理的vm add请求集合，最多server.ksSize个元素 */
@@ -44,7 +57,7 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 	/*还在curSet中的请求如果又来了del请求，那么就先放到这个里*/
 	vector<pair<string, string>> delSet;
 
-	/*生成infoV，向量*/
+	/*生成infoV，向量，为了写多线程*/
 	server.genInfoV();
 
 	for (int iDay=0; iDay<request.dayNum; iDay++) { // 每一天的请求
@@ -431,7 +444,7 @@ cyt::sServerItem bestFit(cServer &server, sVmItem &requestVM) {
 				if (tempServer.aIdleCPU >= requestVM.needCPU && tempServer.aIdleRAM >= requestVM.needRAM) {    // a节点
 					restCPU = tempServer.aIdleCPU - requestVM.needCPU;
 					restRAM = tempServer.aIdleRAM - requestVM.needRAM;
-					tempValue = restCPU + restRAM + abs(restCPU - 0.3 * restRAM) * 1;
+					tempValue = restCPU + restRAM + abs(restCPU - gBeta * restRAM) * gGamma;
 					if (tempValue < minValue) {
 						minValue = tempValue;
 						myServer.energyCost = -1;
@@ -444,7 +457,7 @@ cyt::sServerItem bestFit(cServer &server, sVmItem &requestVM) {
 				if (tempServer.bIdleCPU >= requestVM.needCPU && tempServer.bIdleRAM >= requestVM.needRAM) {  // b 节点
 					restCPU = tempServer.bIdleCPU - requestVM.needCPU;
 					restRAM = tempServer.bIdleRAM - requestVM.needRAM;
-					tempValue = restCPU + restRAM + abs(restCPU - 0.3 * restRAM) * 1;
+					tempValue = restCPU + restRAM + abs(restCPU - gBeta * restRAM) * gGamma;
 					if (tempValue < minValue) {
 						minValue = tempValue;
 						myServer.energyCost = -1;
@@ -459,7 +472,7 @@ cyt::sServerItem bestFit(cServer &server, sVmItem &requestVM) {
 					&& tempServer.bIdleCPU >= requestVM.needCPU / 2 && tempServer.bIdleRAM >= requestVM.needRAM / 2) {
 					restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
 					restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
-					tempValue = restCPU + restRAM + abs(restCPU - 0.3 * restRAM) * 1;
+					tempValue = restCPU + restRAM + abs(restCPU - gBeta * restRAM) * gGamma;
 					if (tempValue < minValue) {
 						minValue = tempValue;
 						myServer.energyCost = -1;

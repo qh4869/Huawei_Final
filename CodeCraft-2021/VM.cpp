@@ -126,43 +126,24 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 	workingVmSet[VMid].serverID = serID;
 	workingVmSet[VMid].node = node;
 
-	//////////////////////////用于检测错误///////////////////////////////
-	sServerItem outServer = server.info[server.myServerSet[lastServerID].serName];
-	sServerItem inServer = server.info[server.myServerSet[serID].serName];
-	///////////////////////////////////////////////////////////////
-
 	// 恢复前一个服务器的资源
 	if (lastServerNode == true) { // A node
 		server.myServerSet[lastServerID].aIdleCPU += occupyCPU;
 		server.myServerSet[lastServerID].aIdleRAM += occupyRAM;
-		if (server.myServerSet[lastServerID].aIdleCPU > outServer.totalCPU / 2 ||
-			server.myServerSet[lastServerID].aIdleRAM > outServer.totalRAM / 2) {
-			cout << "migrate a node error" << endl;
-		}
 	}
 	else {
 		server.myServerSet[lastServerID].bIdleCPU += occupyCPU;
 		server.myServerSet[lastServerID].bIdleRAM += occupyRAM;
-		if (server.myServerSet[lastServerID].bIdleCPU > outServer.totalCPU / 2 ||
-			server.myServerSet[lastServerID].bIdleRAM > outServer.totalRAM / 2) {
-			cout << "migrate b node error" << endl;
-		}
 	}
 
 	// 占据新服务器资源
 	if (node == true) {
 		server.myServerSet[serID].aIdleCPU -= occupyCPU;
 		server.myServerSet[serID].aIdleRAM -= occupyRAM;
-		if (server.myServerSet[serID].aIdleCPU < 0 || server.myServerSet[serID].aIdleRAM < 0) {
-			cout << "exit a node" << endl;
-		}
 	}
 	else {
 		server.myServerSet[serID].bIdleCPU -= occupyCPU;
 		server.myServerSet[serID].bIdleRAM -= occupyRAM;
-		if (server.myServerSet[serID].bIdleCPU < 0 || server.myServerSet[serID].bIdleRAM < 0) {
-			cout << "exit b node" << endl;
-		}
 	}
 
 	// 迁移条目更新
@@ -185,22 +166,12 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 
 	workingVmSet[VMid].serverID = serID;
 
-	//////////////////////////////////////////////////////////////
-	sServerItem outServer = server.info[server.myServerSet[lastServerID].serName];
-	//////////////////////////////////////////////////////////
-
 	// 恢复前一个服务器的资源
 	server.myServerSet[lastServerID].aIdleCPU += occupyCPU / 2;
 	server.myServerSet[lastServerID].aIdleRAM += occupyRAM / 2;
 	server.myServerSet[lastServerID].bIdleCPU += occupyCPU / 2;
 	server.myServerSet[lastServerID].bIdleRAM += occupyRAM / 2;
 
-	if (server.myServerSet[lastServerID].aIdleCPU > outServer.totalCPU / 2 ||
-		server.myServerSet[lastServerID].bIdleCPU > outServer.totalCPU / 2 ||
-		server.myServerSet[lastServerID].aIdleRAM > outServer.totalRAM / 2 ||
-		server.myServerSet[lastServerID].bIdleRAM > outServer.totalRAM / 2) {
-		cout << "double migrate error" << endl;
-	}
 
 	// 占据新服务器资源
 	server.myServerSet[serID].aIdleCPU -= occupyCPU / 2;
