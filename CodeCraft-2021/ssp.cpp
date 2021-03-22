@@ -1,6 +1,6 @@
 ﻿#include "ssp.h"
 
-void ssp(cServer &server, cVM &VM, const cRequests &request) {
+void ssp(cServer &server, cVM &VM, cRequests &request) {
 /* Fn: SSP方法
 *	- 关于del的地方还可以优化
 *	- 双节点的问题

@@ -18,7 +18,7 @@ int main()
     cServer server;
     cVM VM;
     cRequests request;
-    void process(cServer &server, cVM &VM, const cRequests &request);
+    void process(cServer &server, cVM &VM, cRequests &request);
 
     // 输入
     tie(server, VM, request) = dataIn("../CodeCraft-2021/training-1.txt");
@@ -34,7 +34,7 @@ int main()
     return 0;
 }
 
-void process(cServer &server, cVM &VM, const cRequests &request) {
+void process(cServer &server, cVM &VM, cRequests &request) {
 
     // 数据预处理
     // server.alpha = ALPHA;

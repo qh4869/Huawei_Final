@@ -35,7 +35,7 @@ namespace cyt {
 	};
 }
 
-void ssp(cServer &server, cVM &VM, const cRequests &request);
+void ssp(cServer &server, cVM &VM, cRequests &request);
 
 void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSet, int iDay);
 
