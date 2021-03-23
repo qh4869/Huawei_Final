@@ -93,7 +93,7 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 	if (server.myServerSet[serID].aIdleCPU<info[vmName].needCPU / 2 \
 		|| server.myServerSet[serID].bIdleCPU<info[vmName].needCPU / 2 \
 		|| server.myServerSet[serID].aIdleRAM < info[vmName].needRAM / 2 \
-		|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM / 2) {
+		|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM / 2) { 
 		cout << "服务器资源不够，分配失败" << endl;
 		return 2;
 	}

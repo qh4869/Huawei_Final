@@ -23,7 +23,7 @@ int main()
 
 #ifndef LOCAL
 	// 输出
-	dataOut(server, VM, request);
+	dataOut_1(server, VM, request);
 #endif
 	//dataOut(server, VM, request);
 	system("pause");
@@ -34,6 +34,7 @@ void process(cServer &server, cVM &VM, cRequests &request) {
 	// 数据预处理
 	server.alpha = ALPHA;
 	server.rankServerByPrice(); // 按照价格排序 权重为alpha
+	orderRequest(VM, request);
 
 	graphFit(server, VM, request);
 

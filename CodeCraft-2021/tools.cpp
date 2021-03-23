@@ -489,70 +489,85 @@ unordered_map<int, sMyEachServer> recoverDelSerSet(cServer &server, cVM &VM,
 
 }
 
+///////////////////////// request 排序 ////////////////////////////
 
+void orderRequest(cVM &VM, cRequests &request) {
 
-
-
-
-
-
-
-
-
-
-
-// 对每天的请求按照资源的大小进行排序
-void requestOrder(cVM &VM, cRequests &request) {
-
-	int maxNum = 50;   // 排序的最多个数
-	vector<pair<int, int>> order;   // int: 实际位置, int: 资源数
-	sVmItem requestItem;
-	int tempValue;
-	int count = 0;
-
-	for (int dayNum = 0; dayNum < request.dayNum; dayNum++) {
-		for (int i = 0; i < request.numEachDay[dayNum]; i++) {
-			if (request.info[dayNum][i].type) {    // add
-				requestItem = VM.info[request.info[dayNum][i].vmName];  // 取出该虚拟机
-				tempValue = requestItem.needCPU + requestItem.needRAM;
-				order.push_back(make_pair(i, tempValue));
-				count++;
-				if (count >= 50 || i == request.numEachDay[dayNum] - 1) {
-					sort(order.begin(), order.end(), mycomp);
-					updateRequestOrder(request, order, dayNum, i + 1 - count);
-					order.clear();
-					count = 0;
-				}
+	vector<vector<sRequestItem>> orderInfo(request.dayNum);
+	int quotient, remainder;
+	int dividend = 80;
+	for (int whichDay = 0; whichDay < request.dayNum; whichDay++) {
+		orderInfo[whichDay].resize(request.numEachDay[whichDay]);   // 分配内存
+		quotient = request.numEachDay[whichDay] / dividend;
+		remainder = request.numEachDay[whichDay] % dividend;
+		if (quotient == 0) {
+			if (whichDay == 12) {
+				int a = 1;
 			}
-			else {   // 删除的顺序就不动了
-				if (order.size() == 0) {   // 没有就不需要排序了
-					count = 0;
-					continue;
-				}
-				sort(order.begin(), order.end(), mycomp);
-				updateRequestOrder(request, order, dayNum, i + 1 - count);
-				order.clear();
-				count = 0;
+			subOrderRequest(VM, request, orderInfo, whichDay, 0, request.numEachDay[whichDay]);
+		}
+		else {
+			int begin = 0, end = dividend;
+			while (quotient > 0) {
+				subOrderRequest(VM, request, orderInfo, whichDay, begin, end);
+				begin = end;
+				end = end + dividend;
+				quotient--;
 			}
+			if (remainder != 0) {
+				end = end - dividend + remainder;
+				subOrderRequest(VM, request, orderInfo, whichDay, begin, end);
+			}
+		}
+	}
+	request.realInfo = request.info;
+	request.info = orderInfo;
+
+}
+
+
+void subOrderRequest(cVM &VM, cRequests &request, vector<vector<sRequestItem>> &orderInfo,
+	int whichDay, int begin, int end) {
+
+	vector<pair<int, int>> reqOrder;
+	sVmItem requestVM;
+	sRequestItem tempRequest;
+	int value;
+	int count = begin;
+	int index;
+	for (int iTerm = begin; iTerm < end; iTerm++) {
+		tempRequest = request.info[whichDay][iTerm];
+		if (tempRequest.type) {   // true : add
+			requestVM = VM.info[tempRequest.vmName];
+			value = requestVM.needCPU + requestVM.needRAM;
+			reqOrder.push_back(make_pair(iTerm, value));
+		} 
+		else {  // false : delete
+			if (!reqOrder.empty()) {   // 不空的话
+				sort(reqOrder.begin(), reqOrder.end(), mycomp);   // 先排序
+				for (int i = 0; i < reqOrder.size(); i++) {   // 把排序的赋值
+					index = reqOrder[i].first;
+					orderInfo[whichDay][count] = request.info[whichDay][index];
+					count++;
+				}
+				reqOrder.clear();
+			}
+			orderInfo[whichDay][count] = request.info[whichDay][iTerm];
+			count++;
+		}
+	}
+	if (!reqOrder.empty()) {
+		sort(reqOrder.begin(), reqOrder.end(), mycomp);   // 先排序
+		for (int i = 0; i < reqOrder.size(); i++) {   // 把排序的赋值
+			index = reqOrder[i].first;
+			orderInfo[whichDay][count] = request.info[whichDay][index];
+			count++;
 		}
 	}
 
 }
 
+
 bool mycomp(pair<int, int> i, pair<int, int> j) {
-	return i.second < j.second;
-}
-
-void updateRequestOrder(cRequests &request, vector<pair<int, int>> &order, int whichDay, int begin) {
-
-	vector<sRequestItem> tempRequest;
-	int index;   // 实际的位置
-	for (int i = 0; i < order.size(); i++) {
-		index = order[i].first;
-		tempRequest.push_back(request.info[whichDay][index]);
-	}
-	for (int i = begin; i < begin + order.size(); i++) {
-		request.info[whichDay][i] = tempRequest[i - begin];
-	}
-
+	return i.second > j.second;
 }

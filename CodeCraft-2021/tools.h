@@ -32,10 +32,8 @@ unordered_map<int, sMyEachServer> recoverDelSerSet(cServer &server, cVM &VM, uno
 
 void updateDelSerSet(unordered_map<int, sMyEachServer> &delSerSet, sVmItem &requestVM, bool node, int serID, bool flag);
 
-////////////////////////////////////////////////////////////////////////
-/////////////////////// 下面这几个函数还没改完bug
+
+void orderRequest(cVM &VM, cRequests &request);
+void subOrderRequest(cVM &VM, cRequests &request, vector<vector<sRequestItem>> &orderInfo,
+	int whichDay, int begin, int end);
 bool mycomp(pair<int, int> i, pair<int, int> j);
-
-void updateRequestOrder(cRequests &request, vector<pair<int, int>> &order, int whichDay, int begin);
-
-void requestOrder(cVM &VM, cRequests &request);

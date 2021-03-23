@@ -18,7 +18,7 @@ void graphFit(cServer &server, cVM &VM, cRequests &request) {
 		args[0] = 3;
 		args[1] = 1.5;
 		args[2] = 0.3;
-		args[3] = 1.2;
+		args[3] = 1.0;
 	}
 
 	int engCostStas = 0; // 计算功耗成本
