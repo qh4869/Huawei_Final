@@ -36,6 +36,8 @@ namespace cyt {
 
 void ssp(cServer &server, cVM &VM, cRequests &request);
 
+void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay);
+
 void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSet, int iDay);
 
 tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, vector<pair<string, string>> &curSet, int iDay); // 遍历服务器

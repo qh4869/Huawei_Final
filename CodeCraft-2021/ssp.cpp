@@ -3,14 +3,10 @@ double gBeta, gGamma; // best fit中的自适应参数
 
 void ssp(cServer &server, cVM &VM, cRequests &request) {
 /* Fn: SSP方法
-*	- 关于del的地方还可以优化
-*	- 双节点的问题
-*	- 背包问题：动态规划，tree分支定界，遗传算法
-*	- 有一些vm是可以放进已经买的服务器中的，可以改成dp 或者 排序firstFit
+*	- 背包问题：递归剪枝
 *	
 * Update 03.18
-*	- firstFit 和 knapSack 结构互相迭代
-*	- del及时处理
+*	- bestFit 和 knapSack 结构互相迭代
 */
 	/*自适应参数*/
 	double addVar, delVar;
@@ -32,6 +28,7 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 	int hardCostStas = 0;
 	string costName;
 
+	/*用于matlab分析的变量*/
 	ofstream svout;
 	svout.open("svOut.txt");
 	int svcnt_ = 0;
@@ -41,23 +38,11 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 	vector<double> ramidle;
 	vector<double> cpuall;
 	vector<double> ramall;
-	int addcnt = 0;
-	int delcnt = 0;
 	svout << "天数" << " " << "结余" << " " << "购买" << " " << "工作中" \
 		" " << "cpuRatio" << " " << "ramRatio" << " " << "addcnt" << " " << "delcnt" << endl;
 #endif
 
-	bool vmIsDouble;
-	int serID;
-	bool serNode;
-	int bugID;
-
-	/* 背包算法要处理的vm add请求集合，最多server.ksSize个元素 */
-	vector<pair<string, string>> curSet;
-	/*还在curSet中的请求如果又来了del请求，那么就先放到这个里*/
-	vector<pair<string, string>> delSet;
-
-	/*生成infoV，向量，为了写多线程*/
+	/*生成server.infoV，向量，为了写多线程*/
 	server.genInfoV();
 
 	for (int iDay=0; iDay<request.dayNum; iDay++) { // 每一天的请求
@@ -66,96 +51,12 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 		TIMEend = clock();
 		cout<<(double)(TIMEend-TIMEstart)/CLOCKS_PER_SEC << endl;
 #endif
-		/*部分虚拟机装进已购买的服务器，能够处理的del请求（已经部署的vm）也直接处理*/
-		for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) { // 每一条请求
-			string vmID = request.info[iDay][iTerm].vmID;
+		
+		/*每天的购买和部署*/
+		dailyPurchaseDeploy(server, VM, request, iDay);
 
-			/*firstFit*/
-			if (request.info[iDay][iTerm].type) { // add
-#ifdef LOCAL
-				addcnt ++;
-#endif
-				/*最新版的选择策略*/
-				string vmName = request.info[iDay][iTerm].vmName;
-				sVmItem requestVM = VM.info[vmName];
-				vmIsDouble = VM.isDouble(vmName);
-
-				if (vmIsDouble) {
-					serID = srchInMyServerDouble(server, requestVM);
-				}
-				else {
-					tie(serID, serNode) = srchInMyServerSingle(server, requestVM);
-				}
-
-				if (serID != -1) { // 能直接装进去
-					if (vmIsDouble) 
-						bugID = VM.deploy(server, iDay, vmID, vmName, serID);
-					else 
-						bugID = VM.deploy(server, iDay, vmID, vmName, serID, serNode);
-					if (bugID) {
-						cout << "部署失败" << bugID << endl;
-						return;
-					}
-				}
-				else // 装不进去
-					curSet.push_back(make_pair(vmID, vmName));
-			}
-			else { // del
-#ifdef LOCAL
-				delcnt++;
-#endif
-				/*检查这个vm是否已经被部署 或者 在curSet中*/
-				if (VM.workingVmSet.count(vmID))
-					VM.deleteVM(vmID, server);
-				else {
-					bool flag = false;
-					for (const auto &x : curSet) {
-						if (x.first==vmID) { // 在curSet中
-							delSet.push_back(x);
-							flag = true;
-							break;
-						}
-					}
-					if (flag == false) {
-						cout << "不能删除不存在的虚拟机2" << endl;
-					}
-				}
-			}
-
-			/*knapSack*/
-			if ((int)curSet.size() == server.ksSize) { // 可以执行背包算法了
-				packAndDeploy(server, VM, curSet, iDay);
-			}
-
-			/*delSet遗留问题，训练集数据都没出现这个情况*/
-			for (auto it=delSet.begin(); it!=delSet.end(); ) {
-				string vmID = it->first;
-				if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
-					VM.deleteVM(vmID, server);
-					it = delSet.erase(it);
-				}
-				else
-					it++;
-			}
-		}
-
-		/*curSet中还遗留部分vm*/
-		while (curSet.size()) {
-			packAndDeploy(server, VM, curSet, iDay);
-			for (auto it=delSet.begin(); it!=delSet.end(); ) {
-				string vmID = it->first;
-				if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
-					VM.deleteVM(vmID, server);
-					it = delSet.erase(it);
-				}
-				else
-					it++;
-			}
-		}
-		if (delSet.size()) {
-			cout << "某（些）需要删除的服务器没有被部署" << endl;
-			return;
-		}
+		/*后迁移（部署后计算，等效部署前实现）*/
+		//
 
 #ifdef LOCAL
 		/*一天结束统计功耗成本*/
@@ -166,7 +67,7 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 			}
 		}
 
-		// out
+		/*matlab数据导出*/
 		cpuidle.clear();
 		ramidle.clear();
 		cpuall.clear();
@@ -190,11 +91,9 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 		double ram1 = accumulate(ramidle.begin(),ramidle.end(),0);
 		double ram2 = accumulate(ramall.begin(),ramall.end(),0);
 		svout << iDay << " " << svcnt << " " << svcnt - svcnt_ << " " << wksvcnt << " "  \
-			<< cpu1/cpu2 << " " << ram1/ram2 << " " << addcnt << " " << delcnt << endl;
+			<< cpu1/cpu2 << " " << ram1/ram2 << " " << request.numAddEachDay[iDay] << " " << request.numDelEachDay[iDay] << endl;
 		svcnt_ = svcnt;
 		wksvcnt = 0;
-		addcnt = 0;
-		delcnt = 0;
 		svcnt = 0;
 #endif
 	}
@@ -514,4 +413,100 @@ std::tuple<int, bool> srchInMyServerSingle(cServer &server, sVmItem &requestVM) 
 	}
 
 	return make_tuple(-1, false);
+}
+
+void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay) {
+	/* 背包算法要处理的vm add请求集合，最多server.ksSize个元素 */
+	vector<pair<string, string>> curSet;
+	/*还在curSet中的请求如果又来了del请求，那么就先放到这个里*/
+	vector<pair<string, string>> delSet;
+
+	/*部分虚拟机装进已购买的服务器，能够处理的del请求（已经部署的vm）也直接处理*/
+	for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) { // 每一条请求
+		string vmID = request.info[iDay][iTerm].vmID;
+
+		/*firstFit*/
+		if (request.info[iDay][iTerm].type) { // add
+
+			/*最新版的选择策略*/
+			string vmName = request.info[iDay][iTerm].vmName;
+			sVmItem requestVM = VM.info[vmName];
+			bool vmIsDouble = VM.isDouble(vmName);
+			int serID;
+			bool serNode;
+			int bugID;
+
+			if (vmIsDouble) {
+				serID = srchInMyServerDouble(server, requestVM);
+			}
+			else {
+				tie(serID, serNode) = srchInMyServerSingle(server, requestVM);
+			}
+
+			if (serID != -1) { // 能直接装进去
+				if (vmIsDouble) 
+					bugID = VM.deploy(server, iDay, vmID, vmName, serID);
+				else 
+					bugID = VM.deploy(server, iDay, vmID, vmName, serID, serNode);
+				if (bugID) {
+					cout << "部署失败" << bugID << endl;
+					return;
+				}
+			}
+			else // 装不进去
+				curSet.push_back(make_pair(vmID, vmName));
+		}
+		else { // del
+			/*检查这个vm是否已经被部署 或者 在curSet中*/
+			if (VM.workingVmSet.count(vmID))
+				VM.deleteVM(vmID, server);
+			else {
+				bool flag = false;
+				for (const auto &x : curSet) {
+					if (x.first==vmID) { // 在curSet中
+						delSet.push_back(x);
+						flag = true;
+						break;
+					}
+				}
+				if (flag == false) {
+					cout << "不能删除不存在的虚拟机2" << endl;
+				}
+			}
+		}
+
+		/*knapSack*/
+		if ((int)curSet.size() == server.ksSize) { // 可以执行背包算法了
+			packAndDeploy(server, VM, curSet, iDay);
+		}
+
+		/*delSet遗留问题，训练集数据都没出现这个情况*/
+		for (auto it=delSet.begin(); it!=delSet.end(); ) {
+			string vmID = it->first;
+			if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
+				VM.deleteVM(vmID, server);
+				it = delSet.erase(it);
+			}
+			else
+				it++;
+		}
+	}
+
+	/*curSet中还遗留部分vm*/
+	while (curSet.size()) {
+		packAndDeploy(server, VM, curSet, iDay);
+		for (auto it=delSet.begin(); it!=delSet.end(); ) {
+			string vmID = it->first;
+			if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
+				VM.deleteVM(vmID, server);
+				it = delSet.erase(it);
+			}
+			else
+				it++;
+		}
+	}
+	if (delSet.size()) {
+		cout << "某（些）需要删除的服务器没有被部署" << endl;
+		return;
+	}
 }
