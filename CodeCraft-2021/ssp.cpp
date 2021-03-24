@@ -513,58 +513,62 @@ cyt::sServerItem bestFit(cServer &server, sVmItem &requestVM) {
 
 	if (server.myServerSet.size() > 0) {   // 有服务器才开始找
 
-		sMyEachServer tempServer;
-		int restCPU;
-		int restRAM;
-		int minValue = INT_MAX;
-		int tempValue;
+		int minValue[2] = {INT_MAX, INT_MAX};
+		cyt::sServerItem ompServer[2];
 
+		#pragma omp parallel for num_threads(2)
 		for (unsigned i = 0; i < server.myServerSet.size(); i++) {
 
-			tempServer = server.myServerSet[i];   // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
+			sMyEachServer tempServer = server.myServerSet[i];   // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
 
 			if (!requestVM.nodeStatus) {    // 单节点
 				if (tempServer.aIdleCPU >= requestVM.needCPU && tempServer.aIdleRAM >= requestVM.needRAM) {    // a节点
-					restCPU = tempServer.aIdleCPU - requestVM.needCPU;
-					restRAM = tempServer.aIdleRAM - requestVM.needRAM;
-					tempValue = restCPU + restRAM + abs(restCPU - gBeta * restRAM) * gGamma;
-					if (tempValue < minValue) {
-						minValue = tempValue;
-						myServer.energyCost = -1;
-						myServer.hardCost = -1;
-						myServer.buyID = i;   // 记录该服务器
-						myServer.node = true;   // 返回false表示b 节点
+					int restCPU = tempServer.aIdleCPU - requestVM.needCPU;
+					int restRAM = tempServer.aIdleRAM - requestVM.needRAM;
+					int tempValue = restCPU + restRAM + abs(restCPU - gBeta * restRAM) * gGamma;
+					if (tempValue < minValue[omp_get_thread_num()]) {
+						minValue[omp_get_thread_num()] = tempValue;
+						ompServer[omp_get_thread_num()].energyCost = -1;
+						ompServer[omp_get_thread_num()].hardCost = -1;
+						ompServer[omp_get_thread_num()].buyID = i;   // 记录该服务器
+						ompServer[omp_get_thread_num()].node = true;   // 返回false表示b 节点
 					}
 				}
 				// 两个节点都要查看，看看放哪个节点更合适
 				if (tempServer.bIdleCPU >= requestVM.needCPU && tempServer.bIdleRAM >= requestVM.needRAM) {  // b 节点
-					restCPU = tempServer.bIdleCPU - requestVM.needCPU;
-					restRAM = tempServer.bIdleRAM - requestVM.needRAM;
-					tempValue = restCPU + restRAM + abs(restCPU - gBeta * restRAM) * gGamma;
-					if (tempValue < minValue) {
-						minValue = tempValue;
-						myServer.energyCost = -1;
-						myServer.hardCost = -1;
-						myServer.buyID = i;   // 记录服务器
-						myServer.node = false;   // 返回false表示b 节点
+					int restCPU = tempServer.bIdleCPU - requestVM.needCPU;
+					int restRAM = tempServer.bIdleRAM - requestVM.needRAM;
+					int tempValue = restCPU + restRAM + abs(restCPU - gBeta * restRAM) * gGamma;
+					if (tempValue < minValue[omp_get_thread_num()]) {
+						minValue[omp_get_thread_num()] = tempValue;
+						ompServer[omp_get_thread_num()].energyCost = -1;
+						ompServer[omp_get_thread_num()].hardCost = -1;
+						ompServer[omp_get_thread_num()].buyID = i;   // 记录服务器
+						ompServer[omp_get_thread_num()].node = false;   // 返回false表示b 节点
 					}
 				}
 			}
 			else {     // 双节点
 				if (tempServer.aIdleCPU >= requestVM.needCPU / 2 && tempServer.aIdleRAM >= requestVM.needRAM / 2
 					&& tempServer.bIdleCPU >= requestVM.needCPU / 2 && tempServer.bIdleRAM >= requestVM.needRAM / 2) {
-					restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
-					restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
-					tempValue = restCPU + restRAM + abs(restCPU - gBeta * restRAM) * gGamma;
-					if (tempValue < minValue) {
-						minValue = tempValue;
-						myServer.energyCost = -1;
-						myServer.hardCost = -1;
-						myServer.buyID = i;   // 记录服务器
+					int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
+					int restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
+					int tempValue = restCPU + restRAM + abs(restCPU - gBeta * restRAM) * gGamma;
+					if (tempValue < minValue[omp_get_thread_num()]) {
+						minValue[omp_get_thread_num()] = tempValue;
+						ompServer[omp_get_thread_num()].energyCost = -1;
+						ompServer[omp_get_thread_num()].hardCost = -1;
+						ompServer[omp_get_thread_num()].buyID = i;   // 记录服务器
 					}
 				}
 			}
 		}
+
+		/*多线程合并*/
+		if (minValue[0] <= minValue[1]) 
+			myServer = ompServer[0];
+		else
+			myServer = ompServer[1];
 	}
 
 	return myServer;  // 运行到这表示没找到,hardCost为1
