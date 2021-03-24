@@ -22,7 +22,7 @@ sServerItem chooseServer(cServer &server, unordered_map<string, sVmItem> &workVm
 
 // 从图中选择最短路径后部署虚拟机
 void deployVM(cServer &server, cVM &VM, const cRequests &request, int index, int begin, int end, vector<bool> &hasDeploy,
-	int whichDay, int baseNum);
+	int whichDay, int baseNum, vector<double> &args);
 
 // 迁移函数
 void migrateVM(cServer &server, cVM &VM, int whichDay, unordered_map<string, int> &dayWorkingVM,
@@ -37,3 +37,15 @@ void orderRequest(cVM &VM, cRequests &request);
 void subOrderRequest(cVM &VM, cRequests &request, vector<vector<sRequestItem>> &orderInfo,
 	int whichDay, int begin, int end);
 bool mycomp(pair<int, int> i, pair<int, int> j);
+
+
+sServerItem chooseFitServer(cServer &server, sVmItem &requestVM, cVM &VM, int index,
+	unordered_map<int, sMyEachServer> &delSerSet, int totalServer, vector<double> &args,
+	unordered_set<int> &emptySer);
+
+void migrateVM_2(cServer &server, cVM &VM, int whichDay, unordered_map<string, int> &dayWorkingVM,
+	int vmTotalNum, unordered_map<int, sMyEachServer> &delSerSet, vector<double> &args);
+
+bool vmcomp(pair<string, int> i, pair<string, int> j);
+
+vector<string> getOrderVM(cVM &VM, unordered_map<string, int> &vmSet);

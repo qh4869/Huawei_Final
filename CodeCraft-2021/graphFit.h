@@ -15,7 +15,7 @@ void subGraphFit(cServer &server, cVM &VM, cRequests &request,
 
 // 删除虚拟机（可能从当天新买的服务器删除，也可能是已购买的服务器中删除）
 void deleteVM(cServer &server, cVM &VM, sRequestItem &requestTerm, unordered_map<string, sVmItem> &workVm,
-	vector<pair<string, int>> &restID, unordered_map<string, sEachWorkingVM> &dayDeleteVM);
+	vector<pair<string, int>> &restID, unordered_map<string, sEachWorkingVM> &dayDeleteVM, vector<double> &args);
 
 // 添加虚拟机（可能添加到当天购买的服务器，也可能是已购买的服务器中）
 void addVM(cServer &server, cVM &VM, sRequestItem &requestTerm, vector<bool> &hasDeploy, vector<vector<sServerItem>> &transfer,
@@ -32,4 +32,5 @@ void updateMinCost(vector<pair<string, int>> &restID, vector<vector<sServerItem>
 
 // 全部都结束后，开始购买服务器和部署虚拟机
 void buyServer(cServer &server, cVM &VM, cRequests &request, vector<pair<string, int>> &restID,
-	vector<vector<sServerItem>> &transfer, vector<bool> &hasDeploy, vector<int> &path, int maxLoc, int whichDay, int begin);
+	vector<vector<sServerItem>> &transfer, vector<bool> &hasDeploy, vector<int> &path, int maxLoc, int whichDay, int begin,
+	vector<double> &args);

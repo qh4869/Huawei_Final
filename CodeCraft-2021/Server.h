@@ -27,6 +27,10 @@ struct sMyEachServer {
 	int bIdleRAM;
 };
 
+namespace cyt {
+	bool mycompID(pair<int, int> i, pair<int, int> j);
+}
+
 class cServer {
 public:
 	int serverTypeNum;
@@ -64,14 +68,23 @@ public:
 	string chooseSer(int reqCPU, int reqRAM, bool isDoubleNode);
 
 	// 购买服务器
+	int cyt_purchase(string serName, int iDay); // 购买服务器 id按照购买顺序分配（可能不符合输出要求
+	// 购买服务器
 	int purchase(string serName, int iDay); // 购买服务器 id按照购买顺序分配（可能不符合输出要求
 
-											// id 映射
+	// id 映射
 	int idMapping();
+
+	/*SSP*/
+	int ksSize; // 背包算法分组
+	vector<pair<string, sServerItem>> infoV; // vector形式的info，为了写多线程
+	void genInfoV();
 
 	// CYT
 	vector<int> serverNum;   // 每天的服务器数量
 	vector<unordered_map<string, int>> serverVMSet;   // 每台服务器对应的虚拟机ID集合(string:VMid, int:0(a),1(b),2(double))
 	vector<pair<int, int>> vmSourceOrder;    // 记录服务器中虚拟机数量的排序 : serID->虚拟机资源
-	void updatVmSourceOrder(sVmItem &requestVm, int serID, bool flag);   // flag: true(add), false(delete)
+	void updatVmSourceOrder(sVmItem &requestVm, int serID, bool flag, vector<double> &args);   // flag: true(add), false(delete)
+	// 更新vmSourceOrder，部署和删除写在deploy,delete函数中，迁移需要单独调用(cyt写的)
+	void updatVmSourceOrder(int needCPU, int needRAM, int serID, bool flag); // flag: true(add), false(delete)
 };

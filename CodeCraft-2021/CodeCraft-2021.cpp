@@ -5,10 +5,21 @@
 #include <iostream>
 #include "globalHeader.h" // 全局常量
 #include "graphFit.h"
+#include "ssp.h"
+#ifdef LOCAL
+#include<time.h>
+#endif
 using namespace std;
+
+#ifdef LOCAL
+clock_t TIMEstart, TIMEend;
+#endif
 
 int main()
 {
+#ifdef LOCAL
+	TIMEstart = clock();
+#endif
 	cServer server;
 	cVM VM;
 	cRequests request;
@@ -23,20 +34,27 @@ int main()
 
 #ifndef LOCAL
 	// 输出
-	dataOut_1(server, VM, request);
+	dataOut(server, VM, request);
 #endif
-	//dataOut(server, VM, request);
-	system("pause");
+	//system("pause");
 	return 0;
 }
 
 void process(cServer &server, cVM &VM, cRequests &request) {
 	// 数据预处理
-	server.alpha = ALPHA;
-	server.rankServerByPrice(); // 按照价格排序 权重为alpha
-	orderRequest(VM, request);
 
-	graphFit(server, VM, request);
+	double addVar, delVar;
+	tie(addVar, delVar) = request.getVarRequest();
+	if (delVar < 7) {
+		ssp(server, VM, request);
+	}
+	else {
+		server.rankServerByPrice(); // 按照价格排序 权重为alpha
+		orderRequest(VM, request);
+		graphFit(server, VM, request);
+		request.info = request.realInfo;
+	}
 
 	server.idMapping(); // id map
+
 }

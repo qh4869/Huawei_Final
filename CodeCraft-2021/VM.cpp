@@ -21,35 +21,31 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		return 1;
 	}
 
-	if (serID == 126) {
-		int a = 1;
-	}
-
 	// 判断资源是否够分
 	if (node == true) { // a 节点部署
 		if (server.myServerSet[serID].aIdleCPU < info[vmName].needCPU \
 			|| server.myServerSet[serID].aIdleRAM < info[vmName].needRAM) {
-			//cout << "a node error" << endl;
+			cout << "服务器资源不够，分配失败" << endl;
 			return 2;
 		}
 		else {
 			server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU;
 			server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM;
+			server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
 			server.serverVMSet[serID].insert({ VMid, 0 });
-			server.updatVmSourceOrder(info[vmName], serID, true);
 		}
 	}
 	else {
 		if (server.myServerSet[serID].bIdleCPU < info[vmName].needCPU \
 			|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM) {
-			cout << "b node error" << endl;
+			cout << "服务器资源不够，分配失败" << endl;
 			return 2;
 		}
 		else {
 			server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU;
 			server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM;
+			server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
 			server.serverVMSet[serID].insert({ VMid, 1 });
-			server.updatVmSourceOrder(info[vmName], serID, true);
 		}
 	}
 
@@ -86,14 +82,10 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		return 1;
 	}
 
-	if (serID == 126) {
-		int a = 1;
-	}
-
 	if (server.myServerSet[serID].aIdleCPU<info[vmName].needCPU / 2 \
 		|| server.myServerSet[serID].bIdleCPU<info[vmName].needCPU / 2 \
 		|| server.myServerSet[serID].aIdleRAM < info[vmName].needRAM / 2 \
-		|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM / 2) { 
+		|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM / 2) {
 		cout << "服务器资源不够，分配失败" << endl;
 		return 2;
 	}
@@ -102,8 +94,8 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM / 2;
 		server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU / 2;
 		server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM / 2;
-		server.serverVMSet[serID].insert({ VMid, 2});
-		server.updatVmSourceOrder(info[vmName], serID, true);
+		server.serverVMSet[serID].insert({ VMid, 2 });
+		server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
 	}
 
 	sEachWorkingVM oneVM;
@@ -126,6 +118,8 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 	return 0;
 }
 
+
+
 void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node) {
 	/*
 	* Fn: 单节点迁移，出入参数错误检测遗留，包括5%。的要求等
@@ -135,52 +129,59 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 	bool lastServerNode = workingVmSet[VMid].node;
 	int occupyCPU = info[vmName].needCPU;
 	int occupyRAM = info[vmName].needRAM;
+	bool vmIsDouble = isDouble(vmName);
+
+	/*检查VM是否已经被部署*/
+	if (!workingVmSet.count(VMid)) {
+		cout << "待迁移的虚拟机没有被部署" << endl;
+		throw "not deployed";
+	}
+
+	/*单双节点是否正确*/
+	if (vmIsDouble) {
+		cout << "双节点虚拟机不能单节点迁移" << endl;
+		throw "not single";
+	}
+
+	if (node == true) { // node A
+		if (server.myServerSet[serID].aIdleCPU < occupyCPU \
+			|| server.myServerSet[serID].aIdleRAM < occupyRAM) {
+			cout << "迁移目标虚拟机资源不够（node a）" << endl;
+			throw "resource not enough";
+		}
+		else {
+			server.myServerSet[serID].aIdleCPU -= occupyCPU;
+			server.myServerSet[serID].aIdleRAM -= occupyRAM;
+			server.serverVMSet[serID].insert({ VMid, 0 });
+		}
+	}
+	else { // node B
+		if (server.myServerSet[serID].bIdleCPU < occupyCPU \
+			|| server.myServerSet[serID].bIdleRAM < occupyRAM) {
+			cout << "迁移目标虚拟机资源不够（node b）" << endl;
+			throw "resource not enough";
+		}
+		else {
+			server.myServerSet[serID].bIdleCPU -= occupyCPU;
+			server.myServerSet[serID].bIdleRAM -= occupyRAM;
+			server.serverVMSet[serID].insert({ VMid, 1 });
+		}
+	}
 
 	// 更改该虚拟机现在的位置
 	workingVmSet[VMid].serverID = serID;
 	workingVmSet[VMid].node = node;
 
-	//////////////////////////用于检测错误///////////////////////////////
-	sServerItem outServer = server.info[server.myServerSet[lastServerID].serName];
-	sServerItem inServer = server.info[server.myServerSet[serID].serName];
-	///////////////////////////////////////////////////////////////
-
 	// 恢复前一个服务器的资源
 	if (lastServerNode == true) { // A node
 		server.myServerSet[lastServerID].aIdleCPU += occupyCPU;
 		server.myServerSet[lastServerID].aIdleRAM += occupyRAM;
-		if (server.myServerSet[lastServerID].aIdleCPU > outServer.totalCPU / 2 ||
-			server.myServerSet[lastServerID].aIdleRAM > outServer.totalRAM / 2) {
-			cout << "migrate a node error" << endl;
-		}
 	}
 	else {
 		server.myServerSet[lastServerID].bIdleCPU += occupyCPU;
 		server.myServerSet[lastServerID].bIdleRAM += occupyRAM;
-		if (server.myServerSet[lastServerID].bIdleCPU > outServer.totalCPU / 2 ||
-			server.myServerSet[lastServerID].bIdleRAM > outServer.totalRAM / 2) {
-			cout << "migrate b node error" << endl;
-		}
 	}
-	server.serverVMSet[lastServerID].erase(VMid);    // 从迁出的服务器中删除该虚拟机
-
-	// 占据新服务器资源
-	if (node == true) {
-		server.myServerSet[serID].aIdleCPU -= occupyCPU;
-		server.myServerSet[serID].aIdleRAM -= occupyRAM;
-		if (server.myServerSet[serID].aIdleCPU < 0 || server.myServerSet[serID].aIdleRAM < 0) {
-			cout << "exit a node" << endl;
-		}
-		server.serverVMSet[serID].insert({ VMid, 0 });    // 往迁入的服务器中加入该虚拟机
-	}
-	else {
-		server.myServerSet[serID].bIdleCPU -= occupyCPU;
-		server.myServerSet[serID].bIdleRAM -= occupyRAM;
-		if (server.myServerSet[serID].bIdleCPU < 0 || server.myServerSet[serID].bIdleRAM < 0) {
-			cout << "exit b node" << endl;
-		}
-		server.serverVMSet[serID].insert({ VMid, 1 });    // 往迁入的服务器中加入该虚拟机
-	}
+	server.serverVMSet[lastServerID].erase(VMid);
 
 	// 迁移条目更新
 	sTransVmItem oneTrans;
@@ -199,44 +200,44 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 	int lastServerID = workingVmSet[VMid].serverID;
 	int occupyCPU = info[vmName].needCPU;
 	int occupyRAM = info[vmName].needRAM;
+	bool vmIsDouble = isDouble(vmName);
 
-	workingVmSet[VMid].serverID = serID;
-
-	if (serID == 126 || lastServerID == 126) {
-		int a = 1;
+	/*检查VM是否已经被部署*/
+	if (!workingVmSet.count(VMid)) {
+		cout << "待迁移的虚拟机没有被部署" << endl;
+		throw "not deployed";
 	}
 
-	//////////////////////////////////////////////////////////////
-	sServerItem outServer = server.info[server.myServerSet[lastServerID].serName];
-	//////////////////////////////////////////////////////////
+	/*单双节点是否正确*/
+	if (!vmIsDouble) {
+		cout << "双节点虚拟机不能单节点迁移" << endl;
+		throw "not single";
+	}
+
+	if (server.myServerSet[serID].aIdleCPU < occupyCPU / 2 \
+		|| server.myServerSet[serID].aIdleRAM < occupyRAM / 2 \
+		|| server.myServerSet[serID].bIdleCPU < occupyCPU / 2 \
+		|| server.myServerSet[serID].bIdleRAM < occupyRAM / 2) {
+		cout << "迁移目标虚拟机资源不够" << endl;
+		throw "resource not enough";
+	}
+	else {
+		// 占据新服务器资源
+		server.myServerSet[serID].aIdleCPU -= occupyCPU / 2;
+		server.myServerSet[serID].aIdleRAM -= occupyRAM / 2;
+		server.myServerSet[serID].bIdleCPU -= occupyCPU / 2;
+		server.myServerSet[serID].bIdleRAM -= occupyRAM / 2;
+		server.serverVMSet[serID].insert({ VMid, 2 });
+	}
+
+	workingVmSet[VMid].serverID = serID;
 
 	// 恢复前一个服务器的资源
 	server.myServerSet[lastServerID].aIdleCPU += occupyCPU / 2;
 	server.myServerSet[lastServerID].aIdleRAM += occupyRAM / 2;
 	server.myServerSet[lastServerID].bIdleCPU += occupyCPU / 2;
 	server.myServerSet[lastServerID].bIdleRAM += occupyRAM / 2;
-	server.serverVMSet[lastServerID].erase(VMid);    // 从迁出的服务器中移除虚拟机
-
-	if (server.myServerSet[lastServerID].aIdleCPU > outServer.totalCPU / 2 ||
-		server.myServerSet[lastServerID].bIdleCPU > outServer.totalCPU / 2 ||
-		server.myServerSet[lastServerID].aIdleRAM > outServer.totalRAM / 2 ||
-		server.myServerSet[lastServerID].bIdleRAM > outServer.totalRAM / 2) {
-		cout << "double migrate error" << endl;
-	}
-
-	// 占据新服务器资源
-	server.myServerSet[serID].aIdleCPU -= occupyCPU / 2;
-	server.myServerSet[serID].aIdleRAM -= occupyRAM / 2;
-	server.myServerSet[serID].bIdleCPU -= occupyCPU / 2;
-	server.myServerSet[serID].bIdleRAM -= occupyRAM / 2;
-	server.serverVMSet[serID].insert({ VMid, 2 });   // 从迁入的服务器中加入虚拟机
-
-	if (server.myServerSet[serID].aIdleCPU < 0 ||
-		server.myServerSet[serID].bIdleCPU < 0 ||
-		server.myServerSet[serID].aIdleRAM < 0 ||
-		server.myServerSet[serID].bIdleRAM < 0 ) {
-		cout << "double exit error" << endl;
-	}
+	server.serverVMSet[lastServerID].erase(VMid);
 
 	// 迁移条目更新
 	sTransVmItem oneTrans;
@@ -289,6 +290,140 @@ int cVM::deleteVM(string vmID, cServer& server) {
 		}
 	}
 
+	/*更新vmSourceOrder*/
+	server.updatVmSourceOrder(reqCPUs, reqRAMs, serID, false);
+
+	/*删除serverVMset*/
+	server.serverVMSet[serID].erase(vmID);
+
 	workingVmSet.erase(vmID);
+	return 0;
+}
+
+
+// CYT :
+int cVM::cyt_deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node, vector<double> &args) {
+	/* Fn: 单节点部署情况
+	* 	- 因为要求输出的顺序按照输入虚拟机请求的顺序，所以这个函数的调用必须按照add请求的顺序
+	*
+	* In:
+	*	- server: server对象
+	*	- iDay: 天数
+	*	- VMid: 虚拟机ID
+	*	- vmName: 虚拟机型号
+	*	- serID: 被部署服务器ID
+	*	- node: 单节点部署的节点 true表示 a节点
+	*
+	* Out:
+	*	- 0表示正常运行，否则存在错误
+	*/
+	// 判断单双节点虚拟机部署时候 有没有使用错误
+	if (info[vmName].nodeStatus) {
+		cout << "双节点虚拟机不能指定节点类型，分配失败" << endl;
+		return 1;
+	}
+
+	if (serID == 126) {
+		int a = 1;
+	}
+
+	// 判断资源是否够分
+	if (node == true) { // a 节点部署
+		if (server.myServerSet[serID].aIdleCPU < info[vmName].needCPU \
+			|| server.myServerSet[serID].aIdleRAM < info[vmName].needRAM) {
+			//cout << "a node error" << endl;
+			return 2;
+		}
+		else {
+			server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU;
+			server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM;
+			server.serverVMSet[serID].insert({ VMid, 0 });
+			server.updatVmSourceOrder(info[vmName], serID, true, args);
+		}
+	}
+	else {
+		if (server.myServerSet[serID].bIdleCPU < info[vmName].needCPU \
+			|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM) {
+			cout << "b node error" << endl;
+			return 2;
+		}
+		else {
+			server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU;
+			server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM;
+			server.serverVMSet[serID].insert({ VMid, 1 });
+			server.updatVmSourceOrder(info[vmName], serID, true, args);
+		}
+	}
+
+	sEachWorkingVM oneVM;
+	oneVM.vmName = vmName;
+	oneVM.serverID = serID;
+	oneVM.node = node;
+	if (!workingVmSet.count(VMid)) {
+		workingVmSet.insert(std::make_pair(VMid, oneVM));
+	}
+	else {
+		cout << "虚拟机id冲突！" << endl;
+		return 3;
+	}
+
+	sDeployItem oneDeploy;
+	oneDeploy.serID = serID;
+	oneDeploy.isSingle = true;
+	oneDeploy.node = node;
+
+	deployRecord[iDay].insert(make_pair(VMid, oneDeploy));
+
+	return 0;
+}
+
+int cVM::cyt_deploy(cServer &server, int iDay, string VMid, string vmName, int serID, vector<double> &args) {
+	/*
+	* Fn: 双节点部署
+	* 	- 因为要求输出的顺序按照输入虚拟机请求的顺序，所以这个函数的调用必须按照add请求的顺序
+	*	- 其他参考 单节点部署 函数
+	*/
+	if (!info[vmName].nodeStatus) {
+		cout << "单节点虚拟机分配两个节点，分配失败" << endl;
+		return 1;
+	}
+
+	if (serID == 126) {
+		int a = 1;
+	}
+
+	if (server.myServerSet[serID].aIdleCPU<info[vmName].needCPU / 2 \
+		|| server.myServerSet[serID].bIdleCPU<info[vmName].needCPU / 2 \
+		|| server.myServerSet[serID].aIdleRAM < info[vmName].needRAM / 2 \
+		|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM / 2) {
+		cout << "服务器资源不够，分配失败" << endl;
+		return 2;
+	}
+	else {
+		server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU / 2;
+		server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM / 2;
+		server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU / 2;
+		server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM / 2;
+		server.serverVMSet[serID].insert({ VMid, 2 });
+		server.updatVmSourceOrder(info[vmName], serID, true, args);
+	}
+
+	sEachWorkingVM oneVM;
+	oneVM.vmName = vmName;
+	oneVM.serverID = serID;
+	if (!workingVmSet.count(VMid)) {
+		workingVmSet.insert(std::make_pair(VMid, oneVM));
+	}
+	else {
+		cout << "虚拟机id冲突！" << endl;
+		return 3;
+	}
+
+	sDeployItem oneDeploy;
+	oneDeploy.serID = serID;
+	oneDeploy.isSingle = false;
+
+	deployRecord[iDay].insert(make_pair(VMid, oneDeploy));
+
 	return 0;
 }

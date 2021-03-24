@@ -6,19 +6,21 @@ void graphFit(cServer &server, cVM &VM, cRequests &request) {
 
 	// 自适应参数
 	double addVar, delVar;
-	vector<double> args(4);   // (节点数, ratio)
+	vector<double> args(5);   // (节点数, ratio)
 	tie(addVar, delVar) = request.getVarRequest();
 	if (delVar < 7) {
-		args[0] = 8;
-		args[1] = 3.0;
-		args[2] = 0.3;
-		args[3] = 1.0;
+		args[0] = 8;    // 节点数
+		args[1] = 2.5;   // 比例，控制有多少服务器嫩故县
+		args[2] = 0.3;  // 选服务器的参数
+		args[3] = 1.0;  // 选服务器的餐宿
+		args[4] = 0;    // 服务器排序，用于控制虚拟机数量的影响
   	}
 	else {
 		args[0] = 3;
-		args[1] = 1.5;
+		args[1] = 1.425;
 		args[2] = 0.3;
 		args[3] = 1.0;
+		args[4] = 600;
 	}
 
 	int engCostStas = 0; // 计算功耗成本
@@ -31,8 +33,11 @@ void graphFit(cServer &server, cVM &VM, cRequests &request) {
 
 	for (int whichDay = 0; whichDay < request.dayNum; whichDay++) {
 
-		server.serverNum.push_back(0);   // 初始化第N天的服务器数量
+#ifdef LOCAL
 		cout << whichDay << endl;
+#endif // LOCAL
+
+		server.serverNum.push_back(0);   // 初始化第N天的服务器数量
 		if (whichDay == 0) {
 			server.alpha = request.dayNum;
 			server.rankServerByPrice(true);  // 第一天为true
@@ -48,26 +53,32 @@ void graphFit(cServer &server, cVM &VM, cRequests &request) {
 
 		delSerSet = recoverDelSerSet(server, VM, dayDeleteVM);
 		if (whichDay > 0) {
-			migrateVM(server, VM, whichDay, dayWorkingVM, vmTotalNum, delSerSet, args);
+			//migrateVM(server, VM, whichDay, dayWorkingVM, vmTotalNum, delSerSet, args);
+			migrateVM_2(server, VM, whichDay, dayWorkingVM, vmTotalNum, delSerSet, args);
 		}
 		dayWorkingVM.clear();
 		dayDeleteVM.clear();
 		delSerSet.clear();
 
+#ifdef LOCAL
 		for (int iServer = 0; iServer < (int)server.myServerSet.size(); iServer++) {
 			if (server.isOpen(iServer)) {
 				costName = server.myServerSet[iServer].serName;
 				engCostStas += server.info[costName].energyCost;
 			}
 		}
+#endif // LOCAL
+
 
 	}
 
+#ifdef LOCAL
 	for (int iServer = 0; iServer<(int)server.myServerSet.size(); iServer++) {
 		costName = server.myServerSet[iServer].serName;
 		hardCostStas += server.info[costName].hardCost;
 	}
 	cout << "成本: " << engCostStas + hardCostStas << endl;
+#endif // LOCAL
 
 }
 
@@ -147,7 +158,7 @@ void subGraphFit(cServer &server, cVM &VM, cRequests &request, int begin, int en
 			}
 			if (!requestTerm.type) {   // 表示要删除虚拟机
 				hasDeploy[iTerm] = true;    // 删除的虚拟机不需要重新部署(((((bug)))))
-				deleteVM(server, VM, requestTerm, workVm, restID, dayDeleteVM);
+				deleteVM(server, VM, requestTerm, workVm, restID, dayDeleteVM, args);
 			}
 			else {   // 表示要加入虚拟机
 				dayWorkingVM.insert({ requestTerm.vmID, 1 });   // 直接加入
@@ -170,14 +181,15 @@ void subGraphFit(cServer &server, cVM &VM, cRequests &request, int begin, int en
 	}
 
 	// 全部都确定了就开始买服务器和部署VM
-	buyServer(server, VM, request, restID, transfer, hasDeploy, path, maxLoc, whichDay, begin);
+	buyServer(server, VM, request, restID, transfer, hasDeploy, path, maxLoc, whichDay, begin, args);
 
 }
 
 
 // 删除VM（可能是当天的服务器，也可能是之前已购买的服务器）
 void deleteVM(cServer &server, cVM &VM, sRequestItem &requestTerm, unordered_map<string, sVmItem> &workVm,
-	vector<pair<string, int>> &restID, unordered_map<string, sEachWorkingVM> &dayDeleteVM) {
+	vector<pair<string, int>> &restID, unordered_map<string, sEachWorkingVM> &dayDeleteVM,
+	vector<double> &args) {
 
 	sEachWorkingVM tempVm = VM.workingVmSet[requestTerm.vmID];  // 删除条目中没有记录虚拟机，所以要通过这种方式取出来
 	sVmItem requestVm = VM.info[tempVm.vmName];    // 提取要删除的虚拟机的类型
@@ -206,7 +218,7 @@ void deleteVM(cServer &server, cVM &VM, sRequestItem &requestTerm, unordered_map
 		}
 		server.serverVMSet[serID].erase(requestTerm.vmID);
 		VM.workingVmSet.erase(requestTerm.vmID);
-		server.updatVmSourceOrder(requestVm, serID, false);   // 删除:更新VM数量排序
+		server.updatVmSourceOrder(requestVm, serID, false, args);   // 删除:更新VM数量排序
 	}
 	else {    // 删除的虚拟机不在已经购买的服务器中
 		workVm.erase(requestTerm.vmID);   // 从工作中的虚拟机集合删除该虚拟机
@@ -231,15 +243,15 @@ void addVM(cServer &server, cVM &VM, sRequestItem &requestTerm, vector<bool> &ha
 
 		if (requestVm.nodeStatus) {   // true 表示双节点
 			hasDeploy[iTerm] = true;
-			VM.deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID);  // deploy中的record是哈希表
+			VM.cyt_deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID, args);  // deploy中的record是哈希表
 		}
 		else {
 			hasDeploy[iTerm] = true;
 			if (myServer.node) {  // true表示a节点
-				VM.deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID, true);  // a node
+				VM.cyt_deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID, true, args);  // a node
 			}
 			else {  // false : b node
-				VM.deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID, false);  // b node
+				VM.cyt_deploy(server, whichDay, requestTerm.vmID, requestTerm.vmName, myServer.buyID, false, args);  // b node
 			}
 		}
 	}
@@ -309,7 +321,8 @@ void updateMinCost(vector<pair<string, int>> &restID, vector<vector<sServerItem>
 
 // 购买服务器和部署虚拟机
 void buyServer(cServer &server, cVM &VM, cRequests &request, vector<pair<string, int>> &restID,
-	vector<vector<sServerItem>> &transfer, vector<bool> &hasDeploy, vector<int> &path, int maxLoc, int whichDay, int begin) {
+	vector<vector<sServerItem>> &transfer, vector<bool> &hasDeploy, vector<int> &path, int maxLoc, int whichDay, int begin,
+	vector<double> &args) {
 
 	vector<int> buy;    // 记录在哪些节点买服务器
 	buy.push_back(maxLoc - 1);   // 最后一个节点入栈
@@ -335,9 +348,9 @@ void buyServer(cServer &server, cVM &VM, cRequests &request, vector<pair<string,
 	int baseNum = server.myServerSet.size();   // 新购买的服务器id要在已购买的服务器ID上叠加
 	for (int i = buy.size() - 1; i > 0; i--) {
 
-		server.purchase(buyServer[index].serName, whichDay);
+		server.cyt_purchase(buyServer[index].serName, whichDay);
 		deployVM(server, VM, request, index + baseNum, buy[i] + begin,
-			buy[i - 1] + begin, hasDeploy, whichDay, begin);
+			buy[i - 1] + begin, hasDeploy, whichDay, begin, args);
 		int value = server.myServerSet[index + baseNum].aIdleCPU + server.myServerSet[index + baseNum].bIdleCPU
 			+ server.myServerSet[index + baseNum].aIdleRAM + server.myServerSet[index + baseNum].bIdleRAM;
 		pair<int, int> newOne = make_pair(index + baseNum, value);
