@@ -31,6 +31,8 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		else {
 			server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU;
 			server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM;
+			server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
+			server.serverVMSet[serID].insert({ VMid, 0 });
 		}
 	}
 	else {
@@ -42,6 +44,8 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		else {
 			server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU;
 			server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM;
+			server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
+			server.serverVMSet[serID].insert({ VMid, 1 });
 		}
 	}
 
@@ -90,6 +94,8 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM/2;
 		server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU/2;
 		server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM/2;
+		server.serverVMSet[serID].insert({ VMid, 2});
+		server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
 	}
 
 	sEachWorkingVM oneVM;
@@ -113,14 +119,52 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 }
 
 void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node) {
-	/*
-	* Fn: 单节点迁移，出入参数错误检测遗留，包括5%。的要求等
-	*/
+/*
+* Fn: 单节点迁移，出入参数错误检测遗留，包括5%。的要求等
+*/
 	string vmName = workingVmSet[VMid].vmName;
 	int lastServerID = workingVmSet[VMid].serverID;
 	bool lastServerNode = workingVmSet[VMid].node;
 	int occupyCPU = info[vmName].needCPU;
 	int occupyRAM = info[vmName].needRAM;
+	bool vmIsDouble = isDouble(vmName);
+
+	/*检查VM是否已经被部署*/
+	if (!workingVmSet.count(VMid)) {
+		cout << "待迁移的虚拟机没有被部署" << endl;
+		throw "not deployed";
+	}
+
+	/*单双节点是否正确*/
+	if (vmIsDouble) {
+		cout << "双节点虚拟机不能单节点迁移" << endl;
+		throw "not single";
+	}
+
+	if (node == true) { // node A
+		if (server.myServerSet[serID].aIdleCPU < occupyCPU \
+			|| server.myServerSet[serID].aIdleRAM < occupyRAM) {
+			cout << "迁移目标虚拟机资源不够（node a）" << endl;
+			throw "resource not enough";
+		}
+		else {
+			server.myServerSet[serID].aIdleCPU -= occupyCPU;
+			server.myServerSet[serID].aIdleRAM -= occupyRAM;
+			server.serverVMSet[serID].insert({ VMid, 0 });
+		}
+	}
+	else { // node B
+		if (server.myServerSet[serID].bIdleCPU < occupyCPU \
+			|| server.myServerSet[serID].bIdleRAM < occupyRAM) {
+			cout << "迁移目标虚拟机资源不够（node b）" << endl;
+			throw "resource not enough";
+		}
+		else {
+			server.myServerSet[serID].bIdleCPU -= occupyCPU;
+			server.myServerSet[serID].bIdleRAM -= occupyRAM;
+			server.serverVMSet[serID].insert({ VMid, 1 });
+		}
+	}
 
 	// 更改该虚拟机现在的位置
 	workingVmSet[VMid].serverID = serID;
@@ -135,16 +179,7 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 		server.myServerSet[lastServerID].bIdleCPU += occupyCPU;
 		server.myServerSet[lastServerID].bIdleRAM += occupyRAM;
 	}
-
-	// 占据新服务器资源
-	if (node == true) {
-		server.myServerSet[serID].aIdleCPU -= occupyCPU;
-		server.myServerSet[serID].aIdleRAM -= occupyRAM;
-	}
-	else {
-		server.myServerSet[serID].bIdleCPU -= occupyCPU;
-		server.myServerSet[serID].bIdleRAM -= occupyRAM;
-	}
+	server.serverVMSet[lastServerID].erase(VMid);
 
 	// 迁移条目更新
 	sTransVmItem oneTrans;
@@ -156,13 +191,42 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 }
 
 void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
-	/*
-	* Fn: 双节点迁移，出入参数错误检测遗留
-	*/
+/*
+* Fn: 双节点迁移，出入参数错误检测遗留
+*/
 	string vmName = workingVmSet[VMid].vmName;
 	int lastServerID = workingVmSet[VMid].serverID;
 	int occupyCPU = info[vmName].needCPU;
 	int occupyRAM = info[vmName].needRAM;
+	bool vmIsDouble = isDouble(vmName);
+
+	/*检查VM是否已经被部署*/
+	if (!workingVmSet.count(VMid)) {
+		cout << "待迁移的虚拟机没有被部署" << endl;
+		throw "not deployed";
+	}
+
+	/*单双节点是否正确*/
+	if (!vmIsDouble) {
+		cout << "双节点虚拟机不能单节点迁移" << endl;
+		throw "not single";
+	}
+
+	if (server.myServerSet[serID].aIdleCPU < occupyCPU / 2 \
+		|| server.myServerSet[serID].aIdleRAM < occupyRAM / 2 \
+		|| server.myServerSet[serID].bIdleCPU < occupyCPU / 2 \
+		|| server.myServerSet[serID].bIdleRAM < occupyRAM / 2) {
+		cout << "迁移目标虚拟机资源不够" << endl;
+		throw "resource not enough";
+	}
+	else {
+		// 占据新服务器资源
+		server.myServerSet[serID].aIdleCPU -= occupyCPU / 2;
+		server.myServerSet[serID].aIdleRAM -= occupyRAM / 2;
+		server.myServerSet[serID].bIdleCPU -= occupyCPU / 2;
+		server.myServerSet[serID].bIdleRAM -= occupyRAM / 2;
+		server.serverVMSet[serID].insert({ VMid, 2 });
+	}
 
 	workingVmSet[VMid].serverID = serID;
 
@@ -171,20 +235,7 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 	server.myServerSet[lastServerID].aIdleRAM += occupyRAM / 2;
 	server.myServerSet[lastServerID].bIdleCPU += occupyCPU / 2;
 	server.myServerSet[lastServerID].bIdleRAM += occupyRAM / 2;
-
-
-	// 占据新服务器资源
-	server.myServerSet[serID].aIdleCPU -= occupyCPU / 2;
-	server.myServerSet[serID].aIdleRAM -= occupyRAM / 2;
-	server.myServerSet[serID].bIdleCPU -= occupyCPU / 2;
-	server.myServerSet[serID].bIdleRAM -= occupyRAM / 2;
-
-	if (server.myServerSet[serID].aIdleCPU < 0 ||
-		server.myServerSet[serID].bIdleCPU < 0 ||
-		server.myServerSet[serID].aIdleRAM < 0 ||
-		server.myServerSet[serID].bIdleRAM < 0 ) {
-		cout << "double exit error" << endl;
-	}
+	server.serverVMSet[lastServerID].erase(VMid);
 
 	// 迁移条目更新
 	sTransVmItem oneTrans;
@@ -236,6 +287,12 @@ int cVM::deleteVM(string vmID, cServer& server) {
 			server.myServerSet[serID].bIdleRAM += reqRAMs;
 		}
 	}
+
+	/*更新vmSourceOrder*/
+	server.updatVmSourceOrder(reqCPUs, reqRAMs, serID, false);
+
+	/*删除serverVMset*/
+	server.serverVMSet[serID].erase(vmID);
 
 	workingVmSet.erase(vmID);
 	return 0;

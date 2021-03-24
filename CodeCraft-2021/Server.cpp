@@ -11,14 +11,16 @@ int cServer::purchase(string name, int iDay) {
 */
 	/*add into myServerSet*/
 	sMyEachServer oneServer;
-
 	oneServer.serName = name;
 	oneServer.aIdleCPU = info[name].totalCPU / 2;
 	oneServer.bIdleCPU = info[name].totalCPU / 2;
 	oneServer.aIdleRAM = info[name].totalRAM / 2;
 	oneServer.bIdleRAM = info[name].totalRAM / 2;
-
 	myServerSet.push_back(oneServer);
+
+	/*add into serverVMSet-empty*/
+	unordered_map<string, int> vmSet;
+	serverVMSet.push_back(vmSet);
 
 	/*add into buyRecord*/
 	if (!buyRecord[iDay].count(name)) { // 当天没买过这个类型
@@ -230,4 +232,83 @@ void cServer::rankMyserverbyRatio() {
 void cServer::genInfoV() {
 	for (const auto &xSer : info) 
 		infoV.push_back(make_pair(xSer.first, xSer.second));
+}
+
+bool cyt::mycompID(pair<int, int> i, pair<int, int> j) {
+	return i.second <= j.second;
+}
+
+// 对服务器里的虚拟机数量进行排序
+void cServer::updatVmSourceOrder(int needCPU, int needRAM, int serID, bool flag) {  // true : add , false : delete
+
+	int pos;   // serID对应的服务器在vmNumOrder中的位置
+	if (vmSourceOrder.size() == 0) {    // 初始化
+		int value = needCPU + needRAM;
+		vmSourceOrder.push_back(make_pair(serID, value));   // 最开始直接初始化
+		return;
+	}
+	else if (serID > (int)vmSourceOrder.size() - 1) {   // 新加入的服务器
+		if (!flag) {
+			cout << "sort error" << endl;
+		}
+		vmSourceOrder.insert(vmSourceOrder.begin(), make_pair(serID, 0));   // 将新加入的插进第一个位置，初始值为0
+		pos = 0;
+	}
+	else {
+		for (int i = 0; i < (int)vmSourceOrder.size(); i++) {
+			if (vmSourceOrder[i].first == serID) {   // 找到对应的位置
+				pos = i;
+				break;
+			}
+		}
+	}
+
+
+	if (!flag && pos == 0) {  // 删除并且处于第一位，则不需要移动
+		vmSourceOrder[pos].second -= (needCPU + needRAM);   // 减去删除的虚拟机资源
+	}
+	else {
+		pair<int, int> temp = vmSourceOrder[pos];    // 取出该变量
+		if (flag) {    // true : add
+			temp.second += (needCPU + needRAM);
+		}
+		else {   // false : delete
+			temp.second -= (needCPU + needRAM);
+		}
+		auto ite = vmSourceOrder.begin();
+		if (pos - 1 < 0 || cyt::mycompID(vmSourceOrder[pos - 1], temp)) {  // pos - 1 < 0表示是第一个元素
+			if (pos != (int)vmSourceOrder.size() - 1) {   // 不是最后一个元素
+				for (int i = pos + 1; i < (int)vmSourceOrder.size(); i++) {
+					if (i == (int)vmSourceOrder.size() - 1 && cyt::mycompID(vmSourceOrder[i], temp)) {  // 最后一个元素还是小
+						vmSourceOrder.erase(ite + pos);
+						vmSourceOrder.push_back(temp);
+						break;
+					}
+					if (cyt::mycompID(temp, vmSourceOrder[i])) {   // 往下找到了比自己大的，要插在这个比自己大的前面
+						vmSourceOrder.erase(ite + pos);   // 删除该元素
+						vmSourceOrder.insert(vmSourceOrder.begin() + i - 1, temp);   // 在指定的位置插入元素
+						break;   // 退出
+					}
+				}
+			}
+			else {
+				vmSourceOrder[pos] = temp;   // 赋予新值
+			}
+		}
+		else {
+			for (int i = pos - 1; i >= 0; i--) {   // 走到这里说明了pos - 1 > 0
+				if (i == 0 && cyt::mycompID(temp, vmSourceOrder[i])) {
+					vmSourceOrder.erase(ite + pos);
+					vmSourceOrder.insert(vmSourceOrder.begin() + i, temp);
+					break;
+				}
+				if (cyt::mycompID(vmSourceOrder[i], temp)) {
+					vmSourceOrder.erase(ite + pos);
+					vmSourceOrder.insert(vmSourceOrder.begin() + i + 1, temp);
+					break;
+				}
+			}
+		}
+	}
+
 }

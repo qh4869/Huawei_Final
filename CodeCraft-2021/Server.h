@@ -24,6 +24,10 @@ struct sMyEachServer {
     int bIdleRAM;
 };
 
+namespace cyt {
+    bool mycompID(pair<int, int> i, pair<int, int> j);
+}
+
 class cServer {   
 public:
     int serverTypeNum;
@@ -69,4 +73,12 @@ public:
     int ksSize; // 背包算法分组
     vector<pair<string, sServerItem>> infoV; // vector形式的info，为了写多线程
     void genInfoV();
+
+    /*migrate*/
+    // 记录服务器中虚拟机数量的排序 : serID->虚拟机占用资源cpu+ram {部署/删除更新，购买迁移不影响}
+    vector<pair<int, int>> vmSourceOrder; 
+    // 更新vmSourceOrder
+    void updatVmSourceOrder(int needCPU, int needRAM, int serID, bool flag); // flag: true(add), false(delete)
+    // 每台服务器id对应 虚拟机ID集合(string:VMid, int:0(a),1(b),2(double)) {购买/部署/删除/迁移更新}
+    vector<unordered_map<string, int>> serverVMSet; 
 };

@@ -1,5 +1,6 @@
 ﻿#include "ssp.h"
 double gBeta, gGamma; // best fit中的自适应参数
+double args[4]; // 迁移 best fit
 
 void ssp(cServer &server, cVM &VM, cRequests &request) {
 /* Fn: SSP方法
@@ -12,14 +13,20 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 	double addVar, delVar;
 	tie(addVar, delVar) = request.getVarRequest();
 	if (delVar < 7) {
-		server.ksSize = 6;
+		server.ksSize = 5;
 		gBeta = 0.3;
-		gGamma = 1;
+		gGamma = 1.0;
+		args[1] = 3;
+		args[2] = 0.3;
+		args[3] = 1.0;
 	}
 	else {
 		server.ksSize = 1;
-		gBeta = 0.5;
-		gGamma = 1;
+		gBeta = 0.3;
+		gGamma = 1.0;
+		args[1] = 5;
+		args[2] = 0.3;
+		args[3] = 1.0;
 	}
 
 #ifdef LOCAL
@@ -51,12 +58,17 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 		TIMEend = clock();
 		cout<<(double)(TIMEend-TIMEstart)/CLOCKS_PER_SEC << endl;
 #endif
+		int vmNumStart = VM.workingVmSet.size(); // 购买部署前 工作虚拟机的个数 用来迁移
+		unordered_map<int, sMyEachServer> delSerSet; // 有删除操作的SV集合，以及其中扣除del操作的容量 用来迁移
+		unordered_set<string> dayWorkingVM; // 当天新加入的VM集合(就算del也没从中去掉)，迁移时候特殊对待
 		
-		/*每天的购买和部署*/
-		dailyPurchaseDeploy(server, VM, request, iDay);
+		/*每天的购买和部署，
+		* 返回有删除操作服务器 因为是部署后迁移 扣除del资源的容量 ->delSerSet，
+		* 返回当天部署的VM集合，因为是部署后迁移，所以特殊对待*/
+		dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
 
 		/*后迁移（部署后计算，等效部署前实现）*/
-		//
+		dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM);
 
 #ifdef LOCAL
 		/*一天结束统计功耗成本*/
@@ -105,6 +117,64 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 	}
 	cout << "成本: " << engCostStas+hardCostStas << endl;
 #endif
+}
+
+void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet, 
+	unordered_set<string> &dayWorkingVM, int iDay, cServer &server, cVM &VM) {
+
+	/*先统计我可以迁移多少台*/
+	int maxMigrateNum = vmNumStart * 5 / 1000;
+	int cntMig = 0; // 当天已经迁移了多少台
+
+	// 服务器排序
+	for (int i = 0; i < (int)server.vmSourceOrder.size() / 1; i++) { // i--服务器
+		int outSerID = server.vmSourceOrder[i].first; // 迁出的服务器id
+		
+		for (int j = 0; j < (int)server.serverVMSet[outSerID].size(); j++) { // j--虚拟机
+			if (cntMig == maxMigrateNum)  // 迁移数量达到上限
+				return;
+
+			string vmID = server.serverVMSet[outSerID].begin()->first; // 虚拟机id
+			int outNodeTmp = server.serverVMSet[outSerID].begin()->second; // 迁出服务器的节点
+			bool outNode;
+			if (outNodeTmp == 0) // node a
+				outNode = true;
+			else if (outNodeTmp == 1) // node b
+				outNode = false;
+			else // double
+				outNode = false;
+
+			if (dayWorkingVM.count(vmID) == 1) { continue; } // 暂时不处理，遗留
+			
+			sVmItem requestVM = VM.info[VM.workingVmSet[vmID].vmName];
+			bool vmIsDouble = requestVM.nodeStatus;
+			int inSerID; // 迁入服务器id
+			int inNode; // 迁入服务器节点
+
+			if (vmIsDouble) 
+				inSerID = srchInVmSourceDouble(server, requestVM, VM, i, delSerSet);
+			else
+				tie(inSerID, inNode) = srchInVmSourceSingle(server, requestVM, VM, i, delSerSet);
+
+			if (inSerID != -1) { // 可以找到
+				if (requestVM.nodeStatus)    // true表示双节点
+					VM.transfer(server, iDay, vmID, inSerID);
+				else 
+					VM.transfer(server, iDay, vmID, inSerID, inNode);
+				cntMig++;
+
+				if (delSerSet.count(inSerID) == 1)   // 迁入的服务器当天有删除操作
+					cyt::updateDelSerSet(delSerSet, requestVM, inNode, inSerID, true);  // 添加虚拟机
+				else if (delSerSet.count(outSerID) == 1)   // 迁出的服务器当天有删除操作
+					cyt::updateDelSerSet(delSerSet, requestVM, outNode, outSerID, false);   // 删除虚拟机
+
+				server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, outSerID, false); // 动态排序，遗留？
+				server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, inSerID, true);
+			}
+			else
+				break;
+		}
+	}
 }
 
 tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
@@ -320,6 +390,120 @@ void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSe
 	}
 }
 
+int srchInVmSourceDouble(cServer &server, sVmItem &requestVM, cVM &VM, int index, 
+	unordered_map<int, sMyEachServer> &delSerSet) {
+/* Fn: 从server.vmSourceOrder中找一台服务器来迁入第index个服务器的requestVM 双节点
+*		-1表示找不到
+*/
+	cyt::sServerItem myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet);
+
+	if (myServer.hardCost == -1) {    // 找到了服务器
+		return myServer.buyID;
+	}
+
+	return -1;
+}
+
+tuple<int, bool> srchInVmSourceSingle(cServer &server, sVmItem &requestVM, cVM &VM, int index, 
+	unordered_map<int, sMyEachServer> &delSerSet) {
+/* Fn: 单节点
+*/
+	cyt::sServerItem myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet);
+
+	if (myServer.hardCost == -1) {    // 找到了服务器
+		return {myServer.buyID, myServer.node};
+	}
+
+	return {-1, false};
+}
+
+cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, int index, 
+	unordered_map<int, sMyEachServer> &delSerSet) {
+	cyt::sServerItem myServer;
+	myServer.hardCost = 1;   // 可通过hardCost来判断是否找到了服务器
+
+	if (server.myServerSet.size() > 0) {   // 有服务器才开始找
+		sMyEachServer tempServer;
+		int restCPU;
+		int restRAM;
+		int minValue = INT_MAX;
+		int tempValue;
+
+		double first = (double)server.vmSourceOrder[index].second;   // 迁出服务器的资源数
+		double second;   // 迁入服务器的资源数
+
+		for (int i = (int)server.vmSourceOrder.size() - 1; i > index; i--) {   // 从后面往前找
+			second = (double)server.vmSourceOrder[i].second;
+			if (second / first < args[1]) { break; } // 遗留
+
+			int inSerID = server.vmSourceOrder[i].first; // 迁入服务器的id
+			
+			if (delSerSet.count(inSerID) == 1) {   // 该服务器在当天有删除操作
+				tempServer = delSerSet[inSerID];
+			}
+			else {  // 表示这台服务器当天没有删除操作
+				tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
+			}
+
+			if (!requestVM.nodeStatus) {    // 单节点
+				if (tempServer.aIdleCPU >= requestVM.needCPU && tempServer.aIdleRAM >= requestVM.needRAM) {    // a节点
+					tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
+					restCPU = tempServer.aIdleCPU - requestVM.needCPU;
+					restRAM = tempServer.aIdleRAM - requestVM.needRAM;
+					tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+					if (tempValue < minValue) {
+						minValue = tempValue;
+						myServer.energyCost = -1;
+						myServer.hardCost = -1;
+						myServer.buyID = inSerID;   // 记录该服务器
+						myServer.node = true;   // 返回true表示a 节点
+					}
+				}
+
+				if (delSerSet.count(inSerID) == 1) {   // 该服务器在当天有删除操作
+					tempServer = delSerSet[inSerID];
+				}
+				else {  // 表示这台服务器当天没有删除操作
+					tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
+				}
+
+				// 两个节点都要查看，看看放哪个节点更合适
+				if (tempServer.bIdleCPU >= requestVM.needCPU && tempServer.bIdleRAM >= requestVM.needRAM) {  // b 节点
+					tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
+					restCPU = tempServer.bIdleCPU - requestVM.needCPU;
+					restRAM = tempServer.bIdleRAM - requestVM.needRAM;
+					tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+					if (tempValue < minValue) {
+						minValue = tempValue;
+						myServer.energyCost = -1;
+						myServer.hardCost = -1;
+						myServer.buyID = inSerID;   // 记录服务器
+						myServer.node = false;   // 返回false表示b 节点
+					}
+				}
+			}
+			else {     // 双节点
+				if (tempServer.aIdleCPU >= requestVM.needCPU / 2 && tempServer.aIdleRAM >= requestVM.needRAM / 2
+					&& tempServer.bIdleCPU >= requestVM.needCPU / 2 && tempServer.bIdleRAM >= requestVM.needRAM / 2) {
+					tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
+					restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
+					restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
+					tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+					if (tempValue < minValue) {
+						minValue = tempValue;
+						myServer.energyCost = -1;
+						myServer.hardCost = -1;
+						myServer.buyID = inSerID;   // 记录服务器
+					}
+				}
+			}
+		}
+	}
+
+	return myServer;
+}
+
+
 cyt::sServerItem bestFit(cServer &server, sVmItem &requestVM) {
 /* Fn: cyt写的，best fit，源程序在cyt分支的tools.cpp中
 */
@@ -415,11 +599,22 @@ std::tuple<int, bool> srchInMyServerSingle(cServer &server, sVmItem &requestVM) 
 	return make_tuple(-1, false);
 }
 
-void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay) {
+void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay,
+	unordered_map<int, sMyEachServer> &delSerSet, unordered_set<string> &dayWorkingVM) {
+/* Fn: bestFit + knapSack
+* Out: (传参返回)
+*	- 当天有过删除操作的服务器列表，<serID, 不考虑del操作的剩余资源> 
+*	- 当天有过add请求的vm集合
+*
+* Note:
+*	- delSerSet的剩余资源有可能是负数的，因为扣掉了del腾出的资源
+*/
 	/* 背包算法要处理的vm add请求集合，最多server.ksSize个元素 */
 	vector<pair<string, string>> curSet;
 	/*还在curSet中的请求如果又来了del请求，那么就先放到这个里*/
 	vector<pair<string, string>> delSet;
+	// 当天删除的虚拟机<vmID, sEachWorkingVM> 用来计算输出 {每次del虚拟机之前更新}
+	unordered_map<string, sEachWorkingVM> dayDeleteVM; 
 
 	/*部分虚拟机装进已购买的服务器，能够处理的del请求（已经部署的vm）也直接处理*/
 	for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) { // 每一条请求
@@ -427,6 +622,7 @@ void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay)
 
 		/*firstFit*/
 		if (request.info[iDay][iTerm].type) { // add
+			dayWorkingVM.insert(vmID);
 
 			/*最新版的选择策略*/
 			string vmName = request.info[iDay][iTerm].vmName;
@@ -458,8 +654,10 @@ void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay)
 		}
 		else { // del
 			/*检查这个vm是否已经被部署 或者 在curSet中*/
-			if (VM.workingVmSet.count(vmID))
+			if (VM.workingVmSet.count(vmID)) {
+				dayDeleteVM.insert({vmID, VM.workingVmSet[vmID]});
 				VM.deleteVM(vmID, server);
+			}
 			else {
 				bool flag = false;
 				for (const auto &x : curSet) {
@@ -484,6 +682,7 @@ void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay)
 		for (auto it=delSet.begin(); it!=delSet.end(); ) {
 			string vmID = it->first;
 			if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
+				dayDeleteVM.insert({vmID, VM.workingVmSet[vmID]});
 				VM.deleteVM(vmID, server);
 				it = delSet.erase(it);
 			}
@@ -498,6 +697,7 @@ void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay)
 		for (auto it=delSet.begin(); it!=delSet.end(); ) {
 			string vmID = it->first;
 			if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
+				dayDeleteVM.insert({vmID, VM.workingVmSet[vmID]});
 				VM.deleteVM(vmID, server);
 				it = delSet.erase(it);
 			}
@@ -509,4 +709,98 @@ void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay)
 		cout << "某（些）需要删除的服务器没有被部署" << endl;
 		return;
 	}
+
+	delSerSet = cyt::recoverDelSerSet(server, VM, dayDeleteVM);
+}
+
+// 有删除操作的服务器需要把被删除的虚拟机容量加回去
+unordered_map<int, sMyEachServer> cyt::recoverDelSerSet(cServer &server, cVM &VM,
+	unordered_map<string, sEachWorkingVM> &dayDeleteVM) {
+
+	unordered_map<int, sMyEachServer> delSerSet;
+	sMyEachServer myServer;
+	sEachWorkingVM workVM;
+	sVmItem requestVM;
+	int serID;   // 服务器ID
+
+	for (auto ite = dayDeleteVM.begin(); ite != dayDeleteVM.end(); ite++) {
+		workVM = ite->second;   
+		serID = workVM.serverID;
+		requestVM = VM.info[workVM.vmName];
+
+		if (delSerSet.count(serID) == 1) {    // 该服务器之前已经删过虚拟机了
+			myServer = delSerSet[serID];
+		}
+		else {   // 该服务器第一次删除虚拟机
+			myServer = server.myServerSet[serID];
+		}
+
+		if (requestVM.nodeStatus) {   // true : double node
+			myServer.aIdleCPU -= requestVM.needCPU / 2;
+			myServer.bIdleCPU -= requestVM.needCPU / 2;
+			myServer.aIdleRAM -= requestVM.needRAM / 2;
+			myServer.bIdleRAM -= requestVM.needRAM / 2;
+		}
+		else {  // false : single node
+			if (workVM.node) {   // true : a node
+				myServer.aIdleCPU -= requestVM.needCPU;
+				myServer.aIdleRAM -= requestVM.needRAM;
+			}
+			else {    // false : b node
+				myServer.bIdleCPU -= requestVM.needCPU;
+				myServer.bIdleRAM -= requestVM.needRAM;
+			}
+		}
+		if (delSerSet.count(serID) == 1) {   // 存在的话就直接修改值
+			delSerSet[serID] = myServer;
+		}
+		else {    // 不存在的话就添加新的键
+			delSerSet.insert({ serID, myServer });
+		}
+	}
+
+	return delSerSet;
+}
+
+// 更新有删除操作的服务器的CPU和RAM
+void cyt::updateDelSerSet(unordered_map<int, sMyEachServer> &delSerSet, 
+	sVmItem &requestVM, bool node, int serID, bool flag) {
+
+	if (flag) {   // add
+		if (requestVM.nodeStatus) {   // true : double
+			delSerSet[serID].aIdleCPU -= requestVM.needCPU / 2;
+			delSerSet[serID].bIdleCPU -= requestVM.needCPU / 2;
+			delSerSet[serID].aIdleRAM -= requestVM.needRAM / 2;
+			delSerSet[serID].bIdleRAM -= requestVM.needRAM / 2;
+		} 
+		else {   // false : single
+			if (node) {  // a node
+				delSerSet[serID].aIdleCPU -= requestVM.needCPU;
+				delSerSet[serID].aIdleRAM -= requestVM.needRAM;
+			}
+			else {   // b node
+				delSerSet[serID].bIdleCPU -= requestVM.needCPU;
+				delSerSet[serID].bIdleRAM -= requestVM.needRAM;
+			}
+		}
+	}
+	else {   // delete
+		if (requestVM.nodeStatus) {   // true : double
+			delSerSet[serID].aIdleCPU += requestVM.needCPU / 2;
+			delSerSet[serID].bIdleCPU += requestVM.needCPU / 2;
+			delSerSet[serID].aIdleRAM += requestVM.needRAM / 2;
+			delSerSet[serID].bIdleRAM += requestVM.needRAM / 2;
+		}
+		else {   // false : single
+			if (node) {  // a node
+				delSerSet[serID].aIdleCPU += requestVM.needCPU;
+				delSerSet[serID].aIdleRAM += requestVM.needRAM;
+			}
+			else {   // b node
+				delSerSet[serID].bIdleCPU += requestVM.needCPU;
+				delSerSet[serID].bIdleRAM += requestVM.needRAM;
+			}
+		}
+	}
+
 }

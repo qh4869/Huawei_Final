@@ -41,6 +41,7 @@ int main()
 void process(cServer &server, cVM &VM, cRequests &request) {
 
     ssp(server, VM, request);
-
+    
     server.idMapping(); // id map
+
 }
