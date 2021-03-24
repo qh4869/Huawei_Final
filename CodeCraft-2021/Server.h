@@ -77,7 +77,7 @@ public:
     /*migrate*/
     // 记录服务器中虚拟机数量的排序 : serID->虚拟机占用资源cpu+ram {部署/删除更新，购买迁移不影响}
     vector<pair<int, int>> vmSourceOrder; 
-    // 更新vmSourceOrder
+    // 更新vmSourceOrder，部署和删除写在deploy,delete函数中，迁移需要单独调用(cyt写的)
     void updatVmSourceOrder(int needCPU, int needRAM, int serID, bool flag); // flag: true(add), false(delete)
     // 每台服务器id对应 虚拟机ID集合(string:VMid, int:0(a),1(b),2(double)) {购买/部署/删除/迁移更新}
     vector<unordered_map<string, int>> serverVMSet; 
