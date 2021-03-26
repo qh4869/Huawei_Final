@@ -32,6 +32,7 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 			server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU;
 			server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM;
 			server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
+			server.updatVmTarOrder(info[vmName].needCPU, info[vmName].needRAM, 0, 0, serID, true);
 			server.serverVMSet[serID].insert({ VMid, 0 });
 		}
 	}
@@ -45,6 +46,7 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 			server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU;
 			server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM;
 			server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
+			server.updatVmTarOrder(0, 0, info[vmName].needCPU, info[vmName].needRAM, serID, true);
 			server.serverVMSet[serID].insert({ VMid, 1 });
 		}
 	}
@@ -96,6 +98,8 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 		server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM/2;
 		server.serverVMSet[serID].insert({ VMid, 2});
 		server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
+		server.updatVmTarOrder(info[vmName].needCPU/2, info[vmName].needRAM/2, info[vmName].needCPU/2, info[vmName].needRAM/2,
+			serID, true);
 	}
 
 	sEachWorkingVM oneVM;
@@ -144,7 +148,7 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 	if (node == true) { // node A
 		if (server.myServerSet[serID].aIdleCPU < occupyCPU \
 			|| server.myServerSet[serID].aIdleRAM < occupyRAM) {
-			cout << "迁移目标虚拟机资源不够（node a）" << endl;
+			cout << "迁移目标虚拟机资源不够（nodep a）" << endl;
 			throw "resource not enough";
 		}
 		else {
@@ -276,19 +280,22 @@ int cVM::deleteVM(string vmID, cServer& server) {
 		server.myServerSet[serID].bIdleCPU += reqCPUs/2;
 		server.myServerSet[serID].aIdleRAM += reqRAMs/2;
 		server.myServerSet[serID].bIdleRAM += reqRAMs/2;
+		server.updatVmTarOrder(reqCPUs/2, reqRAMs/2, reqCPUs/2, reqRAMs/2, serID, false);
 	}
 	else {
 		if (workingVmSet[vmID].node) { // A
 			server.myServerSet[serID].aIdleCPU += reqCPUs;
 			server.myServerSet[serID].aIdleRAM += reqRAMs;
+			server.updatVmTarOrder(reqCPUs, reqRAMs, 0, 0, serID, false);
 		}
 		else { // B
 			server.myServerSet[serID].bIdleCPU += reqCPUs;
 			server.myServerSet[serID].bIdleRAM += reqRAMs;
+			server.updatVmTarOrder(0, 0, reqCPUs, reqRAMs, serID, false);
 		}
 	}
 
-	/*更新vmSourceOrder*/
+	/*更新vmSourceOrder, targetOrder*/
 	server.updatVmSourceOrder(reqCPUs, reqRAMs, serID, false);
 
 	/*删除serverVMset*/
