@@ -512,10 +512,6 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 				for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
 					for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
 						for (int inSerID : itramb->second) {
-							// if (cnt < 100)
-							// 	cnt++;
-							// else
-							// 	goto endloop;
 
 							sMyEachServer tempServer;
 							if (delSerSet.count(inSerID) == 1) {   // 该服务器在当天有删除操作
@@ -524,6 +520,16 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 							else {  // 表示这台服务器当天没有删除操作
 								tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
 							} 
+
+							if (tempServer.aIdleCPU < needCPUa || tempServer.bIdleCPU < needCPUb ||
+								tempServer.aIdleRAM < needRAMa || tempServer.bIdleRAM < needRAMb) {
+								break;
+							}
+
+							/*if (cnt < 100)
+								cnt++;
+							else
+								goto endloop;*/
 
 							tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
 							int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
@@ -552,10 +558,6 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 					for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
 						for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
 							for (int inSerID : itramb->second) {
-								// if (cnt < 100)
-								// 	cnt++;
-								// else
-								// 	goto endloop;
 
 								sMyEachServer tempServer;
 								if (delSerSet.count(inSerID) == 1) {  // 该服务器在当天有删除操作
@@ -564,6 +566,15 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 								else {  // 表示这台服务器当天没有删除操作
 									tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
 								}
+
+								if (tempServer.aIdleCPU < needCPUa || tempServer.aIdleRAM < needRAMa) {
+									break;
+								}
+
+								// if (cnt < 100)
+								// 	cnt++;
+								// else
+								// 	goto endloop;
 
 								tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
 								int restCPU = tempServer.aIdleCPU - requestVM.needCPU;
@@ -592,10 +603,6 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 					for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
 						for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
 							for (int inSerID : itramb->second) {
-								// if (cnt < 100)
-								// 	cnt++;
-								// else
-								// 	goto endloop;
 
 								sMyEachServer tempServer;
 								if (delSerSet.count(inSerID) == 1) {  // 该服务器在当天有删除操作
@@ -605,9 +612,18 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 									tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
 								}
 
+								if (tempServer.bIdleCPU < needCPUb || tempServer.bIdleRAM < needRAMb) {
+									break;
+								}
+
+								// if (cnt < 100)
+								// 	cnt++;
+								// else
+								// 	goto endloop;
+
 								tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
-								int restCPU = tempServer.aIdleCPU - requestVM.needCPU;
-								int restRAM = tempServer.aIdleRAM - requestVM.needRAM;
+								int restCPU = tempServer.bIdleCPU - requestVM.needCPU;
+								int restRAM = tempServer.bIdleRAM - requestVM.needRAM;
 								int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 								if (tempValue < minValue) {
 									minValue = tempValue;
