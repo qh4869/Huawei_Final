@@ -385,3 +385,100 @@ void cServer::updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int need
 		}
 	}
 }
+
+void cServer::updatVmTarOrderNodeA(int needCPU, int needRAM, int serID, bool flag) {
+	string serName = myServerSet[serID].serName;
+	int aIdleCPU = myServerSet[serID].aIdleCPU;
+	int aIdleRAM = myServerSet[serID].aIdleRAM;
+	int alastCPU, alastRAM;
+
+	/*加入新结点*/
+	vmTarOrderNodeA[aIdleCPU][aIdleRAM].push_back(serID);
+
+	if (flag) {
+		alastCPU = aIdleCPU + needCPU;
+		alastRAM = aIdleRAM + needRAM;
+	}
+	else {
+		alastCPU = aIdleCPU - needCPU;
+		alastRAM = aIdleRAM - needRAM;
+	}
+
+	/*删除旧节点*/
+	if (vmTarOrderNodeA.count(alastCPU) && vmTarOrderNodeA[alastCPU].count(alastRAM)) {
+		vector<int> &serSet = vmTarOrderNodeA[alastCPU][alastRAM];
+		for (auto it=serSet.begin(); it!=serSet.end(); it++) {
+			if (*it==serID) {
+				serSet.erase(it);
+				break;
+			}
+		}
+		if (serSet.empty()) {
+			vmTarOrderNodeA[alastCPU].erase(alastRAM);
+			if (vmTarOrderNodeA[alastCPU].empty()) {
+				vmTarOrderNodeA.erase(alastCPU);
+			}
+		}
+	}
+}
+
+void cServer::updatVmTarOrderNodeB(int needCPU, int needRAM, int serID, bool flag) {
+	string serName = myServerSet[serID].serName;
+	int bIdleCPU = myServerSet[serID].bIdleCPU;
+	int bIdleRAM = myServerSet[serID].bIdleRAM;
+	int blastCPU, blastRAM;
+
+	/*加入新结点*/
+	vmTarOrderNodeB[bIdleCPU][bIdleRAM].push_back(serID);
+
+	if (flag) {
+		blastCPU = bIdleCPU + needCPU;
+		blastRAM = bIdleRAM + needRAM;
+	}
+	else {
+		blastCPU = bIdleCPU - needCPU;
+		blastRAM = bIdleRAM - needRAM;
+	}
+
+	/*删除旧节点*/
+	if (vmTarOrderNodeB.count(blastCPU) && vmTarOrderNodeB[blastCPU].count(blastRAM)) {
+		vector<int> &serSet = vmTarOrderNodeB[blastCPU][blastRAM];
+		for (auto it=serSet.begin(); it!=serSet.end(); it++) {
+			if (*it==serID) {
+				serSet.erase(it);
+				break;
+			}
+		}
+		if (serSet.empty()) {
+			vmTarOrderNodeB[blastCPU].erase(blastRAM);
+			if (vmTarOrderNodeB[blastCPU].empty()) {
+				vmTarOrderNodeB.erase(blastCPU);
+			}
+		}
+	}
+}
+
+void cServer::updatVmTarOrderDouble(int needCPU, int needRAM, int serID, int lastCPU, int lastRAM) {
+/* In:
+*	- needCPU/needRAM指的是单节点的值
+*/
+	string serName = myServerSet[serID].serName;
+	int aIdleCPU = myServerSet[serID].aIdleCPU;
+	int aIdleRAM = myServerSet[serID].aIdleRAM;
+	int bIdleCPU = myServerSet[serID].bIdleCPU;
+	int bIdleRAM = myServerSet[serID].bIdleRAM;
+	// int alastCPU, alastRAM, blastCPU, blastRAM;
+
+	int minIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+	int minIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
+	/*加入新结点*/
+	vmTarOrderDouble[minIdleCPU][minIdleRAM].push_back(serID);
+
+	/*删除节点*/
+	if (lastCPU != INT_MAX || lastRAM != INT_MAX) { // 第一次部署不需要删除
+
+	}
+
+
+}
