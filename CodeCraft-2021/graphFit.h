@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "tools.h"
+#include "migrate.h"
 
 // 按图最短路径部署方案
 void graphFit(cServer &server, cVM &VM, cRequests &request);

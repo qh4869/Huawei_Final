@@ -17,7 +17,7 @@ void graphFit(cServer &server, cVM &VM, cRequests &request) {
   	}
 	else {
 		args[0] = 3;
-		args[1] = 1.425;
+		args[1] = 2;
 		args[2] = 0.3;
 		args[3] = 1.0;
 		args[4] = 600;
@@ -55,6 +55,7 @@ void graphFit(cServer &server, cVM &VM, cRequests &request) {
 		if (whichDay > 0) {
 			//migrateVM(server, VM, whichDay, dayWorkingVM, vmTotalNum, delSerSet, args);
 			migrateVM_2(server, VM, whichDay, dayWorkingVM, vmTotalNum, delSerSet, args);
+			//migrateVM_3(server, VM, whichDay, dayWorkingVM, vmTotalNum, delSerSet, args);
 		}
 		dayWorkingVM.clear();
 		dayDeleteVM.clear();

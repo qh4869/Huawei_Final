@@ -443,3 +443,56 @@ void cServer::updatVmSourceOrder(int needCPU, int needRAM, int serID, bool flag)
 bool cyt::mycompID(pair<int, int> i, pair<int, int> j) {
 	return i.second <= j.second;
 }
+
+
+void cServer::updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int needRAMb, int serID, bool flag) {  // true : add , false : delete
+
+	string serName = myServerSet[serID].serName;
+	int totalCPU = info[serName].totalCPU;
+	int totalRAM = info[serName].totalRAM;
+	int aIdleCPU = myServerSet[serID].aIdleCPU;
+	int aIdleRAM = myServerSet[serID].aIdleRAM;
+	int bIdleCPU = myServerSet[serID].bIdleCPU;
+	int bIdleRAM = myServerSet[serID].bIdleRAM;
+	int alastCPU, alastRAM, blastCPU, blastRAM;
+
+	/*加入新结点*/
+	vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU][bIdleRAM].push_back(serID);
+
+	if (flag) {
+		alastCPU = aIdleCPU + needCPUa;
+		alastRAM = aIdleRAM + needRAMa;
+		blastCPU = bIdleCPU + needCPUb;
+		blastRAM = bIdleRAM + needRAMb;
+	}
+	else {
+		alastCPU = aIdleCPU - needCPUa;
+		alastRAM = aIdleRAM - needRAMa;
+		blastCPU = bIdleCPU - needCPUb;
+		blastRAM = bIdleRAM - needRAMb;
+	}
+
+	/*删除旧节点*/
+	if (vmTarOrder.count(alastCPU) && vmTarOrder[alastCPU].count(alastRAM) \
+		&& vmTarOrder[alastCPU][alastRAM].count(blastCPU) && vmTarOrder[alastCPU][alastRAM][blastCPU].count(blastRAM)) {
+		vector<int> &serSet = vmTarOrder[alastCPU][alastRAM][blastCPU][blastRAM];
+		for (auto it = serSet.begin(); it != serSet.end(); it++) {
+			if (*it == serID) {
+				serSet.erase(it);
+				break;
+			}
+		}
+		if (serSet.empty()) {  // 删除空的节点
+			vmTarOrder[alastCPU][alastRAM][blastCPU].erase(blastRAM);
+			if (vmTarOrder[alastCPU][alastRAM][blastCPU].empty()) {
+				vmTarOrder[alastCPU][alastRAM].erase(blastCPU);
+				if (vmTarOrder[alastCPU][alastRAM].empty()) {
+					vmTarOrder[alastCPU].erase(alastRAM);
+					if (vmTarOrder[alastCPU].empty()) {
+						vmTarOrder.erase(alastCPU);
+					}
+				}
+			}
+		}
+	}
+}

@@ -7,6 +7,7 @@
 #include <utility>
 #include "Request.h"
 #include "globalHeader.h"
+#include <map>
 using namespace std;
 
 struct sServerItem {
@@ -79,6 +80,10 @@ public:
 	int ksSize; // 背包算法分组
 	vector<pair<string, sServerItem>> infoV; // vector形式的info，为了写多线程
 	void genInfoV();
+
+	map<int, map<int, map<int, map<int, vector<int>>>>> vmTarOrder; //
+	void updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int needRAMb, int serID, bool flag);
+
 
 	// CYT
 	vector<int> serverNum;   // 每天的服务器数量

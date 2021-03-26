@@ -26,7 +26,7 @@ int main()
 	void process(cServer &server, cVM &VM, cRequests &request);
 
 	// 输入
-	tie(server, VM, request) = dataIn("training-2.txt");
+	tie(server, VM, request) = dataIn("training-1.txt");
 
 	// 购买，迁移，部署
 	//requestOrder(VM, request);
@@ -36,7 +36,10 @@ int main()
 	// 输出
 	dataOut(server, VM, request);
 #endif
-	//system("pause");
+#ifdef LOCAL
+	system("pause");
+#endif // LOCAL
+
 	return 0;
 }
 

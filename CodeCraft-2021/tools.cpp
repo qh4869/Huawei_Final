@@ -582,7 +582,6 @@ bool mycomp(pair<int, int> i, pair<int, int> j) {
 void migrateVM_2(cServer &server, cVM &VM, int whichDay, unordered_map<string, int> &dayWorkingVM,
 	int vmTotalNum, unordered_map<int, sMyEachServer> &delSerSet, vector<double> &args) {
 
-
 	int migrateNum = vmTotalNum * 5 / 1000;
 	int serID;     // 迁出的服务器id
 	sServerItem myServer;   
