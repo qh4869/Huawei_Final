@@ -626,8 +626,8 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 							 //	goto endloop;
 
 							tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
-							int restCPU = tempServer.aIdleCPU - requestVM.needCPU;
-							int restRAM = tempServer.aIdleRAM - requestVM.needRAM;
+							int restCPU = tempServer.bIdleCPU - requestVM.needCPU;
+							int restRAM = tempServer.bIdleRAM - requestVM.needRAM;
 							int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 							if (tempValue < minValue) {
 								minValue = tempValue;
