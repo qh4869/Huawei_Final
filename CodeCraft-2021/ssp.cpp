@@ -9,25 +9,25 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 * Update 03.18
 *	- bestFit 和 knapSack 结构互相迭代
 */
-	/*自适应参数*/
+	// /*自适应参数*/
 	double addVar, delVar;
 	tie(addVar, delVar) = request.getVarRequest();
-	if (delVar < 7) {
-		server.ksSize = 5;
-		gBeta = 0.3;
-		gGamma = 1.0;
-		args[1] = 3;
-		args[2] = 0.3;
-		args[3] = 1.0;
-	}
-	else {
-		server.ksSize = 1;
-		gBeta = 0.3;
-		gGamma = 1.0;
-		args[1] = 5;
-		args[2] = 0.3;
-		args[3] = 1.0;
-	}
+	// if (delVar < 7) {
+	server.ksSize = 5;
+	gBeta = 0.3;
+	gGamma = 1.0;
+	args[1] = 3;
+	args[2] = 0.3;
+	args[3] = 1.0;
+	// }
+	// else {
+	// 	server.ksSize = 1;
+	// 	gBeta = 0.3;
+	// 	gGamma = 1.0;
+	// 	args[1] = 5;
+	// 	args[2] = 0.3;
+	// 	args[3] = 1.0;
+	// }
 
 #ifdef LOCAL
 	// 估计成本变量
@@ -162,31 +162,16 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 			if (inSerID != -1) { // 可以找到
 				if (requestVM.nodeStatus) {   // true表示双节点
 					VM.transfer(server, iDay, vmID, inSerID);
-					server.updatVmTarOrder(requestVM.needCPU/2, requestVM.needRAM/2, requestVM.needCPU/2, requestVM.needRAM/2,
-						outSerID, false);
-					server.updatVmTarOrder(requestVM.needCPU/2, requestVM.needRAM/2, requestVM.needCPU/2, requestVM.needRAM/2,
-						inSerID, true);
 				}
 				else {
 					VM.transfer(server, iDay, vmID, inSerID, inNode);
-					if (inNode)  // node a
-						server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, inSerID, true);
-					else
-						server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, inSerID, true);
-					if (outNode) // node a
-						server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, outSerID, false);
-					else
-						server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, outSerID, false);
 				}
 				cntMig++;
 
 				if (delSerSet.count(inSerID) == 1)   // 迁入的服务器当天有删除操作
 					cyt::updateDelSerSet(delSerSet, requestVM, inNode, inSerID, true);  // 添加虚拟机
 				else if (delSerSet.count(outSerID) == 1)   // 迁出的服务器当天有删除操作
-					cyt::updateDelSerSet(delSerSet, requestVM, outNode, outSerID, false);   // 删除虚拟机
-
-				server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, outSerID, false); 
-				server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, inSerID, true);	
+					cyt::updateDelSerSet(delSerSet, requestVM, outNode, outSerID, false);   // 删除虚拟机	
 			}
 			else
 				break;
@@ -493,49 +478,45 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 	int minValue = INT_MAX;
 	int cnt = 0; // 只遍历N台(双部署)，N个节点（单部署）控制复杂度
 
-	// 暂时先不写key等于的情况
-	int needCPUa, needRAMa, needCPUb, needRAMb;
-
 	if (requestVM.nodeStatus) {// 双节点 
-		// int minValue[2] = {INT_MAX, INT_MAX};
-		// cyt::sServerItem ompServer[2];
 
-		needCPUa = requestVM.needCPU / 2;
-		needRAMa = requestVM.needRAM / 2;
-		needCPUb = requestVM.needCPU / 2;
-		needRAMb = requestVM.needRAM / 2;
+		int needCPU = requestVM.needCPU / 2;
+		int needRAM = requestVM.needRAM / 2;
+		int needCPUa = requestVM.needCPU / 2;
+		int needRAMa = requestVM.needRAM / 2;
+		int needCPUb = requestVM.needCPU / 2;
+		int needRAMb = requestVM.needRAM / 2;
 
-		auto it = greaterEqu1(server.vmTarOrder, needCPUa);
-		// #pragma omp parallel for num_threads(2)
-		for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
-			for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
-				for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
-					for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
-						for (int inSerID : itramb->second) {
-							// if (cnt < 100)
-							// 	cnt++;
-							// else
-							// 	goto endloop;
+		for (auto itcpu = greaterEqu3(server.vmTarOrderDouble, needCPU); itcpu != server.vmTarOrderDouble.end(); itcpu++) {
+			for (auto itram = greaterEqu4(itcpu->second, needRAM); itram != itcpu->second.end(); itram++) {
+				for (int inSerID : itram->second) {
+					sMyEachServer tempServer;
+					if (delSerSet.count(inSerID) == 1) {   // 该服务器在当天有删除操作
+						tempServer = delSerSet[inSerID];
+					}
+					else {  // 表示这台服务器当天没有删除操作
+						tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
+					} 
 
-							sMyEachServer tempServer;
-							if (delSerSet.count(inSerID) == 1) {   // 该服务器在当天有删除操作
-								tempServer = delSerSet[inSerID];
-							}
-							else {  // 表示这台服务器当天没有删除操作
-								tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
-							} 
+					if (tempServer.aIdleCPU < needCPUa || tempServer.bIdleCPU < needCPUb ||
+						tempServer.aIdleRAM < needRAMa || tempServer.bIdleRAM < needRAMb) {
+						break;
+					}
 
-							tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
-							int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
-							int restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
-							int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
-							if (tempValue < minValue) {
-								minValue = tempValue;
-								myServer.energyCost = -1;
-								myServer.hardCost = -1;
-								myServer.buyID = inSerID;   // 记录服务器
-							}
-						}
+					// if (cnt < 100)
+					// 	cnt++;
+					// else
+					// 	goto endloop;
+
+					tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
+					int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
+					int restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
+					int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+					if (tempValue < minValue) {
+						minValue = tempValue;
+						myServer.energyCost = -1;
+						myServer.hardCost = -1;
+						myServer.buyID = inSerID;   // 记录服务器
 					}
 				}
 			}
@@ -543,80 +524,79 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 	}
 	else {  // 单节点
 		/*node a*/ 
-		{	needCPUa = requestVM.needCPU;
-			needRAMa = requestVM.needRAM;
-			needCPUb = 0;
-			needRAMb = 0;
-			for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
-				for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
-					for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
-						for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
-							for (int inSerID : itramb->second) {
-								// if (cnt < 100)
-								// 	cnt++;
-								// else
-								// 	goto endloop;
+		{	int needCPUa = requestVM.needCPU;
+			int needRAMa = requestVM.needRAM;
 
-								sMyEachServer tempServer;
-								if (delSerSet.count(inSerID) == 1) {  // 该服务器在当天有删除操作
-									tempServer = delSerSet[inSerID];
-								}
-								else {  // 表示这台服务器当天没有删除操作
-									tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
-								}
+			for (auto itcpu = greaterEqu3(server.vmTarOrderNodeA, needCPUa); itcpu != server.vmTarOrderNodeA.end(); itcpu++) {
+				for (auto itram = greaterEqu4(itcpu->second, needRAMa); itram != itcpu->second.end(); itram++) {
+					for (int inSerID : itram->second) {
+						sMyEachServer tempServer;
+						if (delSerSet.count(inSerID) == 1) {  // 该服务器在当天有删除操作
+							tempServer = delSerSet[inSerID];
+						}
+						else {  // 表示这台服务器当天没有删除操作
+							tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
+						}
 
-								tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
-								int restCPU = tempServer.aIdleCPU - requestVM.needCPU;
-								int restRAM = tempServer.aIdleRAM - requestVM.needRAM;
-								int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
-								if (tempValue < minValue) {
-									minValue = tempValue;
-									myServer.energyCost = -1;
-									myServer.hardCost = -1;
-									myServer.buyID = inSerID;   // 记录该服务器
-									myServer.node = true;   // 返回true表示a 节点
-								}
-							}
+						if (tempServer.aIdleCPU < needCPUa || tempServer.aIdleRAM < needRAMa) {
+							break;
+						}
+
+						 //if (cnt < 1)
+						 //	cnt++;
+						 //else
+						 //	goto endloop;
+
+						tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
+						int restCPU = tempServer.aIdleCPU - requestVM.needCPU;
+						int restRAM = tempServer.aIdleRAM - requestVM.needRAM;
+						int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+						if (tempValue < minValue) {
+							minValue = tempValue;
+							myServer.energyCost = -1;
+							myServer.hardCost = -1;
+							myServer.buyID = inSerID;   // 记录该服务器
+							myServer.node = true;   // 返回true表示a 节点
 						}
 					}
 				}
 			}
 		}
 		/*node b*/
-		{	needCPUa = 0;
-			needRAMa = 0;
-			needCPUb = requestVM.needCPU;
-			needRAMb = requestVM.needRAM;
-			for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
-				for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
-					for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
-						for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
-							for (int inSerID : itramb->second) {
-								// if (cnt < 100)
-								// 	cnt++;
-								// else
-								// 	goto endloop;
+		{	
+			int needCPUb = requestVM.needCPU;
+			int needRAMb = requestVM.needRAM;
 
-								sMyEachServer tempServer;
-								if (delSerSet.count(inSerID) == 1) {  // 该服务器在当天有删除操作
-									tempServer = delSerSet[inSerID];
-								}
-								else {  // 表示这台服务器当天没有删除操作
-									tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
-								}
+			for (auto itcpu = greaterEqu3(server.vmTarOrderNodeA, needCPUb); itcpu != server.vmTarOrderNodeA.end(); itcpu++) {
+				for (auto itram = greaterEqu4(itcpu->second, needRAMb); itram != itcpu->second.end(); itram++) {
+					for (int inSerID : itram->second) {
+						sMyEachServer tempServer;
+						if (delSerSet.count(inSerID) == 1) {  // 该服务器在当天有删除操作
+							tempServer = delSerSet[inSerID];
+						}
+						else {  // 表示这台服务器当天没有删除操作
+							tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
+						}
 
-								tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
-								int restCPU = tempServer.aIdleCPU - requestVM.needCPU;
-								int restRAM = tempServer.aIdleRAM - requestVM.needRAM;
-								int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
-								if (tempValue < minValue) {
-									minValue = tempValue;
-									myServer.energyCost = -1;
-									myServer.hardCost = -1;
-									myServer.buyID = inSerID;   // 记录该服务器
-									myServer.node = false;   // 返回true表示a 节点
-								}
-							}
+						if (tempServer.bIdleCPU < needCPUb || tempServer.bIdleRAM < needRAMb) {
+							break;
+						}
+
+						 //if (cnt < 1)
+						 //	cnt++;
+						 //else
+						 //	goto endloop;
+
+						tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
+						int restCPU = tempServer.bIdleCPU - requestVM.needCPU;
+						int restRAM = tempServer.bIdleRAM - requestVM.needRAM;
+						int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+						if (tempValue < minValue) {
+							minValue = tempValue;
+							myServer.energyCost = -1;
+							myServer.hardCost = -1;
+							myServer.buyID = inSerID;   // 记录该服务器
+							myServer.node = false;   // 返回true表示a 节点
 						}
 					}
 				}

@@ -89,10 +89,13 @@ public:
     // 每台服务器id对应 虚拟机ID集合(string:VMid, int:0(a),1(b),2(double)) {购买/部署/删除/迁移更新}
     vector<unordered_map<string, int>> serverVMSet; 
 
-    map<int, map<int, map<int, map<int, vector<int>>>>> vmTarOrder; //
-    void updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int needRAMb, int serID, bool flag);
+    // map<int, map<int, map<int, map<int, vector<int>>>>> vmTarOrder; //
+    // void updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int needRAMb, int serID, bool flag);
     map<int, map<int, vector<int>>> vmTarOrderNodeA;
     map<int, map<int, vector<int>>> vmTarOrderNodeB;
     map<int, map<int, vector<int>>> vmTarOrderDouble;
+    void updatVmTarOrderNodeA(int needCPU, int needRAM, int serID, bool flag);
+    void updatVmTarOrderNodeB(int needCPU, int needRAM, int serID, bool flag);
+    void updatVmTarOrderDouble(int serID, int lastCPU, int lastRAM);
 
 };

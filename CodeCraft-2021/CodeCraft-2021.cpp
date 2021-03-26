@@ -41,7 +41,44 @@ int main()
 void process(cServer &server, cVM &VM, cRequests &request) {
 
     ssp(server, VM, request);
+
+    // for (auto a : server.vmTarOrderNodeA) {
+    //     for (auto b : a.second) {
+    //         cout << a.first << " " << b.first << " ";
+    //         for (auto x : b.second) {
+    //             cout << x << ",";
+    //         }
+    //         cout << endl;
+    //     }
+    // }
+
+    // cout << "--------------" << endl;
+
+    // for (auto a : server.vmTarOrderNodeB) {
+    //     for (auto b : a.second) {
+    //         cout << a.first << " " << b.first << " ";
+    //         for (auto x : b.second) {
+    //             cout << x << ",";
+    //         }
+    //         cout << endl;
+    //     }
+    // }
+
+    // cout << "----------------" << endl;
+
+    // for (auto a : server.vmTarOrderDouble) {
+    //     for (auto b : a.second) {
+    //         cout << a.first << " " << b.first << " ";
+    //         for (auto x : b.second) {
+    //             cout << x << ",";
+    //         }
+    //         cout << endl;
+    //     }
+    // }
     
     server.idMapping(); // id map
 
+    // for (auto x: server.idMap) {
+    //     cout << x.first << "->" << x.second << endl;
+    // }
 }

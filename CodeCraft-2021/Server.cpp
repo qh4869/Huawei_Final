@@ -22,6 +22,13 @@ int cServer::purchase(string name, int iDay) {
 	unordered_map<string, int> vmSet;
 	serverVMSet.push_back(vmSet);
 
+	/*add into vmTarOrderXXX (vmSourceXXX初始化留在deploy时候)*/
+	int serID = myServerSet.size()-1;
+	updatVmTarOrderNodeA(-1, -1, serID, true);
+	updatVmTarOrderNodeB(-1, -1, serID, true);
+	updatVmTarOrderDouble(serID, -1, -1);
+
+
 	/*add into buyRecord*/
 	if (!buyRecord[iDay].count(name)) { // 当天没买过这个类型
 		buyRecord[iDay].insert(make_pair(name, 1));
@@ -30,7 +37,7 @@ int cServer::purchase(string name, int iDay) {
 		buyRecord[iDay][name]++;
 	}
 
-	return myServerSet.size()-1;
+	return serID;
 }
 
 int cServer::firstFitDouble(int reqCPU, int reqRAM) {
@@ -313,78 +320,78 @@ void cServer::updatVmSourceOrder(int needCPU, int needRAM, int serID, bool flag)
 
 }
 
-void cServer::updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int needRAMb, int serID, bool flag) {  // true : add , false : delete
+// void cServer::updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int needRAMb, int serID, bool flag) {  // true : add , false : delete
 
-	string serName = myServerSet[serID].serName;
-	int totalCPU = info[serName].totalCPU;
-	int totalRAM = info[serName].totalRAM;
-	int aIdleCPU = myServerSet[serID].aIdleCPU;
-	int aIdleRAM = myServerSet[serID].aIdleRAM;
-	int bIdleCPU = myServerSet[serID].bIdleCPU;
-	int bIdleRAM = myServerSet[serID].bIdleRAM;
-	int alastCPU, alastRAM, blastCPU, blastRAM;
+// 	string serName = myServerSet[serID].serName;
+// 	int totalCPU = info[serName].totalCPU;
+// 	int totalRAM = info[serName].totalRAM;
+// 	int aIdleCPU = myServerSet[serID].aIdleCPU;
+// 	int aIdleRAM = myServerSet[serID].aIdleRAM;
+// 	int bIdleCPU = myServerSet[serID].bIdleCPU;
+// 	int bIdleRAM = myServerSet[serID].bIdleRAM;
+// 	int alastCPU, alastRAM, blastCPU, blastRAM;
 
-	/*加入新结点*/
-	vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU][bIdleRAM].push_back(serID);
-	// if (!vmTarOrder.count(aIdleCPU)) {
-	// 	vmTarOrder.insert({aIdleCPU, {{aIdleRAM, {{bIdleCPU, {{bIdleRAM, {serID} }} }} }} });
-	// }
-	// else {
-	// 	if (!vmTarOrder[aIdleCPU].count(aIdleRAM)) {
-	// 		vmTarOrder[aIdleCPU].insert({aIdleRAM, {{bIdleCPU, {{bIdleRAM, {serID} }} }} });
-	// 	}
-	// 	else {
-	// 		if (!vmTarOrder[aIdleCPU][aIdleRAM].count(bIdleCPU)) {
-	// 			vmTarOrder[aIdleCPU][aIdleRAM].insert({bIdleCPU, {{bIdleRAM, {serID} }} });
-	// 		}
-	// 		else {
-	// 			if (!vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU].count(bIdleRAM)) {
-	// 				vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU].insert({bIdleRAM, {serID} });
-	// 			}
-	// 			else {
-	// 				vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU][bIdleRAM].push_back(serID);
-	// 			}
-	// 		}
-	// 	}			
-	// }
+// 	/*加入新结点*/
+// 	vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU][bIdleRAM].push_back(serID);
+// 	// if (!vmTarOrder.count(aIdleCPU)) {
+// 	// 	vmTarOrder.insert({aIdleCPU, {{aIdleRAM, {{bIdleCPU, {{bIdleRAM, {serID} }} }} }} });
+// 	// }
+// 	// else {
+// 	// 	if (!vmTarOrder[aIdleCPU].count(aIdleRAM)) {
+// 	// 		vmTarOrder[aIdleCPU].insert({aIdleRAM, {{bIdleCPU, {{bIdleRAM, {serID} }} }} });
+// 	// 	}
+// 	// 	else {
+// 	// 		if (!vmTarOrder[aIdleCPU][aIdleRAM].count(bIdleCPU)) {
+// 	// 			vmTarOrder[aIdleCPU][aIdleRAM].insert({bIdleCPU, {{bIdleRAM, {serID} }} });
+// 	// 		}
+// 	// 		else {
+// 	// 			if (!vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU].count(bIdleRAM)) {
+// 	// 				vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU].insert({bIdleRAM, {serID} });
+// 	// 			}
+// 	// 			else {
+// 	// 				vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU][bIdleRAM].push_back(serID);
+// 	// 			}
+// 	// 		}
+// 	// 	}			
+// 	// }
 
-	if (flag) {
-		alastCPU = aIdleCPU + needCPUa;
-		alastRAM = aIdleRAM + needRAMa;
-		blastCPU = bIdleCPU + needCPUb;
-		blastRAM = bIdleRAM + needRAMb;
-	}
-	else {
-		alastCPU = aIdleCPU - needCPUa;
-		alastRAM = aIdleRAM - needRAMa;
-		blastCPU = bIdleCPU - needCPUb;
-		blastRAM = bIdleRAM - needRAMb;
-	}
+// 	if (flag) {
+// 		alastCPU = aIdleCPU + needCPUa;
+// 		alastRAM = aIdleRAM + needRAMa;
+// 		blastCPU = bIdleCPU + needCPUb;
+// 		blastRAM = bIdleRAM + needRAMb;
+// 	}
+// 	else {
+// 		alastCPU = aIdleCPU - needCPUa;
+// 		alastRAM = aIdleRAM - needRAMa;
+// 		blastCPU = bIdleCPU - needCPUb;
+// 		blastRAM = bIdleRAM - needRAMb;
+// 	}
 
-	/*删除旧节点*/
-	if (vmTarOrder.count(alastCPU) && vmTarOrder[alastCPU].count(alastRAM) \
-		&& vmTarOrder[alastCPU][alastRAM].count(blastCPU) && vmTarOrder[alastCPU][alastRAM][blastCPU].count(blastRAM)) {
-		vector<int> &serSet = vmTarOrder[alastCPU][alastRAM][blastCPU][blastRAM];
-		for (auto it=serSet.begin(); it!=serSet.end(); it++) {
-			if (*it==serID) {
-				serSet.erase(it);
-				break;
-			}
-		}
-		if (serSet.empty()) {
-			vmTarOrder[alastCPU][alastRAM][blastCPU].erase(blastRAM);
-			if (vmTarOrder[alastCPU][alastRAM][blastCPU].empty()) {
-				vmTarOrder[alastCPU][alastRAM].erase(blastCPU);
-				if (vmTarOrder[alastCPU][alastRAM].empty()) {
-					vmTarOrder[alastCPU].erase(alastRAM);
-					if (vmTarOrder[alastCPU].empty()) {
-						vmTarOrder.erase(alastCPU);
-					}
-				}
-			}
-		}
-	}
-}
+// 	/*删除旧节点*/
+// 	if (vmTarOrder.count(alastCPU) && vmTarOrder[alastCPU].count(alastRAM) \
+// 		&& vmTarOrder[alastCPU][alastRAM].count(blastCPU) && vmTarOrder[alastCPU][alastRAM][blastCPU].count(blastRAM)) {
+// 		vector<int> &serSet = vmTarOrder[alastCPU][alastRAM][blastCPU][blastRAM];
+// 		for (auto it=serSet.begin(); it!=serSet.end(); it++) {
+// 			if (*it==serID) {
+// 				serSet.erase(it);
+// 				break;
+// 			}
+// 		}
+// 		if (serSet.empty()) {
+// 			vmTarOrder[alastCPU][alastRAM][blastCPU].erase(blastRAM);
+// 			if (vmTarOrder[alastCPU][alastRAM][blastCPU].empty()) {
+// 				vmTarOrder[alastCPU][alastRAM].erase(blastCPU);
+// 				if (vmTarOrder[alastCPU][alastRAM].empty()) {
+// 					vmTarOrder[alastCPU].erase(alastRAM);
+// 					if (vmTarOrder[alastCPU].empty()) {
+// 						vmTarOrder.erase(alastCPU);
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
 void cServer::updatVmTarOrderNodeA(int needCPU, int needRAM, int serID, bool flag) {
 	string serName = myServerSet[serID].serName;
@@ -404,19 +411,21 @@ void cServer::updatVmTarOrderNodeA(int needCPU, int needRAM, int serID, bool fla
 		alastRAM = aIdleRAM - needRAM;
 	}
 
-	/*删除旧节点*/
-	if (vmTarOrderNodeA.count(alastCPU) && vmTarOrderNodeA[alastCPU].count(alastRAM)) {
-		vector<int> &serSet = vmTarOrderNodeA[alastCPU][alastRAM];
-		for (auto it=serSet.begin(); it!=serSet.end(); it++) {
-			if (*it==serID) {
-				serSet.erase(it);
-				break;
+	/*删除旧节点，如果need==-1，表示初始化，purchase调用*/
+	if (needCPU != -1 || needRAM != -1){
+		if (vmTarOrderNodeA.count(alastCPU) && vmTarOrderNodeA[alastCPU].count(alastRAM)) {
+			vector<int> &serSet = vmTarOrderNodeA[alastCPU][alastRAM];
+			for (auto it=serSet.begin(); it!=serSet.end(); it++) {
+				if (*it==serID) {
+					serSet.erase(it);
+					break;
+				}
 			}
-		}
-		if (serSet.empty()) {
-			vmTarOrderNodeA[alastCPU].erase(alastRAM);
-			if (vmTarOrderNodeA[alastCPU].empty()) {
-				vmTarOrderNodeA.erase(alastCPU);
+			if (serSet.empty()) {
+				vmTarOrderNodeA[alastCPU].erase(alastRAM);
+				if (vmTarOrderNodeA[alastCPU].empty()) {
+					vmTarOrderNodeA.erase(alastCPU);
+				}
 			}
 		}
 	}
@@ -440,34 +449,39 @@ void cServer::updatVmTarOrderNodeB(int needCPU, int needRAM, int serID, bool fla
 		blastRAM = bIdleRAM - needRAM;
 	}
 
-	/*删除旧节点*/
-	if (vmTarOrderNodeB.count(blastCPU) && vmTarOrderNodeB[blastCPU].count(blastRAM)) {
-		vector<int> &serSet = vmTarOrderNodeB[blastCPU][blastRAM];
-		for (auto it=serSet.begin(); it!=serSet.end(); it++) {
-			if (*it==serID) {
-				serSet.erase(it);
-				break;
+	/*删除旧节点，如果need==-1，表示初始化，purchase调用*/
+	if (needCPU != -1 || needRAM != -1) {
+		if (vmTarOrderNodeB.count(blastCPU) && vmTarOrderNodeB[blastCPU].count(blastRAM)) {
+			vector<int> &serSet = vmTarOrderNodeB[blastCPU][blastRAM];
+			for (auto it=serSet.begin(); it!=serSet.end(); it++) {
+				if (*it==serID) {
+					serSet.erase(it);
+					break;
+				}
 			}
-		}
-		if (serSet.empty()) {
-			vmTarOrderNodeB[blastCPU].erase(blastRAM);
-			if (vmTarOrderNodeB[blastCPU].empty()) {
-				vmTarOrderNodeB.erase(blastCPU);
+			if (serSet.empty()) {
+				vmTarOrderNodeB[blastCPU].erase(blastRAM);
+				if (vmTarOrderNodeB[blastCPU].empty()) {
+					vmTarOrderNodeB.erase(blastCPU);
+				}
 			}
 		}
 	}
 }
 
-void cServer::updatVmTarOrderDouble(int needCPU, int needRAM, int serID, int lastCPU, int lastRAM) {
+void cServer::updatVmTarOrderDouble(int serID, int lastCPU, int lastRAM) {
 /* In:
-*	- needCPU/needRAM指的是单节点的值
+*	- lastCPU/lastRAM指的是更新前最小cpu和最小ram
+*
+* Note:
+*	- 不管单双节点部署，这个都需要更新
+*	- 需要在函数之外先把lastCPU lastRAM提前算出来
 */
 	string serName = myServerSet[serID].serName;
 	int aIdleCPU = myServerSet[serID].aIdleCPU;
 	int aIdleRAM = myServerSet[serID].aIdleRAM;
 	int bIdleCPU = myServerSet[serID].bIdleCPU;
 	int bIdleRAM = myServerSet[serID].bIdleRAM;
-	// int alastCPU, alastRAM, blastCPU, blastRAM;
 
 	int minIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
 	int minIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
@@ -475,10 +489,21 @@ void cServer::updatVmTarOrderDouble(int needCPU, int needRAM, int serID, int las
 	/*加入新结点*/
 	vmTarOrderDouble[minIdleCPU][minIdleRAM].push_back(serID);
 
-	/*删除节点*/
-	if (lastCPU != INT_MAX || lastRAM != INT_MAX) { // 第一次部署不需要删除
-
+	/*删除节点，第一次购买后部署不需要删除*/
+	if (lastCPU != -1 || lastRAM != -1) {
+		if (vmTarOrderDouble.count(lastCPU) && vmTarOrderDouble[lastCPU].count(lastRAM)) {
+			vector<int> &serSet = vmTarOrderDouble[lastCPU][lastRAM];
+			for (auto it=serSet.begin(); it!=serSet.end(); it++) {
+				if (*it==serID) {
+					serSet.erase(it);
+					break;
+				}
+			}
+			if (serSet.empty()) {
+				vmTarOrderDouble[lastCPU].erase(lastRAM);
+				if (vmTarOrderDouble[lastCPU].empty())
+					vmTarOrderDouble.erase(lastCPU);
+			}
+		}
 	}
-
-
 }

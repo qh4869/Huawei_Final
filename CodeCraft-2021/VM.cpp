@@ -29,11 +29,21 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 			return 2;
 		}
 		else {
-			server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU;
-			server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM;
+			int &aIdleCPU = server.myServerSet[serID].aIdleCPU;
+			int &aIdleRAM = server.myServerSet[serID].aIdleRAM;
+			int &bIdleCPU = server.myServerSet[serID].bIdleCPU;
+			int &bIdleRAM = server.myServerSet[serID].bIdleRAM;
+			int minLastIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+			int minLastIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
+			aIdleCPU -= info[vmName].needCPU;
+			aIdleRAM -= info[vmName].needRAM;
 			server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
-			server.updatVmTarOrder(info[vmName].needCPU, info[vmName].needRAM, 0, 0, serID, true);
 			server.serverVMSet[serID].insert({ VMid, 0 });
+
+			/*更新服务器的排序，用于提高迁入服务器的搜索速度*/
+			server.updatVmTarOrderNodeA(info[vmName].needCPU, info[vmName].needRAM, serID, true);
+			server.updatVmTarOrderDouble(serID, minLastIdleCPU, minLastIdleRAM);
 		}
 	}
 	else {
@@ -43,11 +53,21 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 			return 2;
 		}
 		else {
+			int &aIdleCPU = server.myServerSet[serID].aIdleCPU;
+			int &aIdleRAM = server.myServerSet[serID].aIdleRAM;
+			int &bIdleCPU = server.myServerSet[serID].bIdleCPU;
+			int &bIdleRAM = server.myServerSet[serID].bIdleRAM;
+			int minLastIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+			int minLastIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
 			server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU;
 			server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM;
 			server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
-			server.updatVmTarOrder(0, 0, info[vmName].needCPU, info[vmName].needRAM, serID, true);
 			server.serverVMSet[serID].insert({ VMid, 1 });
+
+			/*更新服务器的排序，用于提高迁入服务器的搜索速度*/
+			server.updatVmTarOrderNodeB(info[vmName].needCPU, info[vmName].needRAM, serID, true);
+			server.updatVmTarOrderDouble(serID, minLastIdleCPU, minLastIdleRAM);
 		}
 	}
 
@@ -92,14 +112,24 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 			return 2;
 	}
 	else {
-		server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU/2;
-		server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM/2;
-		server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU/2;
-		server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM/2;
+		int &aIdleCPU = server.myServerSet[serID].aIdleCPU;
+		int &aIdleRAM = server.myServerSet[serID].aIdleRAM;
+		int &bIdleCPU = server.myServerSet[serID].bIdleCPU;
+		int &bIdleRAM = server.myServerSet[serID].bIdleRAM;
+		int minLastIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+		int minLastIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
+		aIdleCPU -= info[vmName].needCPU/2;
+		aIdleRAM -= info[vmName].needRAM/2;
+		bIdleCPU -= info[vmName].needCPU/2;
+		bIdleRAM -= info[vmName].needRAM/2;
 		server.serverVMSet[serID].insert({ VMid, 2});
 		server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
-		server.updatVmTarOrder(info[vmName].needCPU/2, info[vmName].needRAM/2, info[vmName].needCPU/2, info[vmName].needRAM/2,
-			serID, true);
+
+		/*更新服务器的排序，用于提高迁入服务器的搜索速度*/
+		server.updatVmTarOrderNodeA(info[vmName].needCPU/2, info[vmName].needRAM/2, serID, true);
+		server.updatVmTarOrderNodeB(info[vmName].needCPU/2, info[vmName].needRAM/2, serID, true);
+		server.updatVmTarOrderDouble(serID, minLastIdleCPU, minLastIdleRAM);
 	}
 
 	sEachWorkingVM oneVM;
@@ -145,6 +175,12 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 		throw "not single";
 	}
 
+	/*是否是自己给自己迁移*/
+	if (serID==lastServerID && node==lastServerNode) {
+		cout << "不允许自己给自己迁移" << endl;
+		throw "self not allowed";
+	}
+
 	if (node == true) { // node A
 		if (server.myServerSet[serID].aIdleCPU < occupyCPU \
 			|| server.myServerSet[serID].aIdleRAM < occupyRAM) {
@@ -152,9 +188,21 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 			throw "resource not enough";
 		}
 		else {
+			int &aIdleCPU = server.myServerSet[serID].aIdleCPU;
+			int &aIdleRAM = server.myServerSet[serID].aIdleRAM;
+			int &bIdleCPU = server.myServerSet[serID].bIdleCPU;
+			int &bIdleRAM = server.myServerSet[serID].bIdleRAM;
+			int minLastIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+			int minLastIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
 			server.myServerSet[serID].aIdleCPU -= occupyCPU;
 			server.myServerSet[serID].aIdleRAM -= occupyRAM;
 			server.serverVMSet[serID].insert({ VMid, 0 });
+			server.updatVmSourceOrder(occupyCPU, occupyRAM, serID, true);
+
+			/*更新服务器的排序，用于提高迁入服务器的搜索速度*/
+			server.updatVmTarOrderNodeA(occupyCPU, occupyRAM, serID, true);
+			server.updatVmTarOrderDouble(serID, minLastIdleCPU, minLastIdleRAM);
 		}
 	}
 	else { // node B
@@ -164,9 +212,21 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 			throw "resource not enough";
 		}
 		else {
+			int &aIdleCPU = server.myServerSet[serID].aIdleCPU;
+			int &aIdleRAM = server.myServerSet[serID].aIdleRAM;
+			int &bIdleCPU = server.myServerSet[serID].bIdleCPU;
+			int &bIdleRAM = server.myServerSet[serID].bIdleRAM;
+			int minLastIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+			int minLastIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
 			server.myServerSet[serID].bIdleCPU -= occupyCPU;
 			server.myServerSet[serID].bIdleRAM -= occupyRAM;
 			server.serverVMSet[serID].insert({ VMid, 1 });
+			server.updatVmSourceOrder(occupyCPU, occupyRAM, serID, true);
+
+			/*更新服务器的排序，用于提高迁入服务器的搜索速度*/
+			server.updatVmTarOrderNodeB(occupyCPU, occupyRAM, serID, true);
+			server.updatVmTarOrderDouble(serID, minLastIdleCPU, minLastIdleRAM);
 		}
 	}
 
@@ -176,14 +236,37 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 
 	// 恢复前一个服务器的资源
 	if (lastServerNode == true) { // A node
+		int &aIdleCPU = server.myServerSet[lastServerID].aIdleCPU;
+		int &aIdleRAM = server.myServerSet[lastServerID].aIdleRAM;
+		int &bIdleCPU = server.myServerSet[lastServerID].bIdleCPU;
+		int &bIdleRAM = server.myServerSet[lastServerID].bIdleRAM;
+		int minLastIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+		int minLastIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
 		server.myServerSet[lastServerID].aIdleCPU += occupyCPU;
 		server.myServerSet[lastServerID].aIdleRAM += occupyRAM;
+
+		/*更新服务器的排序，用于提高迁入服务器的搜索速度*/
+		server.updatVmTarOrderNodeA(occupyCPU, occupyRAM, serID, false);
+		server.updatVmTarOrderDouble(serID, minLastIdleCPU, minLastIdleRAM);
 	}
 	else {
+		int &aIdleCPU = server.myServerSet[lastServerID].aIdleCPU;
+		int &aIdleRAM = server.myServerSet[lastServerID].aIdleRAM;
+		int &bIdleCPU = server.myServerSet[lastServerID].bIdleCPU;
+		int &bIdleRAM = server.myServerSet[lastServerID].bIdleRAM;
+		int minLastIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+		int minLastIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
 		server.myServerSet[lastServerID].bIdleCPU += occupyCPU;
 		server.myServerSet[lastServerID].bIdleRAM += occupyRAM;
+
+		/*更新服务器的排序，用于提高迁入服务器的搜索速度*/
+		server.updatVmTarOrderNodeB(occupyCPU, occupyRAM, serID, false);
+		server.updatVmTarOrderDouble(serID, minLastIdleCPU, minLastIdleRAM);
 	}
 	server.serverVMSet[lastServerID].erase(VMid);
+	server.updatVmSourceOrder(occupyCPU, occupyRAM, lastServerID, false);
 
 	// 迁移条目更新
 	sTransVmItem oneTrans;
@@ -216,6 +299,12 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 		throw "not single";
 	}
 
+	/*是否是自己给自己迁移*/
+	if (serID == lastServerID) {
+		cout << "不允许自己给自己迁移" << endl;
+		throw "self not allowed";
+	}
+
 	if (server.myServerSet[serID].aIdleCPU < occupyCPU / 2 \
 		|| server.myServerSet[serID].aIdleRAM < occupyRAM / 2 \
 		|| server.myServerSet[serID].bIdleCPU < occupyCPU / 2 \
@@ -224,22 +313,53 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 		throw "resource not enough";
 	}
 	else {
+		int &aIdleCPU = server.myServerSet[serID].aIdleCPU;
+		int &aIdleRAM = server.myServerSet[serID].aIdleRAM;
+		int &bIdleCPU = server.myServerSet[serID].bIdleCPU;
+		int &bIdleRAM = server.myServerSet[serID].bIdleRAM;
+		int minLastIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+		int minLastIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
 		// 占据新服务器资源
-		server.myServerSet[serID].aIdleCPU -= occupyCPU / 2;
-		server.myServerSet[serID].aIdleRAM -= occupyRAM / 2;
-		server.myServerSet[serID].bIdleCPU -= occupyCPU / 2;
-		server.myServerSet[serID].bIdleRAM -= occupyRAM / 2;
+		aIdleCPU -= occupyCPU / 2;
+		aIdleRAM -= occupyRAM / 2;
+		bIdleCPU -= occupyCPU / 2;
+		bIdleRAM -= occupyRAM / 2;
+
+		// 更新服务器内的虚拟机列表
 		server.serverVMSet[serID].insert({ VMid, 2 });
+		server.updatVmSourceOrder(occupyCPU, occupyRAM, serID, true);
+
+		/*更新服务器的排序，用于提高迁入服务器的搜索速度*/
+		server.updatVmTarOrderNodeA(occupyCPU / 2, occupyRAM / 2, serID, true);
+		server.updatVmTarOrderNodeB(occupyCPU / 2, occupyRAM / 2, serID, true);
+		server.updatVmTarOrderDouble(serID, minLastIdleCPU, minLastIdleRAM);
 	}
 
 	workingVmSet[VMid].serverID = serID;
 
+	int &aIdleCPU = server.myServerSet[lastServerID].aIdleCPU;
+	int &aIdleRAM = server.myServerSet[lastServerID].aIdleRAM;
+	int &bIdleCPU = server.myServerSet[lastServerID].bIdleCPU;
+	int &bIdleRAM = server.myServerSet[lastServerID].bIdleRAM;
+	int minLastIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+	int minLastIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
 	// 恢复前一个服务器的资源
-	server.myServerSet[lastServerID].aIdleCPU += occupyCPU / 2;
-	server.myServerSet[lastServerID].aIdleRAM += occupyRAM / 2;
-	server.myServerSet[lastServerID].bIdleCPU += occupyCPU / 2;
-	server.myServerSet[lastServerID].bIdleRAM += occupyRAM / 2;
+	aIdleCPU += occupyCPU / 2;
+	aIdleRAM += occupyRAM / 2;
+	bIdleCPU += occupyCPU / 2;
+	bIdleRAM += occupyRAM / 2;
+
+
+	// 更新服务器内的虚拟机列表
 	server.serverVMSet[lastServerID].erase(VMid);
+	server.updatVmSourceOrder(occupyCPU, occupyRAM, lastServerID, false);
+
+	/*更新服务器的排序，用于提高迁入服务器的搜索速度*/
+	server.updatVmTarOrderNodeA(occupyCPU / 2, occupyRAM / 2, serID, false);
+	server.updatVmTarOrderNodeB(occupyCPU / 2, occupyRAM / 2, serID, false);
+	server.updatVmTarOrderDouble(serID, minLastIdleCPU, minLastIdleRAM);
 
 	// 迁移条目更新
 	sTransVmItem oneTrans;
@@ -276,26 +396,57 @@ int cVM::deleteVM(string vmID, cServer& server) {
 
 	// 恢复服务器资源
 	if (doubleStatus) {
-		server.myServerSet[serID].aIdleCPU += reqCPUs/2;
-		server.myServerSet[serID].bIdleCPU += reqCPUs/2;
-		server.myServerSet[serID].aIdleRAM += reqRAMs/2;
-		server.myServerSet[serID].bIdleRAM += reqRAMs/2;
-		server.updatVmTarOrder(reqCPUs/2, reqRAMs/2, reqCPUs/2, reqRAMs/2, serID, false);
+		int &aIdleCPU = server.myServerSet[serID].aIdleCPU;
+		int &aIdleRAM = server.myServerSet[serID].aIdleRAM;
+		int &bIdleCPU = server.myServerSet[serID].bIdleCPU;
+		int &bIdleRAM = server.myServerSet[serID].bIdleRAM;
+		int minLastIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+		int minLastIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
+		aIdleCPU += reqCPUs/2;
+		bIdleCPU += reqCPUs/2;
+		aIdleRAM += reqRAMs/2;
+		bIdleRAM += reqRAMs/2;
+		
+		/*更新服务器的排序，用于提高迁入服务器的搜索速度*/
+		server.updatVmTarOrderNodeA(reqCPUs/2, reqRAMs/2, serID, false);
+		server.updatVmTarOrderNodeB(reqCPUs/2, reqRAMs/2, serID, false);
+		server.updatVmTarOrderDouble(serID, minLastIdleCPU, minLastIdleRAM);
 	}
 	else {
 		if (workingVmSet[vmID].node) { // A
-			server.myServerSet[serID].aIdleCPU += reqCPUs;
-			server.myServerSet[serID].aIdleRAM += reqRAMs;
-			server.updatVmTarOrder(reqCPUs, reqRAMs, 0, 0, serID, false);
+			int &aIdleCPU = server.myServerSet[serID].aIdleCPU;
+			int &aIdleRAM = server.myServerSet[serID].aIdleRAM;
+			int &bIdleCPU = server.myServerSet[serID].bIdleCPU;
+			int &bIdleRAM = server.myServerSet[serID].bIdleRAM;
+			int minLastIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+			int minLastIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
+			aIdleCPU += reqCPUs;
+			aIdleRAM += reqRAMs;
+
+			/*更新服务器的排序，用于提高迁入服务器的搜索速度*/
+			server.updatVmTarOrderNodeA(reqCPUs, reqRAMs, serID, false);
+			server.updatVmTarOrderDouble(serID, minLastIdleCPU, minLastIdleRAM);
 		}
 		else { // B
+			int &aIdleCPU = server.myServerSet[serID].aIdleCPU;
+			int &aIdleRAM = server.myServerSet[serID].aIdleRAM;
+			int &bIdleCPU = server.myServerSet[serID].bIdleCPU;
+			int &bIdleRAM = server.myServerSet[serID].bIdleRAM;
+			int minLastIdleCPU = (aIdleCPU < bIdleCPU) ? aIdleCPU : bIdleCPU;
+			int minLastIdleRAM = (aIdleRAM < bIdleRAM) ? aIdleRAM : bIdleRAM;
+
 			server.myServerSet[serID].bIdleCPU += reqCPUs;
 			server.myServerSet[serID].bIdleRAM += reqRAMs;
-			server.updatVmTarOrder(0, 0, reqCPUs, reqRAMs, serID, false);
+
+			/*更新服务器的排序，用于提高迁入服务器的搜索速度*/
+			server.updatVmTarOrderNodeB(reqCPUs, reqRAMs, serID, false);
+			server.updatVmTarOrderDouble(serID, minLastIdleCPU, minLastIdleRAM);
 		}
 	}
 
-	/*更新vmSourceOrder, targetOrder*/
+	/*更新vmSourceOrder*/
 	server.updatVmSourceOrder(reqCPUs, reqRAMs, serID, false);
 
 	/*删除serverVMset*/
