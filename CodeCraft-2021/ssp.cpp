@@ -209,7 +209,7 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 				server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, inSerID, true);	
 			}
 			else
-				continue;
+				break;
 		}
 	}
 }
