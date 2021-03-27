@@ -1,0 +1,241 @@
+diff --git a/CodeCraft-2021/ssp.cpp b/CodeCraft-2021/ssp.cpp
+index 71c5516..d9e32ca 100644
+--- a/CodeCraft-2021/ssp.cpp
++++ b/CodeCraft-2021/ssp.cpp
+@@ -130,12 +130,13 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
+ 	for (int i = 0; i < (int)server.vmSourceOrder.size() / 1; i++) { // i--服务器
+ 		int outSerID = server.vmSourceOrder[i].first; // 迁出的服务器id
+ 		
+-		for (int j = 0; j < (int)server.serverVMSet[outSerID].size(); j++) { // j--虚拟机
++		unordered_map<string, int> tempSerVmSet = server.serverVMSet[outSerID];
++		for (auto ite = tempSerVmSet.begin(); ite != tempSerVmSet.end(); ite++) { // 虚拟机
+ 			if (cntMig == maxMigrateNum)  // 迁移数量达到上限
+ 				return;
+ 
+-			string vmID = server.serverVMSet[outSerID].begin()->first; // 虚拟机id
+-			int outNodeTmp = server.serverVMSet[outSerID].begin()->second; // 迁出服务器的节点
++			string vmID = ite->first; // 虚拟机id
++			int outNodeTmp = ite->second; // 迁出服务器的节点
+ 			bool outNode;
+ 			if (outNodeTmp == 0) // node a
+ 				outNode = true;
+@@ -152,31 +153,50 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
+ 			int inNode; // 迁入服务器节点
+ 
+ 			if (vmIsDouble) 
+-				inSerID = srchInVmSourceDouble(server, requestVM, VM, i, delSerSet);
++				inSerID = srchInVmSourceDouble(server, requestVM, VM, i, delSerSet, vmID);
+ 			else
+-				tie(inSerID, inNode) = srchInVmSourceSingle(server, requestVM, VM, i, delSerSet);
+-
+-			if (inSerID==outSerID)
+-				inSerID = -1; // 不能自己往自己上迁移
++				tie(inSerID, inNode) = srchInVmSourceSingle(server, requestVM, VM, i, delSerSet, vmID);
+ 
+ 			if (inSerID != -1) { // 可以找到
+ 				if (requestVM.nodeStatus) {   // true表示双节点
++					if (inSerID == outSerID)
++						continue; // 不能原地迁移
++
+ 					VM.transfer(server, iDay, vmID, inSerID);
++
++					/*更新vmTarOrder*/
+ 					server.updatVmTarOrder(requestVM.needCPU/2, requestVM.needRAM/2, requestVM.needCPU/2, requestVM.needRAM/2,
+ 						outSerID, false);
+ 					server.updatVmTarOrder(requestVM.needCPU/2, requestVM.needRAM/2, requestVM.needCPU/2, requestVM.needRAM/2,
+ 						inSerID, true);
+ 				}
+ 				else {
++					if (inSerID == outSerID && inNode == outNode) 
++						continue; // 不能原地迁移
++
+ 					VM.transfer(server, iDay, vmID, inSerID, inNode);
+-					if (inNode)  // node a
+-						server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, inSerID, true);
+-					else
+-						server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, inSerID, true);
+-					if (outNode) // node a
+-						server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, outSerID, false);
+-					else
+-						server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, outSerID, false);
++
++					/*更新vmTarOrder*/
++					if (inSerID == outSerID ) { // 同一台服务器
++						if (outNode == false && inNode == true) { // node b -> node a
++							server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, -requestVM.needCPU,
++								-requestVM.needRAM, inSerID, true);
++						}
++						else { // node a -> node b
++							server.updatVmTarOrder(-requestVM.needCPU, -requestVM.needRAM, requestVM.needCPU,
++								requestVM.needRAM, inSerID, true);
++						}
++					}
++					else {
++						if (inNode)  // node a
++							server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, inSerID, true);
++						else
++							server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, inSerID, true);
++						if (outNode) // node a
++							server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, outSerID, false);
++						else
++							server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, outSerID, false);
++					}
+ 				}
+ 				cntMig++;
+ 
+@@ -189,7 +209,7 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
+ 				server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, inSerID, true);	
+ 			}
+ 			else
+-				break;
++				continue;
+ 		}
+ 	}
+ }
+@@ -408,11 +428,11 @@ void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSe
+ }
+ 
+ int srchInVmSourceDouble(cServer &server, sVmItem &requestVM, cVM &VM, int index, 
+-	unordered_map<int, sMyEachServer> &delSerSet) {
++	unordered_map<int, sMyEachServer> &delSerSet, string vmID) {
+ /* Fn: 从server.vmSourceOrder中找一台服务器来迁入第index个服务器的requestVM 双节点
+ *		-1表示找不到
+ */
+-	cyt::sServerItem myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet);
++	cyt::sServerItem myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet, vmID);
+ 
+ 	if (myServer.hardCost == -1) {    // 找到了服务器
+ 		return myServer.buyID;
+@@ -422,10 +442,10 @@ int srchInVmSourceDouble(cServer &server, sVmItem &requestVM, cVM &VM, int index
+ }
+ 
+ tuple<int, bool> srchInVmSourceSingle(cServer &server, sVmItem &requestVM, cVM &VM, int index, 
+-	unordered_map<int, sMyEachServer> &delSerSet) {
++	unordered_map<int, sMyEachServer> &delSerSet, string vmID) {
+ /* Fn: 单节点
+ */
+-	cyt::sServerItem myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet);
++	cyt::sServerItem myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet, vmID);
+ 
+ 	if (myServer.hardCost == -1) {    // 找到了服务器
+ 		return {myServer.buyID, myServer.node};
+@@ -487,14 +507,16 @@ map<int, vector<int>>::iterator \
+ }
+ 
+ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, int index, 
+-	unordered_map<int, sMyEachServer> &delSerSet) {
++	unordered_map<int, sMyEachServer> &delSerSet, string vmID) {
+ 	cyt::sServerItem myServer;
+ 	myServer.hardCost = 1;   // 可通过hardCost来判断是否找到了服务器
+ 	int minValue = INT_MAX;
+-	int cnt = 0; // 只遍历N台(双部署)，N个节点（单部署）控制复杂度
++	// int cnt = 0; // 只遍历N台(双部署)，N个节点（单部署）控制复杂度
+ 
+ 	// 暂时先不写key等于的情况
+ 	int needCPUa, needRAMa, needCPUb, needRAMb;
++	int outSerID = server.vmSourceOrder[index].first;
++	bool outNode = VM.workingVmSet[vmID].node;
+ 
+ 	if (requestVM.nodeStatus) {// 双节点 
+ 		// int minValue[2] = {INT_MAX, INT_MAX};
+@@ -505,15 +527,25 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
+ 		needCPUb = requestVM.needCPU / 2;
+ 		needRAMb = requestVM.needRAM / 2;
+ 
+-		auto it = greaterEqu1(server.vmTarOrder, needCPUa);
+-		// #pragma omp parallel for num_threads(2)
++		/*初值，判断自己迁移之前的得分*/
++		sMyEachServer tempServer = server.myServerSet[outSerID];
++		int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
++		int restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
++		minValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+ 		for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
+ 			for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
+ 				for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
+ 					for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
+ 						for (int inSerID : itramb->second) {
+ 
+-							sMyEachServer tempServer;
++							/*如果inSerID已经空了，那就不选择这台服务器*/
++							if (!server.isOpen(inSerID))
++								continue;
++
++							/*如果inSerID就是ourSerID，那么不做判断，因为初值就是这台服务器*/
++							if (outSerID == inSerID)
++								continue; // 而且循环里的tempServer没有把自己这台VM摘出去，计算结果不准
++
+ 							if (delSerSet.count(inSerID) == 1) {   // 该服务器在当天有删除操作
+ 								tempServer = delSerSet[inSerID];
+ 							}
+@@ -553,12 +585,26 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
+ 			needRAMa = requestVM.needRAM;
+ 			needCPUb = 0;
+ 			needRAMb = 0;
++
++			/*初值，判断自己迁移之前的得分*/
++			sMyEachServer tempServer = server.myServerSet[outSerID];
++			int restCPU = tempServer.aIdleCPU;
++			int restRAM = tempServer.aIdleRAM;
++			minValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+ 			for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
+ 				for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
+ 					for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
+ 						for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
+ 							for (int inSerID : itramb->second) {
+ 
++								/*如果inSerID已经空了，那就不选择这台服务器*/
++								if (!server.isOpen(inSerID))
++									continue;
++
++								/*如果inSer就是outSer，那么不做判断，因为初值就是这台服务器*/
++								if (outSerID == inSerID && outNode == true)
++									continue;
++
+ 								sMyEachServer tempServer;
+ 								if (delSerSet.count(inSerID) == 1) {  // 该服务器在当天有删除操作
+ 									tempServer = delSerSet[inSerID];
+@@ -598,12 +644,26 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
+ 			needRAMa = 0;
+ 			needCPUb = requestVM.needCPU;
+ 			needRAMb = requestVM.needRAM;
++
++			/*初值，判断自己迁移之前的得分*/
++			sMyEachServer tempServer = server.myServerSet[outSerID];
++			int restCPU = tempServer.bIdleCPU;
++			int restRAM = tempServer.bIdleRAM;
++			minValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+ 			for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
+ 				for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
+ 					for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
+ 						for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
+ 							for (int inSerID : itramb->second) {
+ 
++								/*如果inSerID已经空了，那就不选择这台服务器*/
++								if (!server.isOpen(inSerID))
++									continue;
++
++								/*如果inSer就是outSer，那么不做判断，因为初值就是这台服务器*/
++								if (outSerID == inSerID && outNode == false)
++									continue;
++
+ 								sMyEachServer tempServer;
+ 								if (delSerSet.count(inSerID) == 1) {  // 该服务器在当天有删除操作
+ 									tempServer = delSerSet[inSerID];
+diff --git a/CodeCraft-2021/ssp.h b/CodeCraft-2021/ssp.h
+index 6668bdc..109c888 100644
+--- a/CodeCraft-2021/ssp.h
++++ b/CodeCraft-2021/ssp.h
+@@ -67,8 +67,8 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
+ 
+ /*迁移挑选服务器*/
+ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, int index, 
+-	unordered_map<int, sMyEachServer> &delSerSet);
++	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
+ int srchInVmSourceDouble(cServer &server, sVmItem &reqeustVM, cVM &VM, int index, 
+-	unordered_map<int, sMyEachServer> &delSerSet);
++	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
+ tuple<int, bool> srchInVmSourceSingle(cServer &server, sVmItem &reqeustVM, cVM &VM, int index, 
+-	unordered_map<int, sMyEachServer> &delSerSet);
+\ No newline at end of file
++	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
+\ No newline at end of file

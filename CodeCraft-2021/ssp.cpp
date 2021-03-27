@@ -13,7 +13,7 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 	double addVar, delVar;
 	tie(addVar, delVar) = request.getVarRequest();
 	if (delVar < 7) {
-		server.ksSize = 5;
+		server.ksSize = 3;
 		gBeta = 0.3;
 		gGamma = 1.0;
 		args[1] = 3;
@@ -517,6 +517,7 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 	int needCPUa, needRAMa, needCPUb, needRAMb;
 	int outSerID = server.vmSourceOrder[index].first;
 	bool outNode = VM.workingVmSet[vmID].node;
+	sMyEachServer tempServer;
 
 	if (requestVM.nodeStatus) {// 双节点 
 		// int minValue[2] = {INT_MAX, INT_MAX};
@@ -528,10 +529,10 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 		needRAMb = requestVM.needRAM / 2;
 
 		/*初值，判断自己迁移之前的得分*/
-		sMyEachServer tempServer = server.myServerSet[outSerID];
-		int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
-		int restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
-		minValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+		// sMyEachServer tempServer = server.myServerSet[outSerID];
+		// int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
+		// int restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
+		// minValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 		for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
 			for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
 				for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
@@ -578,6 +579,17 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 				}
 			}
 		}
+
+		if (myServer.hardCost = -1) {
+			tempServer = server.myServerSet[outSerID];
+			int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
+			int restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
+			int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+			if (tempValue < minValue) {
+				myServer.hardCost = 1;
+			}
+		}
+
 	}
 	else {  // 单节点
 		/*node a*/ 
@@ -587,10 +599,10 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 			needRAMb = 0;
 
 			/*初值，判断自己迁移之前的得分*/
-			sMyEachServer tempServer = server.myServerSet[outSerID];
-			int restCPU = tempServer.aIdleCPU;
-			int restRAM = tempServer.aIdleRAM;
-			minValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+			// sMyEachServer tempServer = server.myServerSet[outSerID];
+			// int restCPU = tempServer.aIdleCPU;
+			// int restRAM = tempServer.aIdleRAM;
+			// minValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 			for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
 				for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
 					for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
@@ -638,6 +650,16 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 					}
 				}
 			}
+
+			if (myServer.hardCost = -1) {
+				tempServer = server.myServerSet[outSerID];
+				int restCPU = tempServer.aIdleCPU;
+				int restRAM = tempServer.aIdleRAM;
+				int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+				if (tempValue < minValue) {
+					myServer.hardCost = 1;
+				}
+			}
 		}
 		/*node b*/
 		{	needCPUa = 0;
@@ -646,10 +668,10 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 			needRAMb = requestVM.needRAM;
 
 			/*初值，判断自己迁移之前的得分*/
-			sMyEachServer tempServer = server.myServerSet[outSerID];
-			int restCPU = tempServer.bIdleCPU;
-			int restRAM = tempServer.bIdleRAM;
-			minValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+			// sMyEachServer tempServer = server.myServerSet[outSerID];
+			// int restCPU = tempServer.bIdleCPU;
+			// int restRAM = tempServer.bIdleRAM;
+			// minValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 			for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
 				for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
 					for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
@@ -695,6 +717,16 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 							}
 						}
 					}
+				}
+			}
+
+			if (myServer.hardCost = -1) {
+				tempServer = server.myServerSet[outSerID];
+				int restCPU = tempServer.bIdleCPU;
+				int restRAM = tempServer.bIdleRAM;
+				int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+				if (tempValue < minValue) {
+					myServer.hardCost = 1;
 				}
 			}
 		}
