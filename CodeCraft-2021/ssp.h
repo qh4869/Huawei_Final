@@ -67,8 +67,8 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet, 
 
 /*迁移挑选服务器*/
 cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, int index, 
-	unordered_map<int, sMyEachServer> &delSerSet);
+	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
 int srchInVmSourceDouble(cServer &server, sVmItem &reqeustVM, cVM &VM, int index, 
-	unordered_map<int, sMyEachServer> &delSerSet);
+	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
 tuple<int, bool> srchInVmSourceSingle(cServer &server, sVmItem &reqeustVM, cVM &VM, int index, 
-	unordered_map<int, sMyEachServer> &delSerSet);
+	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
