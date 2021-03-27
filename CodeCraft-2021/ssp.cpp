@@ -3,22 +3,21 @@ double gBeta, gGamma; // best fit中的自适应参数
 double args[4]; // 迁移 best fit
 
 void ssp(cServer &server, cVM &VM, cRequests &request) {
-/* Fn: SSP方法
-*	- 背包问题：递归剪枝
-*	
-* Update 03.18
-*	- bestFit 和 knapSack 结构互相迭代
-*/
+	/* Fn: SSP方法
+	*	- 背包问题：递归剪枝
+	*
+	* Update 03.18
+	*	- bestFit 和 knapSack 结构互相迭代
+	*/
 	/*自适应参数*/
 	double addVar, delVar;
 	tie(addVar, delVar) = request.getVarRequest();
 	if (delVar < 7) {
-		server.ksSize = 5;
-		gBeta = 0.3;
-		gGamma = 1.0;
-		args[1] = 3;
-		args[2] = 0.3;
-		args[3] = 1.0;
+		server.ksSize = 4;
+		gBeta = 0.49;
+		gGamma = 1.03;
+		args[2] = 0.51;
+		args[3] = 1.02;
 	}
 	else {
 		server.ksSize = 1;
@@ -52,19 +51,19 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 	/*生成server.infoV，向量，为了写多线程*/
 	server.genInfoV();
 
-	for (int iDay=0; iDay<request.dayNum; iDay++) { // 每一天的请求
+	for (int iDay = 0; iDay<request.dayNum; iDay++) { // 每一天的请求
 #ifdef LOCAL
 		cout << iDay << endl;
 		TIMEend = clock();
-		cout<<(double)(TIMEend-TIMEstart)/CLOCKS_PER_SEC << endl;
+		cout << (double)(TIMEend - TIMEstart) / CLOCKS_PER_SEC << endl;
 #endif
 		int vmNumStart = VM.workingVmSet.size(); // 购买部署前 工作虚拟机的个数 用来迁移
 		unordered_map<int, sMyEachServer> delSerSet; // 有删除操作的SV集合，以及其中扣除del操作的容量 用来迁移
 		unordered_set<string> dayWorkingVM; // 当天新加入的VM集合(就算del也没从中去掉)，迁移时候特殊对待
-		
-		/*每天的购买和部署，
-		* 返回有删除操作服务器 因为是部署后迁移 扣除del资源的容量 ->delSerSet，
-		* 返回当天部署的VM集合，因为是部署后迁移，所以特殊对待*/
+
+											/*每天的购买和部署，
+											* 返回有删除操作服务器 因为是部署后迁移 扣除del资源的容量 ->delSerSet，
+											* 返回当天部署的VM集合，因为是部署后迁移，所以特殊对待*/
 		dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
 
 		/*后迁移（部署后计算，等效部署前实现）*/
@@ -72,7 +71,7 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 
 #ifdef LOCAL
 		/*一天结束统计功耗成本*/
-		for (int iServer=0; iServer<(int)server.myServerSet.size(); iServer++) {
+		for (int iServer = 0; iServer<(int)server.myServerSet.size(); iServer++) {
 			if (server.isOpen(iServer)) {
 				costName = server.myServerSet[iServer].serName;
 				engCostStas += server.info[costName].energyCost;
@@ -84,7 +83,7 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 		ramidle.clear();
 		cpuall.clear();
 		ramall.clear();
-		for (int iServer=0; iServer<(int)server.myServerSet.size(); iServer++) {
+		for (int iServer = 0; iServer<(int)server.myServerSet.size(); iServer++) {
 			if (server.isOpen(iServer)) {
 				wksvcnt++;
 				cpuidle.push_back(server.myServerSet[iServer].aIdleCPU + server.myServerSet[iServer].bIdleCPU);
@@ -94,16 +93,16 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 			}
 		}
 
-		for (int iServer=0; iServer<(int)server.myServerSet.size(); iServer++) {
+		for (int iServer = 0; iServer<(int)server.myServerSet.size(); iServer++) {
 			costName = server.myServerSet[iServer].serName;
 			svcnt += server.info[costName].hardCost;
 		}
-		double cpu1 = accumulate(cpuidle.begin(),cpuidle.end(),0);
-		double cpu2 = accumulate(cpuall.begin(),cpuall.end(),0);
-		double ram1 = accumulate(ramidle.begin(),ramidle.end(),0);
-		double ram2 = accumulate(ramall.begin(),ramall.end(),0);
+		double cpu1 = accumulate(cpuidle.begin(), cpuidle.end(), 0);
+		double cpu2 = accumulate(cpuall.begin(), cpuall.end(), 0);
+		double ram1 = accumulate(ramidle.begin(), ramidle.end(), 0);
+		double ram2 = accumulate(ramall.begin(), ramall.end(), 0);
 		svout << iDay << " " << svcnt << " " << svcnt - svcnt_ << " " << wksvcnt << " "  \
-			<< cpu1/cpu2 << " " << ram1/ram2 << " " << request.numAddEachDay[iDay] << " " << request.numDelEachDay[iDay] << endl;
+			<< cpu1 / cpu2 << " " << ram1 / ram2 << " " << request.numAddEachDay[iDay] << " " << request.numDelEachDay[iDay] << endl;
 		svcnt_ = svcnt;
 		wksvcnt = 0;
 		svcnt = 0;
@@ -111,34 +110,32 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 	}
 #ifdef LOCAL
 	/*计算买服务器总成本*/
-	for (int iServer=0; iServer<(int)server.myServerSet.size(); iServer++) {
+	for (int iServer = 0; iServer<(int)server.myServerSet.size(); iServer++) {
 		costName = server.myServerSet[iServer].serName;
 		hardCostStas += server.info[costName].hardCost;
 	}
-	cout << "成本: " << engCostStas+hardCostStas << endl;
+	cout << "成本: " << engCostStas + hardCostStas << endl;
 #endif
 }
 
-void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet, 
+void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 	unordered_set<string> &dayWorkingVM, int iDay, cServer &server, cVM &VM) {
 
 	/*先统计我可以迁移多少台*/
 	int maxMigrateNum = vmNumStart * 5 / 1000;
 	int cntMig = 0; // 当天已经迁移了多少台
 
-	// 服务器排序
+					// 服务器排序
 	for (int i = 0; i < (int)server.vmSourceOrder.size() / 1; i++) { // i--服务器
 		int outSerID = server.vmSourceOrder[i].first; // 迁出的服务器id
-		
+
 		unordered_map<string, int> tempSerVmSet = server.serverVMSet[outSerID];
-		for (auto ite = tempSerVmSet.begin(); ite != tempSerVmSet.end(); ite++) {
-		//for (int j = 0; j < (int)server.serverVMSet[outSerID].size(); j++) { // j--虚拟机
+		for (auto ite = tempSerVmSet.begin(); ite != tempSerVmSet.end(); ite++) { // 虚拟机
 			if (cntMig == maxMigrateNum)  // 迁移数量达到上限
 				return;
-			string vmID = ite->first;
-			int outNodeTmp = ite->second;
-			//string vmID = server.serverVMSet[outSerID].begin()->first; // 虚拟机id
-			//int outNodeTmp = server.serverVMSet[outSerID].begin()->second; // 迁出服务器的节点
+
+			string vmID = ite->first; // 虚拟机id
+			int outNodeTmp = ite->second; // 迁出服务器的节点
 			bool outNode;
 			if (outNodeTmp == 0) // node a
 				outNode = true;
@@ -147,39 +144,58 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 			else // double
 				outNode = false;
 
-			if (dayWorkingVM.count(vmID) == 1) { continue; } // 暂时不处理，遗留
-			
+			if (dayWorkingVM.count(vmID) == 1) { continue; } // 暂时不迁移当天部署的虚拟机（可以等效于部署上)
+
 			sVmItem requestVM = VM.info[VM.workingVmSet[vmID].vmName];
 			bool vmIsDouble = requestVM.nodeStatus;
 			int inSerID; // 迁入服务器id
 			int inNode; // 迁入服务器节点
 
-			if (vmIsDouble) 
-				inSerID = srchInVmSourceDouble(server, requestVM, VM, i, delSerSet);
+			if (vmIsDouble)
+				inSerID = srchInVmSourceDouble(server, requestVM, VM, i, delSerSet, vmID);
 			else
-				tie(inSerID, inNode) = srchInVmSourceSingle(server, requestVM, VM, i, delSerSet);
-
-			if (inSerID == outSerID)
-				inSerID = -1; // 不能自己往自己上迁移
+				tie(inSerID, inNode) = srchInVmSourceSingle(server, requestVM, VM, i, delSerSet, vmID);
 
 			if (inSerID != -1) { // 可以找到
 				if (requestVM.nodeStatus) {   // true表示双节点
+					if (inSerID == outSerID)
+						continue; // 不能原地迁移
+
 					VM.transfer(server, iDay, vmID, inSerID);
+
+					/*更新vmTarOrder*/
 					server.updatVmTarOrder(requestVM.needCPU / 2, requestVM.needRAM / 2, requestVM.needCPU / 2, requestVM.needRAM / 2,
 						outSerID, false);
 					server.updatVmTarOrder(requestVM.needCPU / 2, requestVM.needRAM / 2, requestVM.needCPU / 2, requestVM.needRAM / 2,
 						inSerID, true);
 				}
 				else {
+					if (inSerID == outSerID && inNode == outNode)
+						continue; // 不能原地迁移
+
 					VM.transfer(server, iDay, vmID, inSerID, inNode);
-					if (inNode)  // node a
-						server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, inSerID, true);
-					else
-						server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, inSerID, true);
-					if (outNode) // node a
-						server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, outSerID, false);
-					else
-						server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, outSerID, false);
+
+					/*更新vmTarOrder*/
+					if (inSerID == outSerID) { // 同一台服务器
+						if (outNode == false && inNode == true) { // node b -> node a
+							server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, -requestVM.needCPU,
+								-requestVM.needRAM, inSerID, true);
+						}
+						else { // node a -> node b
+							server.updatVmTarOrder(-requestVM.needCPU, -requestVM.needRAM, requestVM.needCPU,
+								requestVM.needRAM, inSerID, true);
+						}
+					}
+					else {
+						if (inNode)  // node a
+							server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, inSerID, true);
+						else
+							server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, inSerID, true);
+						if (outNode) // node a
+							server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, outSerID, false);
+						else
+							server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, outSerID, false);
+					}
 				}
 				cntMig++;
 
@@ -188,7 +204,7 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 				else if (delSerSet.count(outSerID) == 1)   // 迁出的服务器当天有删除操作
 					cyt::updateDelSerSet(delSerSet, requestVM, outNode, outSerID, false);   // 删除虚拟机
 
-				server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, outSerID, false); // 动态排序，遗留？
+				server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, outSerID, false);
 				server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, inSerID, true);
 			}
 			else
@@ -198,30 +214,30 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 }
 
 tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
-	vector<pair<string, string>> &curSet, int iDay) 
+	vector<pair<string, string>> &curSet, int iDay)
 {
-/* Fn: 遍历所有服务器选择性价比最高的那一台
-*	- 价格是按照剩余天数加权的
-*	
-* Out:
-*	- string: vmName
-*	- queue<int> curSet中每台vm的部署策略 0不部署 1双节点部署 2nodeA单节点 3nodeB单节点
-*		队列头部对应curSet的头部
-*/
+	/* Fn: 遍历所有服务器选择性价比最高的那一台
+	*	- 价格是按照剩余天数加权的
+	*
+	* Out:
+	*	- string: vmName
+	*	- queue<int> curSet中每台vm的部署策略 0不部署 1双节点部署 2nodeA单节点 3nodeB单节点
+	*		队列头部对应curSet的头部
+	*/
 
 	int dayNum = server.buyRecord.size(); // 总天数
 
-	/*2个线程*/
-	// vector<double> utility(2); 
-	// vector<double> utility_(2);
-	// vector<string> bestSer(2);
-	// vector<queue<int>> bestPath(2);
-	double utility_[2] = {0};
+										  /*2个线程*/
+										  // vector<double> utility(2); 
+										  // vector<double> utility_(2);
+										  // vector<string> bestSer(2);
+										  // vector<queue<int>> bestPath(2);
+	double utility_[2] = { 0 };
 	string bestSer[2];
 	queue<int> bestPath[2];
 
-	#pragma omp parallel for num_threads(2)
-	for (int iSer=0; iSer<server.serverTypeNum; iSer++) {
+#pragma omp parallel for num_threads(2)
+	for (int iSer = 0; iSer<server.serverTypeNum; iSer++) {
 
 		queue<int> vmPath;
 		int ocpRes; // 装入的资源
@@ -233,9 +249,9 @@ tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
 		int hardprice = server.infoV[iSer].second.hardCost;
 		int engprice = server.infoV[iSer].second.energyCost;
 
-		tie(ocpRes, vmPath) = dp(curSet.size()-1, totalCPU / 2, totalRAM / 2, totalCPU / 2, totalRAM / 2, \
+		tie(ocpRes, vmPath) = dp(curSet.size() - 1, totalCPU / 2, totalRAM / 2, totalCPU / 2, totalRAM / 2, \
 			curSet, VM);
-		
+
 		utility = (double)ocpRes / (hardprice + engprice * (dayNum - iDay));
 		if (utility > utility_[omp_get_thread_num()]) {
 			utility_[omp_get_thread_num()] = utility;
@@ -244,25 +260,25 @@ tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
 		}
 
 	}
-	
+
 	/*两个线程结果汇总*/
-	if (utility_[0] >= utility_[1]) 
+	if (utility_[0] >= utility_[1])
 		return make_tuple(bestSer[0], bestPath[0]);
 	else
 		return make_tuple(bestSer[1], bestPath[1]);
 }
 
 tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int bIdleRAM, \
-	vector<pair<string, string>> &curSet, cVM &VM) 
+	vector<pair<string, string>> &curSet, cVM &VM)
 {
-/*
-* Note: 目前没有记忆，只是单纯递归，规模如果需要很大可能自定义类型哈希表
-*/
+	/*
+	* Note: 目前没有记忆，只是单纯递归，规模如果需要很大可能自定义类型哈希表
+	*/
 	queue<int> resPath; // 各个vm的处理结果 ref: knapSack函数的注释
 	int res; // 装入资源数，cpu和ram直接相加
 
 	if (aIdleCPU < 0 || aIdleRAM < 0 || bIdleCPU < 0 || bIdleRAM < 0) {
-		for (; N!=-1; N--) {
+		for (; N != -1; N--) {
 			resPath.push(0);
 		}
 		return make_tuple(-1, resPath);
@@ -280,7 +296,7 @@ tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int b
 	int y1, y2; // 单节点部署下 nodeA和nodeB的结果
 	queue<int> path, path0, path1, path2; // path0不装入路径 path装入路径 path1/path2同y1 y2解释
 
-	/*递归*/
+										  /*递归*/
 	tie(x, path0) = dp(N - 1, aIdleCPU, aIdleRAM, bIdleCPU, bIdleRAM, curSet, VM);
 	path0.push(0);
 
@@ -295,13 +311,13 @@ tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int b
 			y = -1;
 			path.push(0);
 		}
-		
+
 	}
 
 	else {
 		// single node a
 		tie(y1, path1) = dp(N - 1, aIdleCPU - needCPU, aIdleRAM - needRAM, bIdleCPU, bIdleRAM, curSet, VM);
-		if (y1 != -1){
+		if (y1 != -1) {
 			y1 += needCPU + needRAM;
 			path1.push(2);
 		}
@@ -309,7 +325,7 @@ tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int b
 			y1 = -1;
 			path1.push(0);
 		}
-		
+
 		// single node b
 		tie(y2, path2) = dp(N - 1, aIdleCPU, aIdleRAM, bIdleCPU - needCPU, bIdleRAM - needRAM, curSet, VM);
 		if (y2 != -1) {
@@ -320,7 +336,7 @@ tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int b
 			y2 = -1;
 			path2.push(0);
 		}
-		
+
 		/* node a和 node b选一个*/
 		if (y1 >= y2) {
 			path = path1;
@@ -358,48 +374,48 @@ void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSe
 	tie(serName, path) = knapSack(server, VM, curSet, iDay);
 
 	// 买服务器
-	serID = server.purchase(serName, iDay); 
+	serID = server.purchase(serName, iDay);
 
 	/*部署*/
-	for (int iVM=0; iVM<(int)curSet.size(); iVM++) {
+	for (int iVM = 0; iVM<(int)curSet.size(); iVM++) {
 		action = path.front();
 		path.pop();
 		vmID = curSet[iVM].first;
 		vmName = curSet[iVM].second;
-		switch (action) 
+		switch (action)
 		{
-			case 0:
-				break;
-			case 1:
-				bugID = VM.deploy(server, iDay, vmID, vmName, serID);
-				if (bugID) {
-					cout << "服务器部署失败" << bugID << endl;
-					return;
-				}
-				isDeployed[iVM] = true;
-				break;
-			case 2:
-				bugID = VM.deploy(server, iDay, vmID, vmName, serID, true);
-				if (bugID) {
-					cout << "服务器部署失败" << bugID << endl;
-					return;
-				}
-				isDeployed[iVM] = true;
-				break;
-			case 3:
-				bugID = VM.deploy(server, iDay, vmID, vmName, serID, false);
-				if (bugID) {
-					cout << "服务器部署失败" << bugID << endl;
-					return;
-				}
-				isDeployed[iVM] = true;
-				break;
+		case 0:
+			break;
+		case 1:
+			bugID = VM.deploy(server, iDay, vmID, vmName, serID);
+			if (bugID) {
+				cout << "服务器部署失败" << bugID << endl;
+				return;
+			}
+			isDeployed[iVM] = true;
+			break;
+		case 2:
+			bugID = VM.deploy(server, iDay, vmID, vmName, serID, true);
+			if (bugID) {
+				cout << "服务器部署失败" << bugID << endl;
+				return;
+			}
+			isDeployed[iVM] = true;
+			break;
+		case 3:
+			bugID = VM.deploy(server, iDay, vmID, vmName, serID, false);
+			if (bugID) {
+				cout << "服务器部署失败" << bugID << endl;
+				return;
+			}
+			isDeployed[iVM] = true;
+			break;
 		}
 	}
 
 	/*已经部署的服务器从curSet中删除*/
 	auto itIndicator = isDeployed.begin();
-	auto it=curSet.begin();
+	auto it = curSet.begin();
 	while (it != curSet.end()) {
 		if (*itIndicator == true) {
 			it = curSet.erase(it);
@@ -410,12 +426,12 @@ void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSe
 	}
 }
 
-int srchInVmSourceDouble(cServer &server, sVmItem &requestVM, cVM &VM, int index, 
-	unordered_map<int, sMyEachServer> &delSerSet) {
-/* Fn: 从server.vmSourceOrder中找一台服务器来迁入第index个服务器的requestVM 双节点
-*		-1表示找不到
-*/
-	cyt::sServerItem myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet);
+int srchInVmSourceDouble(cServer &server, sVmItem &requestVM, cVM &VM, int index,
+	unordered_map<int, sMyEachServer> &delSerSet, string vmID) {
+	/* Fn: 从server.vmSourceOrder中找一台服务器来迁入第index个服务器的requestVM 双节点
+	*		-1表示找不到
+	*/
+	cyt::sServerItem myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet, vmID);
 
 	if (myServer.hardCost == -1) {    // 找到了服务器
 		return myServer.buyID;
@@ -424,17 +440,17 @@ int srchInVmSourceDouble(cServer &server, sVmItem &requestVM, cVM &VM, int index
 	return -1;
 }
 
-tuple<int, bool> srchInVmSourceSingle(cServer &server, sVmItem &requestVM, cVM &VM, int index, 
-	unordered_map<int, sMyEachServer> &delSerSet) {
-/* Fn: 单节点
-*/
-	cyt::sServerItem myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet);
+tuple<int, bool> srchInVmSourceSingle(cServer &server, sVmItem &requestVM, cVM &VM, int index,
+	unordered_map<int, sMyEachServer> &delSerSet, string vmID) {
+	/* Fn: 单节点
+	*/
+	cyt::sServerItem myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet, vmID);
 
 	if (myServer.hardCost == -1) {    // 找到了服务器
-		return {myServer.buyID, myServer.node};
+		return { myServer.buyID, myServer.node };
 	}
 
-	return {-1, false};
+	return { -1, false };
 }
 
 map<int, map<int, map<int, map<int, vector<int>>>>>::iterator \
@@ -490,14 +506,17 @@ greaterEqu4(map<int, vector<int>> &set, int val) {
 }
 
 cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, int index,
-	unordered_map<int, sMyEachServer> &delSerSet) {
+	unordered_map<int, sMyEachServer> &delSerSet, string vmID) {
 	cyt::sServerItem myServer;
 	myServer.hardCost = 1;   // 可通过hardCost来判断是否找到了服务器
 	int minValue = INT_MAX;
-	int cnt = 0; // 只遍历N台(双部署)，N个节点（单部署）控制复杂度
+	// int cnt = 0; // 只遍历N台(双部署)，N个节点（单部署）控制复杂度
 
-				 // 暂时先不写key等于的情况
+	// 暂时先不写key等于的情况
 	int needCPUa, needRAMa, needCPUb, needRAMb;
+	int outSerID = server.vmSourceOrder[index].first;
+	bool outNode = VM.workingVmSet[vmID].node;
+	sMyEachServer tempServer;
 
 	if (requestVM.nodeStatus) {// 双节点 
 							   // int minValue[2] = {INT_MAX, INT_MAX};
@@ -508,16 +527,25 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 		needCPUb = requestVM.needCPU / 2;
 		needRAMb = requestVM.needRAM / 2;
 
-		auto it = greaterEqu1(server.vmTarOrder, needCPUa);
-		// #pragma omp parallel for num_threads(2)
+		/*初值，判断自己迁移之前的得分*/
+		// sMyEachServer tempServer = server.myServerSet[outSerID];
+		// int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
+		// int restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
+		// minValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 		for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
 			for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
 				for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
 					for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
 						for (int inSerID : itramb->second) {
-							
 
-							sMyEachServer tempServer;
+							/*如果inSerID已经空了，那就不选择这台服务器*/
+							if (!server.isOpen(inSerID))
+								continue;
+
+							/*如果inSerID就是ourSerID，那么不做判断，因为初值就是这台服务器*/
+							if (outSerID == inSerID)
+								continue; // 而且循环里的tempServer没有把自己这台VM摘出去，计算结果不准
+
 							if (delSerSet.count(inSerID) == 1) {   // 该服务器在当天有删除操作
 								tempServer = delSerSet[inSerID];
 							}
@@ -530,10 +558,10 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 								break;
 							}
 
-						/*	 if (cnt < 1)
-							 	cnt++;
-							 else
-							 	goto endloop;*/
+							/*if (cnt < 100)
+							cnt++;
+							else
+							goto endloop;*/
 
 							tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
 							int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
@@ -550,6 +578,17 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 				}
 			}
 		}
+
+		if (myServer.hardCost = -1) {
+			tempServer = server.myServerSet[outSerID];
+			int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
+			int restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
+			int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+			if (tempValue < minValue) {
+				myServer.hardCost = 1;
+			}
+		}
+
 	}
 	else {  // 单节点
 			/*node a*/
@@ -557,11 +596,25 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 		needRAMa = requestVM.needRAM;
 		needCPUb = 0;
 		needRAMb = 0;
+
+		/*初值，判断自己迁移之前的得分*/
+		// sMyEachServer tempServer = server.myServerSet[outSerID];
+		// int restCPU = tempServer.aIdleCPU;
+		// int restRAM = tempServer.aIdleRAM;
+		// minValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 		for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
 			for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
 				for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
 					for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
 						for (int inSerID : itramb->second) {
+
+							/*如果inSerID已经空了，那就不选择这台服务器*/
+							if (!server.isOpen(inSerID))
+								continue;
+
+							/*如果inSer就是outSer，那么不做判断，因为初值就是这台服务器*/
+							if (outSerID == inSerID && outNode == true)
+								continue;
 
 							sMyEachServer tempServer;
 							if (delSerSet.count(inSerID) == 1) {  // 该服务器在当天有删除操作
@@ -575,10 +628,10 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 								break;
 							}
 
-							 //if (cnt < 1)
-							 //	cnt++;
-							 //else
-							 //	goto endloop;
+							// if (cnt < 100)
+							// 	cnt++;
+							// else
+							// 	goto endloop;
 
 							tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
 							int restCPU = tempServer.aIdleCPU - requestVM.needCPU;
@@ -596,17 +649,41 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 				}
 			}
 		}
+
+		if (myServer.hardCost = -1) {
+			tempServer = server.myServerSet[outSerID];
+			int restCPU = tempServer.aIdleCPU;
+			int restRAM = tempServer.aIdleRAM;
+			int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+			if (tempValue < minValue) {
+				myServer.hardCost = 1;
+			}
+		}
 		}
 		/*node b*/
 		{	needCPUa = 0;
 		needRAMa = 0;
 		needCPUb = requestVM.needCPU;
 		needRAMb = requestVM.needRAM;
+
+		/*初值，判断自己迁移之前的得分*/
+		// sMyEachServer tempServer = server.myServerSet[outSerID];
+		// int restCPU = tempServer.bIdleCPU;
+		// int restRAM = tempServer.bIdleRAM;
+		// minValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
 		for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
 			for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
 				for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
 					for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
 						for (int inSerID : itramb->second) {
+
+							/*如果inSerID已经空了，那就不选择这台服务器*/
+							if (!server.isOpen(inSerID))
+								continue;
+
+							/*如果inSer就是outSer，那么不做判断，因为初值就是这台服务器*/
+							if (outSerID == inSerID && outNode == false)
+								continue;
 
 							sMyEachServer tempServer;
 							if (delSerSet.count(inSerID) == 1) {  // 该服务器在当天有删除操作
@@ -620,10 +697,10 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 								break;
 							}
 
-							 //if (cnt < 1)
-							 //	cnt++;
-							 //else
-							 //	goto endloop;
+							// if (cnt < 100)
+							// 	cnt++;
+							// else
+							// 	goto endloop;
 
 							tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
 							int restCPU = tempServer.bIdleCPU - requestVM.needCPU;
@@ -641,6 +718,16 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 				}
 			}
 		}
+
+		if (myServer.hardCost = -1) {
+			tempServer = server.myServerSet[outSerID];
+			int restCPU = tempServer.bIdleCPU;
+			int restRAM = tempServer.bIdleRAM;
+			int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+			if (tempValue < minValue) {
+				myServer.hardCost = 1;
+			}
+		}
 		}
 	}
 endloop: return myServer;
@@ -648,18 +735,18 @@ endloop: return myServer;
 
 
 cyt::sServerItem bestFit(cServer &server, sVmItem &requestVM) {
-/* Fn: cyt写的，best fit，源程序在cyt分支的tools.cpp中
-*/
+	/* Fn: cyt写的，best fit，源程序在cyt分支的tools.cpp中
+	*/
 
 	cyt::sServerItem myServer;
 	myServer.hardCost = 1;   // 可通过hardCost来判断是否找到了服务器
 
 	if (server.myServerSet.size() > 0) {   // 有服务器才开始找
 
-		int minValue[2] = {INT_MAX, INT_MAX};
+		int minValue[2] = { INT_MAX, INT_MAX };
 		cyt::sServerItem ompServer[2];
 
-		#pragma omp parallel for num_threads(2)
+#pragma omp parallel for num_threads(2)
 		for (unsigned i = 0; i < server.myServerSet.size(); i++) {
 
 			sMyEachServer tempServer = server.myServerSet[i];   // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
@@ -708,7 +795,7 @@ cyt::sServerItem bestFit(cServer &server, sVmItem &requestVM) {
 		}
 
 		/*多线程合并*/
-		if (minValue[0] <= minValue[1]) 
+		if (minValue[0] <= minValue[1])
 			myServer = ompServer[0];
 		else
 			myServer = ompServer[1];
@@ -719,11 +806,11 @@ cyt::sServerItem bestFit(cServer &server, sVmItem &requestVM) {
 }
 
 int srchInMyServerDouble(cServer &server, sVmItem &requestVM) {
-/* Fn: 从已购买的服务器中找一台，来部署这台VM
-*
-* Out:
-*	- 返回服务器id（id映射前），若找不到合适的SV，返回-1
-*/
+	/* Fn: 从已购买的服务器中找一台，来部署这台VM
+	*
+	* Out:
+	*	- 返回服务器id（id映射前），若找不到合适的SV，返回-1
+	*/
 	cyt::sServerItem myServer = bestFit(server, requestVM);
 
 	if (myServer.hardCost == -1) {    // 找到了服务器
@@ -734,9 +821,9 @@ int srchInMyServerDouble(cServer &server, sVmItem &requestVM) {
 }
 
 std::tuple<int, bool> srchInMyServerSingle(cServer &server, sVmItem &requestVM) {
-/* Fn: 功能同上，单节点部署类型，不是单节点部署抛异常
-*
-*/
+	/* Fn: 功能同上，单节点部署类型，不是单节点部署抛异常
+	*
+	*/
 	cyt::sServerItem myServer = bestFit(server, requestVM);
 
 	if (myServer.hardCost == -1) {    // 找到了服务器
@@ -748,23 +835,23 @@ std::tuple<int, bool> srchInMyServerSingle(cServer &server, sVmItem &requestVM) 
 
 void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay,
 	unordered_map<int, sMyEachServer> &delSerSet, unordered_set<string> &dayWorkingVM) {
-/* Fn: bestFit + knapSack
-* Out: (传参返回)
-*	- 当天有过删除操作的服务器列表，<serID, 不考虑del操作的剩余资源> 
-*	- 当天有过add请求的vm集合
-*
-* Note:
-*	- delSerSet的剩余资源有可能是负数的，因为扣掉了del腾出的资源
-*/
+	/* Fn: bestFit + knapSack
+	* Out: (传参返回)
+	*	- 当天有过删除操作的服务器列表，<serID, 不考虑del操作的剩余资源>
+	*	- 当天有过add请求的vm集合
+	*
+	* Note:
+	*	- delSerSet的剩余资源有可能是负数的，因为扣掉了del腾出的资源
+	*/
 	/* 背包算法要处理的vm add请求集合，最多server.ksSize个元素 */
 	vector<pair<string, string>> curSet;
 	/*还在curSet中的请求如果又来了del请求，那么就先放到这个里*/
 	vector<pair<string, string>> delSet;
 	// 当天删除的虚拟机<vmID, sEachWorkingVM> 用来计算输出 {每次del虚拟机之前更新}
-	unordered_map<string, sEachWorkingVM> dayDeleteVM; 
+	unordered_map<string, sEachWorkingVM> dayDeleteVM;
 
 	/*部分虚拟机装进已购买的服务器，能够处理的del请求（已经部署的vm）也直接处理*/
-	for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) { // 每一条请求
+	for (int iTerm = 0; iTerm<request.numEachDay[iDay]; iTerm++) { // 每一条请求
 		string vmID = request.info[iDay][iTerm].vmID;
 
 		/*firstFit*/
@@ -787,9 +874,9 @@ void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay,
 			}
 
 			if (serID != -1) { // 能直接装进去
-				if (vmIsDouble) 
+				if (vmIsDouble)
 					bugID = VM.deploy(server, iDay, vmID, vmName, serID);
-				else 
+				else
 					bugID = VM.deploy(server, iDay, vmID, vmName, serID, serNode);
 				if (bugID) {
 					cout << "部署失败" << bugID << endl;
@@ -800,15 +887,15 @@ void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay,
 				curSet.push_back(make_pair(vmID, vmName));
 		}
 		else { // del
-			/*检查这个vm是否已经被部署 或者 在curSet中*/
+			   /*检查这个vm是否已经被部署 或者 在curSet中*/
 			if (VM.workingVmSet.count(vmID)) {
-				dayDeleteVM.insert({vmID, VM.workingVmSet[vmID]});
+				dayDeleteVM.insert({ vmID, VM.workingVmSet[vmID] });
 				VM.deleteVM(vmID, server);
 			}
 			else {
 				bool flag = false;
 				for (const auto &x : curSet) {
-					if (x.first==vmID) { // 在curSet中
+					if (x.first == vmID) { // 在curSet中
 						delSet.push_back(x);
 						flag = true;
 						break;
@@ -826,10 +913,10 @@ void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay,
 		}
 
 		/*delSet遗留问题，训练集数据都没出现这个情况*/
-		for (auto it=delSet.begin(); it!=delSet.end(); ) {
+		for (auto it = delSet.begin(); it != delSet.end(); ) {
 			string vmID = it->first;
 			if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
-				dayDeleteVM.insert({vmID, VM.workingVmSet[vmID]});
+				dayDeleteVM.insert({ vmID, VM.workingVmSet[vmID] });
 				VM.deleteVM(vmID, server);
 				it = delSet.erase(it);
 			}
@@ -841,10 +928,10 @@ void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay,
 	/*curSet中还遗留部分vm*/
 	while (curSet.size()) {
 		packAndDeploy(server, VM, curSet, iDay);
-		for (auto it=delSet.begin(); it!=delSet.end(); ) {
+		for (auto it = delSet.begin(); it != delSet.end(); ) {
 			string vmID = it->first;
 			if (VM.workingVmSet.count(vmID)) { // 不满足的还留在delSet里
-				dayDeleteVM.insert({vmID, VM.workingVmSet[vmID]});
+				dayDeleteVM.insert({ vmID, VM.workingVmSet[vmID] });
 				VM.deleteVM(vmID, server);
 				it = delSet.erase(it);
 			}
@@ -871,7 +958,7 @@ unordered_map<int, sMyEachServer> cyt::recoverDelSerSet(cServer &server, cVM &VM
 	int serID;   // 服务器ID
 
 	for (auto ite = dayDeleteVM.begin(); ite != dayDeleteVM.end(); ite++) {
-		workVM = ite->second;   
+		workVM = ite->second;
 		serID = workVM.serverID;
 		requestVM = VM.info[workVM.vmName];
 
@@ -910,7 +997,7 @@ unordered_map<int, sMyEachServer> cyt::recoverDelSerSet(cServer &server, cVM &VM
 }
 
 // 更新有删除操作的服务器的CPU和RAM
-void cyt::updateDelSerSet(unordered_map<int, sMyEachServer> &delSerSet, 
+void cyt::updateDelSerSet(unordered_map<int, sMyEachServer> &delSerSet,
 	sVmItem &requestVM, bool node, int serID, bool flag) {
 
 	if (flag) {   // add
@@ -919,7 +1006,7 @@ void cyt::updateDelSerSet(unordered_map<int, sMyEachServer> &delSerSet,
 			delSerSet[serID].bIdleCPU -= requestVM.needCPU / 2;
 			delSerSet[serID].aIdleRAM -= requestVM.needRAM / 2;
 			delSerSet[serID].bIdleRAM -= requestVM.needRAM / 2;
-		} 
+		}
 		else {   // false : single
 			if (node) {  // a node
 				delSerSet[serID].aIdleCPU -= requestVM.needCPU;

@@ -52,4 +52,3 @@ std::tuple<double, double> cRequests::getVarRequest() {
 	}
 	return make_tuple(varAdd, varDel);
 }
-

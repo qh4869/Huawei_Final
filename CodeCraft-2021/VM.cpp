@@ -122,8 +122,6 @@ int cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID
 	return 0;
 }
 
-
-
 void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node) {
 	/*
 	* Fn: 单节点迁移，出入参数错误检测遗留，包括5%。的要求等
@@ -150,7 +148,7 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 	if (node == true) { // node A
 		if (server.myServerSet[serID].aIdleCPU < occupyCPU \
 			|| server.myServerSet[serID].aIdleRAM < occupyRAM) {
-			cout << "迁移目标虚拟机资源不够（node a）" << endl;
+			cout << "迁移目标虚拟机资源不够（nodep a）" << endl;
 			throw "resource not enough";
 		}
 		else {
@@ -304,133 +302,5 @@ int cVM::deleteVM(string vmID, cServer& server) {
 	server.serverVMSet[serID].erase(vmID);
 
 	workingVmSet.erase(vmID);
-	return 0;
-}
-
-
-// CYT :
-int cVM::cyt_deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node, vector<double> &args) {
-	/* Fn: 单节点部署情况
-	* 	- 因为要求输出的顺序按照输入虚拟机请求的顺序，所以这个函数的调用必须按照add请求的顺序
-	*
-	* In:
-	*	- server: server对象
-	*	- iDay: 天数
-	*	- VMid: 虚拟机ID
-	*	- vmName: 虚拟机型号
-	*	- serID: 被部署服务器ID
-	*	- node: 单节点部署的节点 true表示 a节点
-	*
-	* Out:
-	*	- 0表示正常运行，否则存在错误
-	*/
-	// 判断单双节点虚拟机部署时候 有没有使用错误
-	if (info[vmName].nodeStatus) {
-		cout << "双节点虚拟机不能指定节点类型，分配失败" << endl;
-		return 1;
-	}
-
-	if (serID == 126) {
-		int a = 1;
-	}
-
-	// 判断资源是否够分
-	if (node == true) { // a 节点部署
-		if (server.myServerSet[serID].aIdleCPU < info[vmName].needCPU \
-			|| server.myServerSet[serID].aIdleRAM < info[vmName].needRAM) {
-			//cout << "a node error" << endl;
-			return 2;
-		}
-		else {
-			server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU;
-			server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM;
-			server.serverVMSet[serID].insert({ VMid, 0 });
-			server.updatVmSourceOrder(info[vmName], serID, true, args);
-		}
-	}
-	else {
-		if (server.myServerSet[serID].bIdleCPU < info[vmName].needCPU \
-			|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM) {
-			cout << "b node error" << endl;
-			return 2;
-		}
-		else {
-			server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU;
-			server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM;
-			server.serverVMSet[serID].insert({ VMid, 1 });
-			server.updatVmSourceOrder(info[vmName], serID, true, args);
-		}
-	}
-
-	sEachWorkingVM oneVM;
-	oneVM.vmName = vmName;
-	oneVM.serverID = serID;
-	oneVM.node = node;
-	if (!workingVmSet.count(VMid)) {
-		workingVmSet.insert(std::make_pair(VMid, oneVM));
-	}
-	else {
-		cout << "虚拟机id冲突！" << endl;
-		return 3;
-	}
-
-	sDeployItem oneDeploy;
-	oneDeploy.serID = serID;
-	oneDeploy.isSingle = true;
-	oneDeploy.node = node;
-
-	deployRecord[iDay].insert(make_pair(VMid, oneDeploy));
-
-	return 0;
-}
-
-int cVM::cyt_deploy(cServer &server, int iDay, string VMid, string vmName, int serID, vector<double> &args) {
-	/*
-	* Fn: 双节点部署
-	* 	- 因为要求输出的顺序按照输入虚拟机请求的顺序，所以这个函数的调用必须按照add请求的顺序
-	*	- 其他参考 单节点部署 函数
-	*/
-	if (!info[vmName].nodeStatus) {
-		cout << "单节点虚拟机分配两个节点，分配失败" << endl;
-		return 1;
-	}
-
-	if (serID == 126) {
-		int a = 1;
-	}
-
-	if (server.myServerSet[serID].aIdleCPU<info[vmName].needCPU / 2 \
-		|| server.myServerSet[serID].bIdleCPU<info[vmName].needCPU / 2 \
-		|| server.myServerSet[serID].aIdleRAM < info[vmName].needRAM / 2 \
-		|| server.myServerSet[serID].bIdleRAM < info[vmName].needRAM / 2) {
-		cout << "服务器资源不够，分配失败" << endl;
-		return 2;
-	}
-	else {
-		server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU / 2;
-		server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM / 2;
-		server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU / 2;
-		server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM / 2;
-		server.serverVMSet[serID].insert({ VMid, 2 });
-		server.updatVmSourceOrder(info[vmName], serID, true, args);
-	}
-
-	sEachWorkingVM oneVM;
-	oneVM.vmName = vmName;
-	oneVM.serverID = serID;
-	if (!workingVmSet.count(VMid)) {
-		workingVmSet.insert(std::make_pair(VMid, oneVM));
-	}
-	else {
-		cout << "虚拟机id冲突！" << endl;
-		return 3;
-	}
-
-	sDeployItem oneDeploy;
-	oneDeploy.serID = serID;
-	oneDeploy.isSingle = false;
-
-	deployRecord[iDay].insert(make_pair(VMid, oneDeploy));
-
 	return 0;
 }

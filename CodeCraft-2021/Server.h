@@ -15,9 +15,6 @@ struct sServerItem {
 	int totalRAM;
 	int hardCost; // hardware cost
 	int energyCost; // energy Cost per day
-	string serName;   // 服务器类型
-	int buyID;   // 用于记录已购买服务器的ID
-	bool node;   // 判断是a节点部署还是b节点部署，true : a节点
 };
 
 struct sMyEachServer {
@@ -26,6 +23,11 @@ struct sMyEachServer {
 	int bIdleCPU;
 	int aIdleRAM;
 	int bIdleRAM;
+};
+
+struct sTarSer {
+	int idleRam;
+	int serID;
 };
 
 namespace cyt {
@@ -51,7 +53,6 @@ public:
 	static bool mycompID(pair<int, int> i, pair<int, int> j);
 	static bool mycompIDDB(pair<int, double> i, pair<int, double> j);
 	void rankServerByPrice();
-	void rankServerByPrice(bool flag);   // flag表示是否第一次，为true表示第一次，需构造变量，false不是第一次，可减少时间
 	void rankMyserverbyRatio();
 	void rankMyServerbyOccupied();
 	void rankMyServerbyIdle();
@@ -69,11 +70,9 @@ public:
 	string chooseSer(int reqCPU, int reqRAM, bool isDoubleNode);
 
 	// 购买服务器
-	int cyt_purchase(string serName, int iDay); // 购买服务器 id按照购买顺序分配（可能不符合输出要求
-	// 购买服务器
 	int purchase(string serName, int iDay); // 购买服务器 id按照购买顺序分配（可能不符合输出要求
 
-	// id 映射
+											// id 映射
 	int idMapping();
 
 	/*SSP*/
@@ -81,15 +80,21 @@ public:
 	vector<pair<string, sServerItem>> infoV; // vector形式的info，为了写多线程
 	void genInfoV();
 
-	map<int, map<int, map<int, map<int, vector<int>>>>> vmTarOrder; //
-	void updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int needRAMb, int serID, bool flag);
-
-
-	// CYT
-	vector<int> serverNum;   // 每天的服务器数量
-	vector<unordered_map<string, int>> serverVMSet;   // 每台服务器对应的虚拟机ID集合(string:VMid, int:0(a),1(b),2(double))
-	vector<pair<int, int>> vmSourceOrder;    // 记录服务器中虚拟机数量的排序 : serID->虚拟机资源
-	void updatVmSourceOrder(sVmItem &requestVm, int serID, bool flag, vector<double> &args);   // flag: true(add), false(delete)
+	/*migrate*/
+	// 记录服务器中虚拟机数量的排序 : serID->虚拟机占用资源cpu+ram {部署/删除更新，购买迁移不影响}
+	vector<pair<int, int>> vmSourceOrder;
 	// 更新vmSourceOrder，部署和删除写在deploy,delete函数中，迁移需要单独调用(cyt写的)
 	void updatVmSourceOrder(int needCPU, int needRAM, int serID, bool flag); // flag: true(add), false(delete)
+
+																			 // // 按照服务器中空闲资源大小的排序，结构同上
+																			 // vector<pair<int, int>> vmTargetOrder; 
+																			 // void updatVmTargetOrder(int needCPU, int needRAM, int serID, bool flag); // flag: true(add), false(delete)
+
+																			 // 每台服务器id对应 虚拟机ID集合(string:VMid, int:0(a),1(b),2(double)) {购买/部署/删除/迁移更新}
+	vector<unordered_map<string, int>> serverVMSet;
+
+	map<int, map<int, map<int, map<int, vector<int>>>>> vmTarOrder; //
+
+
+	void updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int needRAMb, int serID, bool flag);
 };
