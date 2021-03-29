@@ -10,7 +10,7 @@ using namespace std;
 
 
 // 输入数据读取
-std::tuple<cServer, cVM, cRequests> dataIn(string fileName);
+void dataIn(string fileName, cServer &server, cVM &VM, cRequests &request);
 
 //将结果输出到标准输出
 void dataOut(cServer &server, cVM &VM, const cRequests &request);

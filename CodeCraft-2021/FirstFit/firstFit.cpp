@@ -1,6 +1,6 @@
 ﻿#include "firstFit.h"
 
-void firstFit(cServer &server, cVM &VM, const cRequests &request) {
+void firstFit(cFF_Server &server, cVM &VM, const cRequests &request) {
 /* Fn: first fit算法部署和购买，不迁移
 */
 #ifdef LOCAL
@@ -9,6 +9,10 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 	int hardCostStas = 0;
 	string costName;
 #endif
+
+	/*自定义参数，全部服务器排序*/
+	server.alpha = 400;
+	server.rankServerByPrice();
 
 	// 初始化变量
 	int serId; 
@@ -48,25 +52,17 @@ void firstFit(cServer &server, cVM &VM, const cRequests &request) {
 				// 根据搜索结果预购买或预部署
 				if (serId != -1) { // 不用购买，但也有可能是今天买的
 					if (vmIsDouble) 
-						bugID = VM.deploy(server, iDay, vmID, vmName, serId);
+						VM.deploy(server, iDay, vmID, vmName, serId);
 					else
-						bugID = VM.deploy(server, iDay, vmID, vmName, serId, serNode);
-					if (bugID) {
-						cout << "部署失败" << bugID << endl;
-						return;
-					}
+						VM.deploy(server, iDay, vmID, vmName, serId, serNode);
 				}
 				else { // 需要购买
 					serName = server.chooseSer(vmReqCPU, vmReqRAM, vmIsDouble);
 					serId = server.purchase(serName, iDay);
 					if (vmIsDouble)
-						bugID = VM.deploy(server, iDay, vmID, vmName, serId);
+						VM.deploy(server, iDay, vmID, vmName, serId);
 					else
-						bugID = VM.deploy(server, iDay, vmID, vmName, serId, true);
-					if (bugID) {
-						cout << "部署失败" << bugID << endl;
-						return;
-					}
+						VM.deploy(server, iDay, vmID, vmName, serId, true);
 				}			
 			}
 			else { // delete 请求

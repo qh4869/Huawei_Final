@@ -2,7 +2,7 @@
 double gBeta, gGamma; // best fit中的自适应参数
 double args[4]; // 迁移 best fit
 
-void ssp(cServer &server, cVM &VM, cRequests &request) {
+void ssp(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request) {
 	/* Fn: SSP方法
 	*	- 背包问题：递归剪枝
 	*
@@ -119,7 +119,7 @@ void ssp(cServer &server, cVM &VM, cRequests &request) {
 }
 
 void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
-	unordered_set<string> &dayWorkingVM, int iDay, cServer &server, cVM &VM) {
+	unordered_set<string> &dayWorkingVM, int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM) {
 
 	/*先统计我可以迁移多少台*/
 	int maxMigrateNum = vmNumStart * 5 / 1000;
@@ -149,7 +149,7 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 			sVmItem requestVM = VM.info[VM.workingVmSet[vmID].vmName];
 			bool vmIsDouble = requestVM.nodeStatus;
 			int inSerID; // 迁入服务器id
-			int inNode; // 迁入服务器节点
+			bool inNode = false; // 迁入服务器节点
 
 			if (vmIsDouble)
 				inSerID = srchInVmSourceDouble(server, requestVM, VM, i, delSerSet, vmID);
@@ -157,7 +157,7 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 				tie(inSerID, inNode) = srchInVmSourceSingle(server, requestVM, VM, i, delSerSet, vmID);
 
 			if (inSerID != -1) { // 可以找到
-				if (requestVM.nodeStatus) {   // true表示双节点
+				if (vmIsDouble) {   // true表示双节点
 					if (inSerID == outSerID)
 						continue; // 不能原地迁移
 
@@ -213,25 +213,25 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 	}
 }
 
-tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
+tuple<string, queue<int>> knapSack(const cSSP_Mig_Server &server, cSSP_Mig_VM &VM, \
 	vector<pair<string, string>> &curSet, int iDay)
 {
-	/* Fn: 遍历所有服务器选择性价比最高的那一台
-	*	- 价格是按照剩余天数加权的
-	*
-	* Out:
-	*	- string: vmName
-	*	- queue<int> curSet中每台vm的部署策略 0不部署 1双节点部署 2nodeA单节点 3nodeB单节点
-	*		队列头部对应curSet的头部
-	*/
+/* Fn: 遍历所有服务器选择性价比最高的那一台
+*	- 价格是按照剩余天数加权的
+*
+* Out:
+*	- string: vmName
+*	- queue<int> curSet中每台vm的部署策略 0不部署 1双节点部署 2nodeA单节点 3nodeB单节点
+*		队列头部对应curSet的头部
+*/
 
 	int dayNum = server.buyRecord.size(); // 总天数
 
-										  /*2个线程*/
-										  // vector<double> utility(2); 
-										  // vector<double> utility_(2);
-										  // vector<string> bestSer(2);
-										  // vector<queue<int>> bestPath(2);
+	/*2个线程*/
+	// vector<double> utility(2); 
+	// vector<double> utility_(2);
+	// vector<string> bestSer(2);
+	// vector<queue<int>> bestPath(2);
 	double utility_[2] = { 0 };
 	string bestSer[2];
 	queue<int> bestPath[2];
@@ -269,11 +269,11 @@ tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, \
 }
 
 tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int bIdleRAM, \
-	vector<pair<string, string>> &curSet, cVM &VM)
+	vector<pair<string, string>> &curSet, cSSP_Mig_VM &VM)
 {
-	/*
-	* Note: 目前没有记忆，只是单纯递归，规模如果需要很大可能自定义类型哈希表
-	*/
+/*
+* Note: 目前没有记忆，只是单纯递归，规模如果需要很大可能自定义类型哈希表
+*/
 	queue<int> resPath; // 各个vm的处理结果 ref: knapSack函数的注释
 	int res; // 装入资源数，cpu和ram直接相加
 
@@ -360,7 +360,7 @@ tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int b
 	return make_tuple(res, resPath);
 }
 
-void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSet, int iDay) {
+void packAndDeploy(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, vector<pair<string, string>> &curSet, int iDay) {
 	string serName;
 	queue<int> path;
 	vector<bool> isDeployed(curSet.size(), false);
@@ -368,7 +368,6 @@ void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSe
 	int action;
 	string vmID; // 临时变量，和上面的冲突了
 	string vmName;
-	int bugID;
 
 	// 选择最优背包
 	tie(serName, path) = knapSack(server, VM, curSet, iDay);
@@ -387,27 +386,15 @@ void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSe
 		case 0:
 			break;
 		case 1:
-			bugID = VM.deploy(server, iDay, vmID, vmName, serID);
-			if (bugID) {
-				cout << "服务器部署失败" << bugID << endl;
-				return;
-			}
+			VM.deploy(server, iDay, vmID, vmName, serID);
 			isDeployed[iVM] = true;
 			break;
 		case 2:
-			bugID = VM.deploy(server, iDay, vmID, vmName, serID, true);
-			if (bugID) {
-				cout << "服务器部署失败" << bugID << endl;
-				return;
-			}
+			VM.deploy(server, iDay, vmID, vmName, serID, true);
 			isDeployed[iVM] = true;
 			break;
 		case 3:
-			bugID = VM.deploy(server, iDay, vmID, vmName, serID, false);
-			if (bugID) {
-				cout << "服务器部署失败" << bugID << endl;
-				return;
-			}
+			VM.deploy(server, iDay, vmID, vmName, serID, false);
 			isDeployed[iVM] = true;
 			break;
 		}
@@ -426,7 +413,7 @@ void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSe
 	}
 }
 
-int srchInVmSourceDouble(cServer &server, sVmItem &requestVM, cVM &VM, int index,
+int srchInVmSourceDouble(cSSP_Mig_Server &server, sVmItem &requestVM, cSSP_Mig_VM &VM, int index,
 	unordered_map<int, sMyEachServer> &delSerSet, string vmID) {
 	/* Fn: 从server.vmSourceOrder中找一台服务器来迁入第index个服务器的requestVM 双节点
 	*		-1表示找不到
@@ -440,7 +427,7 @@ int srchInVmSourceDouble(cServer &server, sVmItem &requestVM, cVM &VM, int index
 	return -1;
 }
 
-tuple<int, bool> srchInVmSourceSingle(cServer &server, sVmItem &requestVM, cVM &VM, int index,
+tuple<int, bool> srchInVmSourceSingle(cSSP_Mig_Server &server, sVmItem &requestVM, cSSP_Mig_VM &VM, int index,
 	unordered_map<int, sMyEachServer> &delSerSet, string vmID) {
 	/* Fn: 单节点
 	*/
@@ -505,7 +492,7 @@ greaterEqu4(map<int, vector<int>> &set, int val) {
 		return it;
 }
 
-cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, int index,
+cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSSP_Mig_VM &VM, int index,
 	unordered_map<int, sMyEachServer> &delSerSet, string vmID) {
 	cyt::sServerItem myServer;
 	myServer.hardCost = 1;   // 可通过hardCost来判断是否找到了服务器
@@ -579,7 +566,7 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 			}
 		}
 
-		if (myServer.hardCost = -1) {
+		if (myServer.hardCost == -1) {
 			tempServer = server.myServerSet[outSerID];
 			int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
 			int restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
@@ -650,7 +637,7 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 			}
 		}
 
-		if (myServer.hardCost = -1) {
+		if (myServer.hardCost == -1) {
 			tempServer = server.myServerSet[outSerID];
 			int restCPU = tempServer.aIdleCPU;
 			int restRAM = tempServer.aIdleRAM;
@@ -719,7 +706,7 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 			}
 		}
 
-		if (myServer.hardCost = -1) {
+		if (myServer.hardCost == -1) {
 			tempServer = server.myServerSet[outSerID];
 			int restCPU = tempServer.bIdleCPU;
 			int restRAM = tempServer.bIdleRAM;
@@ -730,11 +717,12 @@ cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, in
 		}
 		}
 	}
-endloop: return myServer;
+// endloop: return myServer;
+	return myServer;
 }
 
 
-cyt::sServerItem bestFit(cServer &server, sVmItem &requestVM) {
+cyt::sServerItem bestFit(cSSP_Mig_Server &server, sVmItem &requestVM) {
 	/* Fn: cyt写的，best fit，源程序在cyt分支的tools.cpp中
 	*/
 
@@ -807,7 +795,7 @@ cyt::sServerItem bestFit(cServer &server, sVmItem &requestVM) {
 
 }
 
-int srchInMyServerDouble(cServer &server, sVmItem &requestVM) {
+int srchInMyServerDouble(cSSP_Mig_Server &server, sVmItem &requestVM) {
 	/* Fn: 从已购买的服务器中找一台，来部署这台VM
 	*
 	* Out:
@@ -822,7 +810,7 @@ int srchInMyServerDouble(cServer &server, sVmItem &requestVM) {
 	return -1;
 }
 
-std::tuple<int, bool> srchInMyServerSingle(cServer &server, sVmItem &requestVM) {
+std::tuple<int, bool> srchInMyServerSingle(cSSP_Mig_Server &server, sVmItem &requestVM) {
 	/* Fn: 功能同上，单节点部署类型，不是单节点部署抛异常
 	*
 	*/
@@ -835,7 +823,7 @@ std::tuple<int, bool> srchInMyServerSingle(cServer &server, sVmItem &requestVM) 
 	return make_tuple(-1, false);
 }
 
-void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay,
+void dailyPurchaseDeploy(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request, int iDay,
 	unordered_map<int, sMyEachServer> &delSerSet, unordered_set<string> &dayWorkingVM) {
 	/* Fn: bestFit + knapSack
 	* Out: (传参返回)
@@ -866,7 +854,6 @@ void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay,
 			bool vmIsDouble = VM.isDouble(vmName);
 			int serID;
 			bool serNode;
-			int bugID;
 
 			if (vmIsDouble) {
 				serID = srchInMyServerDouble(server, requestVM);
@@ -877,13 +864,9 @@ void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay,
 
 			if (serID != -1) { // 能直接装进去
 				if (vmIsDouble)
-					bugID = VM.deploy(server, iDay, vmID, vmName, serID);
+					VM.deploy(server, iDay, vmID, vmName, serID);
 				else
-					bugID = VM.deploy(server, iDay, vmID, vmName, serID, serNode);
-				if (bugID) {
-					cout << "部署失败" << bugID << endl;
-					return;
-				}
+					VM.deploy(server, iDay, vmID, vmName, serID, serNode);
 			}
 			else // 装不进去
 				curSet.push_back(make_pair(vmID, vmName));
@@ -950,7 +933,7 @@ void dailyPurchaseDeploy(cServer &server, cVM &VM, cRequests &request, int iDay,
 }
 
 // 有删除操作的服务器需要把被删除的虚拟机容量加回去
-unordered_map<int, sMyEachServer> cyt::recoverDelSerSet(cServer &server, cVM &VM,
+unordered_map<int, sMyEachServer> cyt::recoverDelSerSet(cSSP_Mig_Server &server, cSSP_Mig_VM &VM,
 	unordered_map<string, sEachWorkingVM> &dayDeleteVM) {
 
 	unordered_map<int, sMyEachServer> delSerSet;

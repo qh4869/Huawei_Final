@@ -1,14 +1,14 @@
 ﻿#include "io.h"
 using namespace std;
 
-std::tuple<cServer, cVM, cRequests> dataIn(string fileName) {
-	/*
-	* Fn: 读入数据
-	*
-	* In:
-	*   - fileName: txt文件名
-	*
-	*/
+void dataIn(string fileName, cServer &server, cVM &VM, cRequests &request) {
+/*
+* Fn: 读入数据
+*
+* In:
+*   - fileName: txt文件名
+*
+*/
 #ifdef LOCAL
 	ifstream fin;
 	fin.open(fileName.c_str());
@@ -16,14 +16,11 @@ std::tuple<cServer, cVM, cRequests> dataIn(string fileName) {
 #endif
 
 	string inputStr;
-	cServer server;
-	cVM VM;
-	cRequests request;
 
 	// 服务器种类数
 	cin >> inputStr;
 	server.serverTypeNum = atoi(inputStr.c_str()); // string to int
-												   // 服务器每条信息
+	// 服务器每条信息
 	for (int iTerm = 0; iTerm<server.serverTypeNum; iTerm++) {
 		// server name
 		string serName;
@@ -118,19 +115,67 @@ std::tuple<cServer, cVM, cRequests> dataIn(string fileName) {
 			request.info[iDay][iTerm].vmID = inputStr;
 		}
 	}
-
-	// cout << server.serverTypeNum << endl;
-
-	return make_tuple(server, VM, request);
 }
 
 void dataOut(cServer& server, cVM& VM, const cRequests& request) {
-	/*
-	* Fn: 将结果输出到标准输出
-	*
-	* In:
-	*
-	*/
+/*
+* Fn: 将结果输出到标准输出
+*
+* In:
+*
+*/
+#ifdef LOCAL
+	ofstream fout;
+	fout.open("dataOut.txt");
+	for (int iDay = 0; iDay < request.dayNum; iDay++) {
+		//输出（purchase,Q) , Q表示当天购买的服务器种类数
+		fout << "(" << "purchase" << "," << server.buyRecord[iDay].size() << ")" << endl;//也可以用 server.buyRecord[iDay].size()
+																						 //输出(服务器型号，购买数量）
+		for (auto ite = server.buyRecord[iDay].begin(); ite != server.buyRecord[iDay].end(); ite++) { //迭代器
+			fout << "(" << ite->first << "," << ite->second << ")" << endl;
+		}
+		//输出（migration,W) , W表示当天要迁移的虚拟机数量
+		fout << "(" << "migration," << VM.transVmRecord[iDay].size() << ")" << endl;
+		//分别输出W台虚拟机的迁移路径
+		for (auto ite = VM.transVmRecord[iDay].begin(); ite != VM.transVmRecord[iDay].end(); ite++) { //迭代器
+			if (ite->isSingle) {
+				if (ite->node)
+					fout << "(" << ite->vmID << "," << server.idMap[ite->serverID] << "," << "A" << ")" << endl;
+				else
+					fout << "(" << ite->vmID << "," << server.idMap[ite->serverID] << "," << "B" << ")" << endl;
+			}
+			else
+				fout << "(" << ite->vmID << "," << server.idMap[ite->serverID] << ")" << endl;
+		}
+
+		//输出当天每条虚拟机部署记录，按照add request的顺序
+		for (const auto &reqItem : request.info[iDay]) {
+			if (!reqItem.type) // del 请求
+				continue;
+
+			string vmID = reqItem.vmID;
+			if (!VM.deployRecord[iDay].count(vmID)) {
+				fout << "有一条add请求没有被处理" << endl;
+				return;
+			}
+
+			int serID = server.idMap.at(VM.deployRecord[iDay][vmID].serID);
+			bool isSingle = VM.deployRecord[iDay][vmID].isSingle;
+			bool node = VM.deployRecord[iDay][vmID].node;
+
+			if (isSingle) {
+				if (node)
+					fout << "(" << serID << "," << "A" << ")" << endl;
+				else
+					fout << "(" << serID << "," << "B" << ")" << endl;
+			}
+			else
+				fout << "(" << serID << ")" << endl;
+		}
+	}
+#endif
+
+#ifndef LOCAL
 	for (int iDay = 0; iDay < request.dayNum; iDay++) {
 		//输出（purchase,Q) , Q表示当天购买的服务器种类数
 		cout << "(" << "purchase" << "," << server.buyRecord[iDay].size() << ")" << endl;//也可以用 server.buyRecord[iDay].size()
@@ -177,4 +222,5 @@ void dataOut(cServer& server, cVM& VM, const cRequests& request) {
 				cout << "(" << serID << ")" << endl;
 		}
 	}
+#endif
 }

@@ -46,13 +46,13 @@ public:
 	vector<vector<sTransVmItem>> transVmRecord; // 每天 迁移记录 用于输出 (注意迁移是有先后顺序的)
 	vector<unordered_map<string, sDeployItem>> deployRecord; // 每天 虚拟机部署记录 用于输出 vmID -> 部署详情
 
-															 // 单节点部署
-	int deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node);
+	// 单节点部署
+	void deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node);
 	// 双节点部署
-	int deploy(cServer &server, int iDay, string VMid, string vmName, int serID);
+	void deploy(cServer &server, int iDay, string VMid, string vmName, int serID);
 
 	// delete VM
-	int deleteVM(string vmID, cServer& server);
+	void deleteVM(string vmID, cServer& server);
 
 	// 单节点虚拟机迁移
 	void transfer(cServer &server, int iDay, string VMid, int serID, bool node);

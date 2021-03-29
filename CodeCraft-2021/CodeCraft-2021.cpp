@@ -1,8 +1,10 @@
 ﻿#include "io.h"
-#include "Server.h"
-#include "VM.h"
-#include "Request.h"
+#include "SSP_Mig_Server.h"
+#include "SSP_Mig_VM.h"
 #include "ssp.h"
+// #include "FF_Server.h"
+// #include "firstFit.h"
+#include "Request.h"
 #include <iostream>
 #include "globalHeader.h" 
 #ifdef LOCAL
@@ -19,29 +21,21 @@ int main()
 #ifdef LOCAL
 	TIMEstart = clock();
 #endif
-	cServer server;
-	cVM VM;
+	cSSP_Mig_Server server;
+	cSSP_Mig_VM VM;
 	cRequests request;
-	void process(cServer &server, cVM &VM, cRequests &request);
 
 	// 输入
-	tie(server, VM, request) = dataIn("../CodeCraft-2021/training-1.txt");
+	dataIn("../CodeCraft-2021/training-1.txt", server, VM, request);
 
 	// 购买，迁移，部署
-	process(server, VM, request);
-
-#ifndef LOCAL
-	// 输出
-	dataOut(server, VM, request);
-#endif
-
-	return 0;
-}
-
-void process(cServer &server, cVM &VM, cRequests &request) {
-
 	ssp(server, VM, request);
 
-	server.idMapping(); // id map
+	// id map
+	server.idMapping(); 
 
+	// 输出
+	dataOut(server, VM, request);
+
+	return 0;
 }

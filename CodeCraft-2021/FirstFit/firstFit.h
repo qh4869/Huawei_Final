@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Server.h"
+#include "FF_Server.h"
 #include "VM.h"
 #include "Request.h"
 #include <iostream>
@@ -7,7 +7,7 @@
 #include <time.h>
 using namespace std;
 
-void firstFit(cServer &server, cVM &VM, const cRequests &request);
+void firstFit(cFF_Server &server, cVM &VM, const cRequests &request);
 
 #ifdef LOCAL
 extern clock_t TIMEstart, TIMEend;

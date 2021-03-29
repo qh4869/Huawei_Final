@@ -1,6 +1,6 @@
-﻿#include "VM.h"
+#include "SSP_Mig_VM.h"
 
-void cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node) {
+void cSSP_Mig_VM::deploy(cSSP_Mig_Server &server, int iDay, string VMid, string vmName, int serID, bool node) {
 	/* Fn: 单节点部署情况
 	* 	- 因为要求输出的顺序按照输入虚拟机请求的顺序，所以这个函数的调用必须按照add请求的顺序
 	*
@@ -31,6 +31,9 @@ void cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serI
 		else {
 			server.myServerSet[serID].aIdleCPU -= info[vmName].needCPU;
 			server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM;
+			server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
+			server.updatVmTarOrder(info[vmName].needCPU, info[vmName].needRAM, 0, 0, serID, true);
+			server.serverVMSet[serID].insert({ VMid, 0 });
 		}
 	}
 	else {
@@ -42,6 +45,9 @@ void cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serI
 		else {
 			server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU;
 			server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM;
+			server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
+			server.updatVmTarOrder(0, 0, info[vmName].needCPU, info[vmName].needRAM, serID, true);
+			server.serverVMSet[serID].insert({ VMid, 1 });
 		}
 	}
 
@@ -65,7 +71,7 @@ void cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serI
 	deployRecord[iDay].insert(make_pair(VMid, oneDeploy));
 }
 
-void cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serID) {
+void cSSP_Mig_VM::deploy(cSSP_Mig_Server &server, int iDay, string VMid, string vmName, int serID) {
 	/*
 	* Fn: 双节点部署
 	* 	- 因为要求输出的顺序按照输入虚拟机请求的顺序，所以这个函数的调用必须按照add请求的顺序
@@ -88,6 +94,10 @@ void cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serI
 		server.myServerSet[serID].aIdleRAM -= info[vmName].needRAM / 2;
 		server.myServerSet[serID].bIdleCPU -= info[vmName].needCPU / 2;
 		server.myServerSet[serID].bIdleRAM -= info[vmName].needRAM / 2;
+		server.serverVMSet[serID].insert({ VMid, 2 });
+		server.updatVmSourceOrder(info[vmName].needCPU, info[vmName].needRAM, serID, true);
+		server.updatVmTarOrder(info[vmName].needCPU / 2, info[vmName].needRAM / 2, info[vmName].needCPU / 2, info[vmName].needRAM / 2,
+			serID, true);
 	}
 
 	sEachWorkingVM oneVM;
@@ -107,7 +117,7 @@ void cVM::deploy(cServer &server, int iDay, string VMid, string vmName, int serI
 	deployRecord[iDay].insert(make_pair(VMid, oneDeploy));
 }
 
-void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node) {
+void cSSP_Mig_VM::transfer(cSSP_Mig_Server &server, int iDay, string VMid, int serID, bool node) {
 	/*
 	* Fn: 单节点迁移，出入参数错误检测遗留，包括5%。的要求等
 	*/
@@ -130,17 +140,6 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 		throw "not single";
 	}
 
-	// 恢复前一个服务器的资源
-	if (lastServerNode == true) { // A node
-		server.myServerSet[lastServerID].aIdleCPU += occupyCPU;
-		server.myServerSet[lastServerID].aIdleRAM += occupyRAM;
-	}
-	else {
-		server.myServerSet[lastServerID].bIdleCPU += occupyCPU;
-		server.myServerSet[lastServerID].bIdleRAM += occupyRAM;
-	}
-
-	/*占用新服务器的资源*/
 	if (node == true) { // node A
 		if (server.myServerSet[serID].aIdleCPU < occupyCPU \
 			|| server.myServerSet[serID].aIdleRAM < occupyRAM) {
@@ -150,6 +149,7 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 		else {
 			server.myServerSet[serID].aIdleCPU -= occupyCPU;
 			server.myServerSet[serID].aIdleRAM -= occupyRAM;
+			server.serverVMSet[serID].insert({ VMid, 0 });
 		}
 	}
 	else { // node B
@@ -161,12 +161,24 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 		else {
 			server.myServerSet[serID].bIdleCPU -= occupyCPU;
 			server.myServerSet[serID].bIdleRAM -= occupyRAM;
+			server.serverVMSet[serID].insert({ VMid, 1 });
 		}
 	}
 
 	// 更改该虚拟机现在的位置
 	workingVmSet[VMid].serverID = serID;
 	workingVmSet[VMid].node = node;
+
+	// 恢复前一个服务器的资源
+	if (lastServerNode == true) { // A node
+		server.myServerSet[lastServerID].aIdleCPU += occupyCPU;
+		server.myServerSet[lastServerID].aIdleRAM += occupyRAM;
+	}
+	else {
+		server.myServerSet[lastServerID].bIdleCPU += occupyCPU;
+		server.myServerSet[lastServerID].bIdleRAM += occupyRAM;
+	}
+	server.serverVMSet[lastServerID].erase(VMid);
 
 	// 迁移条目更新
 	sTransVmItem oneTrans;
@@ -177,7 +189,7 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID, bool node)
 	transVmRecord[iDay].push_back(oneTrans);
 }
 
-void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
+void cSSP_Mig_VM::transfer(cSSP_Mig_Server &server, int iDay, string VMid, int serID) {
 	/*
 	* Fn: 双节点迁移，出入参数错误检测遗留
 	*/
@@ -199,13 +211,6 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 		throw "not single";
 	}
 
-	// 恢复前一个服务器的资源
-	server.myServerSet[lastServerID].aIdleCPU += occupyCPU / 2;
-	server.myServerSet[lastServerID].aIdleRAM += occupyRAM / 2;
-	server.myServerSet[lastServerID].bIdleCPU += occupyCPU / 2;
-	server.myServerSet[lastServerID].bIdleRAM += occupyRAM / 2;
-
-	/*占用新服务器的资源*/
 	if (server.myServerSet[serID].aIdleCPU < occupyCPU / 2 \
 		|| server.myServerSet[serID].aIdleRAM < occupyRAM / 2 \
 		|| server.myServerSet[serID].bIdleCPU < occupyCPU / 2 \
@@ -219,9 +224,17 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 		server.myServerSet[serID].aIdleRAM -= occupyRAM / 2;
 		server.myServerSet[serID].bIdleCPU -= occupyCPU / 2;
 		server.myServerSet[serID].bIdleRAM -= occupyRAM / 2;
+		server.serverVMSet[serID].insert({ VMid, 2 });
 	}
 
 	workingVmSet[VMid].serverID = serID;
+
+	// 恢复前一个服务器的资源
+	server.myServerSet[lastServerID].aIdleCPU += occupyCPU / 2;
+	server.myServerSet[lastServerID].aIdleRAM += occupyRAM / 2;
+	server.myServerSet[lastServerID].bIdleCPU += occupyCPU / 2;
+	server.myServerSet[lastServerID].bIdleRAM += occupyRAM / 2;
+	server.serverVMSet[lastServerID].erase(VMid);
 
 	// 迁移条目更新
 	sTransVmItem oneTrans;
@@ -231,23 +244,12 @@ void cVM::transfer(cServer &server, int iDay, string VMid, int serID) {
 	transVmRecord[iDay].push_back(oneTrans);
 }
 
-bool cVM::isDouble(string vmName) {
-	return info[vmName].nodeStatus;
-}
-
-int cVM::reqCPU(string vmName) {
-	return info[vmName].needCPU;
-}
-
-int cVM::reqRAM(string vmName) {
-	return info[vmName].needRAM;
-}
-
-void cVM::deleteVM(string vmID, cServer& server) {
+void cSSP_Mig_VM::deleteVM(string vmID, cSSP_Mig_Server& server) {
 	if (!workingVmSet.count(vmID)) {
 		cout << "不能删除不存在的服务器" << endl;
 		throw "VM to be deleted does not exist";
 	}
+
 
 	string vmName = workingVmSet[vmID].vmName;
 	bool doubleStatus = isDouble(vmName);
@@ -261,17 +263,26 @@ void cVM::deleteVM(string vmID, cServer& server) {
 		server.myServerSet[serID].bIdleCPU += reqCPUs / 2;
 		server.myServerSet[serID].aIdleRAM += reqRAMs / 2;
 		server.myServerSet[serID].bIdleRAM += reqRAMs / 2;
+		server.updatVmTarOrder(reqCPUs / 2, reqRAMs / 2, reqCPUs / 2, reqRAMs / 2, serID, false);
 	}
 	else {
 		if (workingVmSet[vmID].node) { // A
 			server.myServerSet[serID].aIdleCPU += reqCPUs;
 			server.myServerSet[serID].aIdleRAM += reqRAMs;
+			server.updatVmTarOrder(reqCPUs, reqRAMs, 0, 0, serID, false);
 		}
 		else { // B
 			server.myServerSet[serID].bIdleCPU += reqCPUs;
 			server.myServerSet[serID].bIdleRAM += reqRAMs;
+			server.updatVmTarOrder(0, 0, reqCPUs, reqRAMs, serID, false);
 		}
 	}
+
+	/*更新vmSourceOrder, targetOrder*/
+	server.updatVmSourceOrder(reqCPUs, reqRAMs, serID, false);
+
+	/*删除serverVMset*/
+	server.serverVMSet[serID].erase(vmID);
 
 	workingVmSet.erase(vmID);
 }
