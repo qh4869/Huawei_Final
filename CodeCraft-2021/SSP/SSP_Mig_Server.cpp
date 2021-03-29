@@ -1,4 +1,4 @@
-#include "SSP_Mig_Server.h"
+﻿#include "SSP_Mig_Server.h"
 
 int cSSP_Mig_Server::purchase(string name, int iDay) {
 /* In:

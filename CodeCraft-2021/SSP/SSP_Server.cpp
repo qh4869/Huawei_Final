@@ -1,4 +1,4 @@
-#include "SSP_Server.h"
+﻿#include "SSP_Server.h"
 
 void cSSP_Server::genInfoV() {
 	for (const auto &xSer : info)

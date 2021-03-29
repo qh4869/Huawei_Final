@@ -1,4 +1,4 @@
-#include "SSP_Mig_VM.h"
+﻿#include "SSP_Mig_VM.h"
 
 void cSSP_Mig_VM::deploy(cSSP_Mig_Server &server, int iDay, string VMid, string vmName, int serID, bool node) {
 	/* Fn: 单节点部署情况

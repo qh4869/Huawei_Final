@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Server.h"
 
 class cSSP_Server : public cServer {

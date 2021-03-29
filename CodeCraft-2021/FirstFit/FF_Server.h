@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Server.h"
 
 class cFF_Server : public cServer {
