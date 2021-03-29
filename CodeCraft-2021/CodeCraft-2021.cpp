@@ -4,7 +4,7 @@
 #include "Request.h"
 #include "ssp.h"
 #include <iostream>
-#include "globalHeader.h" // 全局常量
+#include "globalHeader.h" 
 #ifdef LOCAL
 #include<time.h>
 #endif
