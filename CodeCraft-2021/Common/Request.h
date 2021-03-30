@@ -23,4 +23,9 @@ public:
 	vector<int> numDelEachDay; // 每天的delete请求数量
 
 	std::tuple<double, double> getVarRequest();  //计算add和delete请求的方差值
+
+	/*部分天数信息读取*/
+	int dayReadable; // 可读取数据的天数 [K]
+	int toDay; // 当前已经读到第几天
+	bool readOK; // 标记已经读完所有天数的数据
 };

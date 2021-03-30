@@ -9,6 +9,8 @@ using namespace std;
 
 void firstFit(cFF_Server &server, cVM &VM, const cRequests &request);
 
+void firstFitEachDay(int iDay, cFF_Server &server, cVM &VM, cRequests &request);
+
 #ifdef LOCAL
 extern clock_t TIMEstart, TIMEend;
 #endif

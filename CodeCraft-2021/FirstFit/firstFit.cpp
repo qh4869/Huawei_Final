@@ -23,7 +23,6 @@ void firstFit(cFF_Server &server, cVM &VM, const cRequests &request) {
 	bool vmIsDouble; 
 	int vmReqCPU; 
 	int vmReqRAM; 
-	int bugID;
 
 	for (int iDay=0; iDay<request.dayNum; iDay++) {
 #ifdef LOCAL
@@ -88,4 +87,44 @@ void firstFit(cFF_Server &server, cVM &VM, const cRequests &request) {
 	}
 	cout << "成本: " << engCostStas+hardCostStas << endl;
 #endif
+}
+
+void firstFitEachDay(int iDay, cFF_Server &server, cVM &VM, cRequests &request) {
+
+	for (int iTerm = 0; iTerm < request.numEachDay[iDay]; iTerm++) {
+		string vmID = request.info[iDay][iTerm].vmID;
+
+		if (request.info[iDay][iTerm].type) { // add 
+			string vmName = request.info[iDay][iTerm].vmName;
+			bool vmIsDouble = VM.isDouble(vmName);
+			int vmReqCPU = VM.reqCPU(vmName);
+			int vmReqRAM = VM.reqRAM(vmName);
+
+			/*搜索已购买的服务器 firstFit*/
+			int serId;
+			bool serNode;
+			if (vmIsDouble)
+				serId = server.firstFitDouble(vmReqCPU, vmReqRAM);
+			else
+				tie(serId, serNode) = server.firstFitSingle(vmReqCPU, vmReqRAM);
+
+			/*根据搜索结果部署或者购买*/
+			if (serId != -1) { // 放进已有服务器
+				if (vmIsDouble)
+					VM.deploy(server, iDay, vmID, vmName, serId);
+				else
+					VM.deploy(server, iDay, vmID, vmName, serId, serNode);
+			}
+			else { // 需要购买，按照priceOrder顺序购买
+				string serName = server.chooseSer(vmReqCPU, vmReqRAM, vmIsDouble);
+				serId = server.purchase(serName, iDay);
+				if (vmIsDouble)
+					VM.deploy(server, iDay, vmID, vmName, serId);
+				else
+					VM.deploy(server, iDay, vmID, vmName, serId, true);
+			}
+		}
+		else  // delete
+			VM.deleteVM(vmID, server);
+	}
 }

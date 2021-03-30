@@ -75,3 +75,47 @@ int cServer::idMapping() {
 
 	return 0;
 }
+
+void cServer::idMappingEachDay(int iDay) {
+/* Fn: 每天更新id
+*/
+	int realID = startID;
+
+	for (auto &buyItem : buyRecord[iDay]) {
+		string serName = buyItem.first;
+		int serNum = buyItem.second;
+		int cnt = 0;
+		
+		if (serName=="hostUT0CV")
+			cout << "";
+		for (int oldID = startID; cnt != serNum; oldID++) {
+			if (serName == myServerSet[oldID].serName) {
+				idMap.insert({oldID, realID});
+				realID++;
+				cnt++;
+			}
+		}	
+	}
+
+	startID = realID;
+}
+
+void cServer::energyCostEachDay() {
+	for (int iSer = 0; iSer < (int)myServerSet.size(); iSer++) {
+		if (isOpen(iSer)) {
+			string vmName = myServerSet[iSer].serName;
+			engCostStas += info[vmName].energyCost;
+		}
+	}
+}
+
+void cServer::hardCostTotal() {
+	for (int iSer = 0; iSer < (int)myServerSet.size(); iSer++) {
+		string vmName = myServerSet[iSer].serName;
+		hardCostStas += info[vmName].hardCost;
+	}
+}
+
+int cServer::getTotalCost() {
+	return engCostStas + hardCostStas;
+}

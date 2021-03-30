@@ -32,8 +32,6 @@ public:
 	
 	vector<sMyEachServer> myServerSet; // 当前已经购买的服务器 服务器id就是vector的index
 
-	unordered_map<int, int> idMap; // 新旧id的映射关系
-
 	vector<unordered_map<string, int>> buyRecord; // 用于输出: 每天购买的每种服务器购买记录 服务器型号->数目								  
 	
 	// 计算某台服务器是否为开机状态
@@ -42,6 +40,17 @@ public:
 	// 购买服务器
 	int purchase(string serName, int iDay); // 购买服务器 id按照购买顺序分配（可能不符合输出要求
 
-	// id 映射
+	/*id 映射*/
+	unordered_map<int, int> idMap; // 新旧id的映射关系
 	int idMapping();
+	/*每日id映射*/
+	int startID = 0; // 每天服务器起始编号
+	void idMappingEachDay(int iDay);
+
+	// 统计成本
+	int engCostStas = 0;
+	int hardCostStas = 0;
+	void hardCostTotal();
+	void energyCostEachDay();
+	int getTotalCost();
 };
