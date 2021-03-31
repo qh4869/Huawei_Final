@@ -61,9 +61,9 @@ void ssp(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request) {
 		unordered_map<int, sMyEachServer> delSerSet; // 有删除操作的SV集合，以及其中扣除del操作的容量 用来迁移
 		unordered_set<string> dayWorkingVM; // 当天新加入的VM集合(就算del也没从中去掉)，迁移时候特殊对待
 
-											/*每天的购买和部署，
-											* 返回有删除操作服务器 因为是部署后迁移 扣除del资源的容量 ->delSerSet，
-											* 返回当天部署的VM集合，因为是部署后迁移，所以特殊对待*/
+		/*每天的购买和部署，
+		* 返回有删除操作服务器 因为是部署后迁移 扣除del资源的容量 ->delSerSet，
+		* 返回当天部署的VM集合，因为是部署后迁移，所以特殊对待*/
 		dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
 
 		/*后迁移（部署后计算，等效部署前实现）*/
@@ -1022,4 +1022,15 @@ void cyt::updateDelSerSet(unordered_map<int, sMyEachServer> &delSerSet,
 		}
 	}
 
+}
+
+void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request) {
+	/*一些变量用于迁移*/
+	int vmNumStart = VM.workingVmSet.size(); // 购买部署前 工作虚拟机的个数
+	unordered_map<int, sMyEachServer> delSerSet; // 有删除操作的SV集合，以及其中扣除del操作的容量
+	unordered_set<string> dayWorkingVM; // 当天新加入的VM集合(就算del也没从中去掉)
+
+	dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
+
+	dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM);
 }

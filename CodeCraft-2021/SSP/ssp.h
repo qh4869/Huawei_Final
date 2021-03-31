@@ -40,6 +40,7 @@ namespace cyt { // cyt分支的部分代码
 
 // subset-sum problem
 void ssp(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request);
+void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request);
 
 // 每天 bestFit部署 + knapSack购买+部署 + 删除
 void dailyPurchaseDeploy(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request, int iDay,

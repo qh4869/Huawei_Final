@@ -353,6 +353,7 @@ void reqDataIn(istream &cin, cRequests &request, int iDay) {
 }
 
 void dataOutEachDay(int iDay, cServer &server, cVM &VM, cRequests &request) {
+#ifndef LOCAL
 	//输出（purchase,Q) , Q表示当天购买的服务器种类数
 	cout << "(" << "purchase" << "," << server.buyRecord[iDay].size() << ")" << endl;
 	//输出(服务器型号，购买数量）
@@ -399,4 +400,57 @@ void dataOutEachDay(int iDay, cServer &server, cVM &VM, cRequests &request) {
 			cout << "(" << serID << ")" << endl;
 	}
 	fflush(stdout);
+#endif
+
+#ifdef LOCAL
+	ofstream fout;
+	fout.open("dataOut.txt", ios::app);
+
+	//输出（purchase,Q) , Q表示当天购买的服务器种类数
+	fout << "(" << "purchase" << "," << server.buyRecord[iDay].size() << ")" << endl;
+	//输出(服务器型号，购买数量）
+	for (auto ite = server.buyRecord[iDay].begin(); ite != server.buyRecord[iDay].end(); ite++) { //迭代器
+		fout << "(" << ite->first << "," << ite->second << ")" << endl;
+	}
+
+	//输出（migration,W) , W表示当天要迁移的虚拟机数量
+	fout << "(" << "migration," << VM.transVmRecord[iDay].size() << ")" << endl;
+	//分别输出W台虚拟机的迁移路径
+	for (auto ite = VM.transVmRecord[iDay].begin(); ite != VM.transVmRecord[iDay].end(); ite++) { //迭代器
+		if (ite->isSingle) {
+			if (ite->node)
+				fout << "(" << ite->vmID << "," << server.idMap[ite->serverID] << "," << "A" << ")" << endl;
+			else
+				fout << "(" << ite->vmID << "," << server.idMap[ite->serverID] << "," << "B" << ")" << endl;
+		}
+		else
+			fout << "(" << ite->vmID << "," << server.idMap[ite->serverID] << ")" << endl;
+	}
+
+	//输出当天每条虚拟机部署记录，按照add request的顺序
+	for (const auto &reqItem : request.info[iDay]) {
+		if (!reqItem.type) // del 请求
+			continue;
+
+		string vmID = reqItem.vmID;
+		if (!VM.deployRecord[iDay].count(vmID)) {
+			fout << "有一条add请求没有被处理" << endl;
+			return;
+		}
+
+		int serID = server.idMap.at(VM.deployRecord[iDay][vmID].serID);
+		bool isSingle = VM.deployRecord[iDay][vmID].isSingle;
+		bool node = VM.deployRecord[iDay][vmID].node;
+
+		if (isSingle) {
+			if (node)
+				fout << "(" << serID << "," << "A" << ")" << endl;
+			else
+				fout << "(" << serID << "," << "B" << ")" << endl;
+		}
+		else
+			fout << "(" << serID << ")" << endl;
+	}
+	fflush(stdout);
+#endif
 }
