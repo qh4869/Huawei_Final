@@ -21,7 +21,7 @@ int main()
 #ifdef LOCAL
 	TIMEstart = clock();
 	ifstream fin;
-	fin.open("../CodeCraft-2021/myTr.txt");
+	fin.open("../CodeCraft-2021/training-1.txt");
 	cin.rdbuf(fin.rdbuf());
 #endif
 	
