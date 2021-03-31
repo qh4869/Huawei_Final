@@ -24,6 +24,5 @@ public:
 	int purchase(string serName, int iDay);
 
 	/*自定义参数*/
-	double gBeta, gGamma; // best fit中的自适应参数
 	double args[4]; // 迁移 best fit
 };
