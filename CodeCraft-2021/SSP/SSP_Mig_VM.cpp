@@ -143,7 +143,7 @@ void cSSP_Mig_VM::transfer(cSSP_Mig_Server &server, int iDay, string VMid, int s
 	if (node == true) { // node A
 		if (server.myServerSet[serID].aIdleCPU < occupyCPU \
 			|| server.myServerSet[serID].aIdleRAM < occupyRAM) {
-			cout << "迁移目标虚拟机资源不够（nodep a）" << endl;
+			cout << "迁移目标虚拟机资源不够（node a）" << endl;
 			throw "resource not enough";
 		}
 		else {

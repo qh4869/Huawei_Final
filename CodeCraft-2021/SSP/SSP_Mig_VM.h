@@ -2,6 +2,12 @@
 #include "VM.h"
 #include "SSP_Mig_Server.h"
 
+struct sPosGoal {
+	int goal; // 如果没有任何一台能够装进这个vm，goal=-1
+	int serID;
+	bool node;
+};
+
 class cSSP_Mig_VM : public cVM {
 public:
 
@@ -11,4 +17,8 @@ public:
 	void deleteVM(string vmID, cSSP_Mig_Server& server);
 	void transfer(cSSP_Mig_Server &server, int iDay, string VMid, int serID, bool node);
 	void transfer(cSSP_Mig_Server &server, int iDay, string VMid, int serID);
+
+	/*记录某种型号当前的最优位置，不摘除自己。防止同一种型号vm遍历迁入ser时候，执行相同的计算*/
+	unordered_map<string, sPosGoal> saveGoal;
+
 };
