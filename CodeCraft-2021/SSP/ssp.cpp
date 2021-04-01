@@ -538,10 +538,10 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 
 		/*快速判断，提高速度*/
 		if (VM.saveGoal.count(vmName)) {
-			if (VM.saveGoal[vmName].goal == -1 || VM.saveGoal[vmName].serID == outSerID) { // 找不到或者最优为不摘除自己
+			if (VM.saveGoal[vmName].goal == -1) { // 找不到或者最优为不摘除自己
 				return myServer; 
 			}
-			else {
+			else if (VM.saveGoal[vmName].serID != outSerID){
 				/*摘除自己的计算，以及比较*/
 				tempServer = server.myServerSet[outSerID];
 				restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
@@ -670,10 +670,10 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 
 		/*快速判断，提高速度*/
 		if (VM.saveGoal.count(vmName)) {
-			if (VM.saveGoal[vmName].goal == -1 || (VM.saveGoal[vmName].serID == outSerID && VM.saveGoal[vmName].node == outNode) ) { 
+			if (VM.saveGoal[vmName].goal == -1) { 
 				return myServer; 
 			}
-			else {
+			else if (VM.saveGoal[vmName].serID != outSerID || VM.saveGoal[vmName].node != outNode){
 				/*摘除自己的计算，以及比较*/
 				tempServer = server.myServerSet[outSerID];
 				if (outNode) {
