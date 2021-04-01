@@ -38,6 +38,7 @@ int main()
 	VM.migFind = 400;
 	VM.ratio = 3; // 只搜索vmSourceOrder的一部分
 	VM.maxIter = 3; // 迁移最大迭代次数
+	VM.fitThreshold = 10;
 
 
 	/*读取非请求部分*/

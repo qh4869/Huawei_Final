@@ -25,4 +25,5 @@ public:
 	int ratio = 1;
 	int migFind = 1000;
 	int maxIter = 1;
+	int fitThreshold = 1000;
 };
