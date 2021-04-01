@@ -21,4 +21,8 @@ public:
 	/*记录某种型号当前的最优位置，不摘除自己。防止同一种型号vm遍历迁入ser时候，执行相同的计算*/
 	unordered_map<string, sPosGoal> saveGoal;
 
+	/*自定义参数*/
+	int ratio = 1;
+	int migFind = 1000;
+	int maxIter = 1;
 };

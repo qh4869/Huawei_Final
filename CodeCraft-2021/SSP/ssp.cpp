@@ -1,10 +1,14 @@
 ﻿#include "ssp.h"
 
+int dday;
+
 void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request) {
 /* Fn: ssp复赛版本
 *
 * Update 03.31
 */
+	dday = iDay;
+
 	/*一些变量用于迁移*/
 	int vmNumStart = VM.workingVmSet.size(); // 购买部署前 工作虚拟机的个数
 	unordered_map<int, sMyEachServer> delSerSet; // 有删除操作的SV集合，以及其中扣除del操作的容量
@@ -137,105 +141,119 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 	unordered_set<string> &dayWorkingVM, int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM) {
 
 	/*先统计我可以迁移多少台*/
-	int maxMigrateNum = vmNumStart * 5 / 1000;
+	int maxMigrateNum = vmNumStart * 3 / 100;
 	int cntMig = 0; // 当天已经迁移了多少台
+	VM.saveGoal.clear();
 
-					// 服务器排序
-	for (int i = 0; i < (int)server.vmSourceOrder.size() / 1; i++) { // i--服务器
-		int outSerID = server.vmSourceOrder[i].first; // 迁出的服务器id
-
-		unordered_map<string, int> tempSerVmSet = server.serverVMSet[outSerID];
-		for (auto ite = tempSerVmSet.begin(); ite != tempSerVmSet.end(); ite++) { // 虚拟机
-
-			if (iDay==40 && cntMig==1)
-				cout << "";
-
-			if (cntMig == maxMigrateNum)  // 迁移数量达到上限
-				return;
-
-			string vmID = ite->first; // 虚拟机id
-
-			// if (vmID=="370947816" && iDay==40)
-			// 	cout << "";
-
-			int outNodeTmp = ite->second; // 迁出服务器的节点
-			bool outNode;
-			if (outNodeTmp == 0) // node a
-				outNode = true;
-			else if (outNodeTmp == 1) // node b
-				outNode = false;
-			else // double
-				outNode = false;
-
-			if (dayWorkingVM.count(vmID) == 1) { continue; } // 暂时不迁移当天部署的虚拟机（可以等效于部署上)
-
-			sVmItem requestVM = VM.info[VM.workingVmSet[vmID].vmName];
-			bool vmIsDouble = requestVM.nodeStatus;
-			int inSerID; // 迁入服务器id
-			bool inNode = false; // 迁入服务器节点
-
-			if (vmIsDouble)
-				inSerID = srchInVmSourceDouble(server, requestVM, VM, i, delSerSet, vmID);
-			else
-				tie(inSerID, inNode) = srchInVmSourceSingle(server, requestVM, VM, i, delSerSet, vmID);
-
-			if (inSerID != -1) { // 可以找到
-				if (vmIsDouble) {   // true表示双节点
-					if (inSerID == outSerID)
-						continue; // 不能原地迁移
-
-					VM.transfer(server, iDay, vmID, inSerID);
-					VM.saveGoal.clear();
-
-					/*更新vmTarOrder*/
-					server.updatVmTarOrder(requestVM.needCPU / 2, requestVM.needRAM / 2, requestVM.needCPU / 2, requestVM.needRAM / 2,
-						outSerID, false);
-					server.updatVmTarOrder(requestVM.needCPU / 2, requestVM.needRAM / 2, requestVM.needCPU / 2, requestVM.needRAM / 2,
-						inSerID, true);
-				}
-				else {
-					if (inSerID == outSerID && inNode == outNode)
-						continue; // 不能原地迁移
-
-					VM.transfer(server, iDay, vmID, inSerID, inNode);
-					VM.saveGoal.clear();
-
-					/*更新vmTarOrder*/
-					if (inSerID == outSerID) { // 同一台服务器
-						if (outNode == false && inNode == true) { // node b -> node a
-							server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, -requestVM.needCPU,
-								-requestVM.needRAM, inSerID, true);
-						}
-						else { // node a -> node b
-							server.updatVmTarOrder(-requestVM.needCPU, -requestVM.needRAM, requestVM.needCPU,
-								requestVM.needRAM, inSerID, true);
-						}
-					}
-					else {
-						if (inNode)  // node a
-							server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, inSerID, true);
-						else
-							server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, inSerID, true);
-						if (outNode) // node a
-							server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, outSerID, false);
-						else
-							server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, outSerID, false);
-					}
-				}
-				cntMig++;
-
-				if (delSerSet.count(inSerID) == 1)   // 迁入的服务器当天有删除操作
-					cyt::updateDelSerSet(delSerSet, requestVM, inNode, inSerID, true);  // 添加虚拟机
-				else if (delSerSet.count(outSerID) == 1)   // 迁出的服务器当天有删除操作
-					cyt::updateDelSerSet(delSerSet, requestVM, outNode, outSerID, false);   // 删除虚拟机
-
-				server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, outSerID, false);
-				server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, inSerID, true);
-			}
-			else
-				break;
+	/*vmSourceOrder统计非空的个数*/
+	int startI;
+	for (int i = 0; i < (int)server.vmSourceOrder.size(); i++) {
+		if (server.vmSourceOrder[i].second != 0) {
+			startI = i;
+			break;
 		}
 	}
+	int endI = ( (int)server.vmSourceOrder.size() - startI ) / VM.ratio + startI;
+
+	int cntIter = 0;
+	int cntVM = 0;
+	while (cntMig < maxMigrateNum && cntIter < VM.maxIter) {
+		cntIter ++;
+
+		for (int i = startI; i < endI; i++) { // i--服务器
+			int outSerID = server.vmSourceOrder[i].first; // 迁出的服务器id
+
+			unordered_map<string, int> tempSerVmSet = server.serverVMSet[outSerID];
+			for (auto ite = tempSerVmSet.begin(); ite != tempSerVmSet.end(); ite++) { // 虚拟机
+				if (cntVM++ >= VM.migFind)
+					return;
+
+				if (cntMig == maxMigrateNum)  // 迁移数量达到上限
+					return;
+
+				string vmID = ite->first; // 虚拟机id
+
+				int outNodeTmp = ite->second; // 迁出服务器的节点
+				bool outNode;
+				if (outNodeTmp == 0) // node a
+					outNode = true;
+				else if (outNodeTmp == 1) // node b
+					outNode = false;
+				else // double
+					outNode = false;
+
+				if (dayWorkingVM.count(vmID) == 1) { continue; } // 暂时不迁移当天部署的虚拟机（可以等效于部署上)
+
+				sVmItem requestVM = VM.info[VM.workingVmSet[vmID].vmName];
+				bool vmIsDouble = requestVM.nodeStatus;
+				int inSerID; // 迁入服务器id
+				bool inNode = false; // 迁入服务器节点
+
+				if (vmIsDouble)
+					inSerID = srchInVmSourceDouble(server, requestVM, VM, i, delSerSet, vmID);
+				else
+					tie(inSerID, inNode) = srchInVmSourceSingle(server, requestVM, VM, i, delSerSet, vmID);
+
+				if (inSerID != -1) { // 可以找到
+					if (vmIsDouble) {   // true表示双节点
+						if (inSerID == outSerID)
+							continue; // 不能原地迁移
+
+						VM.transfer(server, iDay, vmID, inSerID);
+						VM.saveGoal.clear();
+
+						/*更新vmTarOrder*/
+						server.updatVmTarOrder(requestVM.needCPU / 2, requestVM.needRAM / 2, requestVM.needCPU / 2, requestVM.needRAM / 2,
+							outSerID, false);
+						server.updatVmTarOrder(requestVM.needCPU / 2, requestVM.needRAM / 2, requestVM.needCPU / 2, requestVM.needRAM / 2,
+							inSerID, true);
+					}
+					else {
+						if (inSerID == outSerID && inNode == outNode)
+							continue; // 不能原地迁移
+
+						VM.transfer(server, iDay, vmID, inSerID, inNode);
+						VM.saveGoal.clear();
+
+						/*更新vmTarOrder*/
+						if (inSerID == outSerID) { // 同一台服务器
+							if (outNode == false && inNode == true) { // node b -> node a
+								server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, -requestVM.needCPU,
+									-requestVM.needRAM, inSerID, true);
+							}
+							else { // node a -> node b
+								server.updatVmTarOrder(-requestVM.needCPU, -requestVM.needRAM, requestVM.needCPU,
+									requestVM.needRAM, inSerID, true);
+							}
+						}
+						else {
+							if (inNode)  // node a
+								server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, inSerID, true);
+							else
+								server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, inSerID, true);
+							if (outNode) // node a
+								server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, 0, 0, outSerID, false);
+							else
+								server.updatVmTarOrder(0, 0, requestVM.needCPU, requestVM.needRAM, outSerID, false);
+						}
+					}
+					cntMig++;
+
+					if (delSerSet.count(inSerID) == 1)   // 迁入的服务器当天有删除操作
+						cyt::updateDelSerSet(delSerSet, requestVM, inNode, inSerID, true);  // 添加虚拟机
+					else if (delSerSet.count(outSerID) == 1)   // 迁出的服务器当天有删除操作
+						cyt::updateDelSerSet(delSerSet, requestVM, outNode, outSerID, false);   // 删除虚拟机
+
+					server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, outSerID, false);
+					server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, inSerID, true);
+				}
+				else
+					break;
+			}
+		}
+	}
+
+	
 }
 
 tuple<string, queue<int>> knapSack(const cSSP_Mig_Server &server, cSSP_Mig_VM &VM, \
@@ -626,6 +644,8 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
 			tempValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
 		}
+		if (vmName=="vmA3YC8" && dday==7)
+			cout << "";
 		if (minValue == INT_MAX) { // 可以找到 除当前服务器其他的服务器 
 			if (tempValue == -1) { // 不摘除自己的ser 装不进去
 				sPosGoal oneGoal;
