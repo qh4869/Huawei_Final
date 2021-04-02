@@ -1,10 +1,10 @@
 ﻿#include "io.h"
 #include "SSP_Mig_Server.h"
 #include "SSP_Mig_VM.h"
+#include "SSP_Mig_Request.h"
 #include "ssp.h"
 // #include "FF_Server.h"
 // #include "firstFit.h"
-#include "Request.h"
 #include <iostream>
 #include "globalHeader.h" 
 #ifdef LOCAL
@@ -27,7 +27,7 @@ int main()
 	
 	cSSP_Mig_Server server;
 	cSSP_Mig_VM VM;
-	cRequests request;
+	cSSP_Mig_Request request;
 
 	/*自定义参数*/
 	server.ksSize = 4;
@@ -35,16 +35,20 @@ int main()
 	server.gGamma = 1.03;
 	server.args[2] = 0.51;
 	server.args[3] = 1.02;
-	VM.migFind = 100000000;
+	VM.migFind = 10000000;
 	VM.ratio = 2; // 只搜索vmSourceOrder的一部分
-	VM.maxIter = 8; // 迁移最大迭代次数
+	VM.maxIter = 5; // 迁移最大迭代次数
 	VM.fitThreshold = 10;
-	VM.stopTimes = 50;
+	VM.stopTimes = 5;
+	VM.delayTimes = 30; // 越大越不易解锁
+	VM.delCntMax = 2000;
+	request.delLarge = 200;
 
 	/*读取非请求部分*/
 	infoDataIn(cin, server, VM, request);
 
 	/*初始化，排序等操作*/
+	request.initReqNum(); // 需要统计每天的请求数
 	server.genInfoV();// 生成server.infoV，向量，为了写多线程
 
 	for (int iDay = 0; iDay < request.dayNum; iDay++) {
@@ -79,6 +83,13 @@ int main()
 
 	/*输出总成本*/
 	cout << "成本：" << server.getTotalCost() << endl;
+
+	/*输出迁移次数*/
+	int transCnt = 0;
+	for (auto &x : VM.transVmRecord) {
+		transCnt += (int)x.size();
+	}
+	cout << "迁移次数：" << transCnt << endl;
 
 	fin.close();
 #endif

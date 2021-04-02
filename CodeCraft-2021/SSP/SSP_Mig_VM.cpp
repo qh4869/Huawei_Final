@@ -285,4 +285,7 @@ void cSSP_Mig_VM::deleteVM(string vmID, cSSP_Mig_Server& server) {
 	server.serverVMSet[serID].erase(vmID);
 
 	workingVmSet.erase(vmID);
+
+	/*delCnt*/
+	delCnt++;
 }

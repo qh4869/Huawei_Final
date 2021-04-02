@@ -23,10 +23,15 @@ public:
 	/*如果某台虚拟机总是找不到合适的迁入服务器，那就加入到这个集合，暂时永不解除封印*/
 	unordered_map<string, int> stopSetCnt; // <vmID, cnt>
 
+	/*记录del的次数，用于清理stopSetCnt*/
+	int delCnt = 0;
+
 	/*自定义参数*/
 	int ratio = 1;
 	int migFind = 1000;
 	int maxIter = 1;
 	int fitThreshold = 1000;
 	int stopTimes = 3;
+	int delayTimes = -1;
+	int delCntMax = -1;
 };

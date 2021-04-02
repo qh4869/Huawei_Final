@@ -2,7 +2,7 @@
 
 int dday;
 
-void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request) {
+void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request) {
 /* Fn: ssp复赛版本
 *
 * Update 03.31
@@ -16,7 +16,7 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &r
 
 	dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
 
-	dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM);
+	dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM, request);
 }
 
 void ssp(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request) {
@@ -86,7 +86,7 @@ void ssp(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request) {
 		dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
 
 		/*后迁移（部署后计算，等效部署前实现）*/
-		dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM);
+		// dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM);
 
 #ifdef LOCAL
 		/*一天结束统计功耗成本*/
@@ -138,12 +138,28 @@ void ssp(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request) {
 }
 
 void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
-	unordered_set<string> &dayWorkingVM, int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM) {
+	unordered_set<string> &dayWorkingVM, int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request) {
 
 	/*先统计我可以迁移多少台*/
 	int maxMigrateNum = vmNumStart * 3 / 100;
 	int cntMig = 0; // 当天已经迁移了多少台
 	VM.saveGoal.clear();
+
+	/*自适应解vm锁*/
+	request.getReqNumEachDay(iDay);
+	if (request.delNum[iDay] > request.delLarge) { // 某一天的del特别多
+		VM.stopSetCnt.clear();
+		VM.delCnt = 0;
+	}
+	else if (VM.delCnt > VM.delCntMax) { // del累计很多
+		for (auto it = VM.stopSetCnt.begin(); it != VM.stopSetCnt.end();) {
+			if (it->second >= VM.delayTimes)
+				it = VM.stopSetCnt.erase(it);
+			else
+				it++;
+		}
+		VM.delCnt = 0;
+	}
 
 	/*vmSourceOrder统计非空的个数*/
 	int startI;
@@ -165,11 +181,15 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 
 			unordered_map<string, int> tempSerVmSet = server.serverVMSet[outSerID];
 			for (auto ite = tempSerVmSet.begin(); ite != tempSerVmSet.end(); ite++) { // 虚拟机
-				if (cntVM++ >= VM.migFind)
+				if (cntVM++ >= VM.migFind) {
+					cout << iDay << ":" << "vm迁出" << endl;
 					return;
+				}
 
-				if (cntMig == maxMigrateNum)  // 迁移数量达到上限
+				if (cntMig == maxMigrateNum) {
+					cout << iDay << ":" << "迁移次数" << endl;
 					return;
+				}
 
 				string vmID = ite->first; // 虚拟机id
 
@@ -248,10 +268,15 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 					server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, inSerID, true);
 				}
 				else
-					break;
+					continue;
 			}
 		}
 	}
+
+	if (cntMig >= maxMigrateNum)
+		cout << iDay << ":" << "迁移次数" << endl;
+	else
+		cout << iDay << ":" << "迭代次数" << endl;
 
 	
 }
@@ -553,15 +578,22 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 	int tempValue;
 	bool findFlag = false;// 能不能找到除自己之外的其他服务器
 
-	/*如果一台vm总是找不到迁入服务器，那就直接跳过*/
-	if (VM.stopSetCnt.count(vmID) && VM.stopSetCnt[vmID] >= VM.stopTimes)
+	/*检查vm锁，如果被锁住就跳过，但是锁的值还是累计的*/
+	if (VM.stopSetCnt.count(vmID) && VM.stopSetCnt[vmID] >= VM.stopTimes){
+		VM.stopSetCnt[vmID]++;
 		return myServer;
+	}
 
 	if (requestVM.nodeStatus) {// 双节点 
 
 		/*快速判断，提高速度*/
 		if (VM.saveGoal.count(vmName)) {
 			if (VM.saveGoal[vmName].goal == -1) { // 找不到
+				/*vm锁*/
+				if (VM.stopSetCnt.count(vmID))
+					VM.stopSetCnt[vmID]++;
+				else
+					VM.stopSetCnt.insert({vmID, 1});
 				return myServer; 
 			}
 			else if (VM.saveGoal[vmName].serID != outSerID){
@@ -587,8 +619,14 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 		restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
 		restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
 		minValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-		if (minValue < VM.fitThreshold) // 初值已经很小了，没必要在遍历找更优，降低复杂度
+		if (minValue < VM.fitThreshold) {// 初值已经很小了，没必要在遍历找更优，降低复杂度
+			/*VM锁*/
+			if (VM.stopSetCnt.count(vmID))
+				VM.stopSetCnt[vmID]++;
+			else
+				VM.stopSetCnt.insert({vmID, 1});
 			return myServer;
+		}
 
 		needCPUa = requestVM.needCPU / 2;
 		needRAMa = requestVM.needRAM / 2;
@@ -699,6 +737,11 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 		/*快速判断，提高速度*/
 		if (VM.saveGoal.count(vmName)) {
 			if (VM.saveGoal[vmName].goal == -1) { 
+				/*vm锁*/
+				if (VM.stopSetCnt.count(vmID))
+					VM.stopSetCnt[vmID]++;
+				else
+					VM.stopSetCnt.insert({vmID, 1});
 				return myServer; 
 			}
 			else if (VM.saveGoal[vmName].serID != outSerID || VM.saveGoal[vmName].node != outNode){
@@ -737,8 +780,14 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			restRAM = tempServer.bIdleRAM;
 		}
 		minValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-		if (minValue < VM.fitThreshold) // 初值已经很小了，没必要在遍历找更优，降低复杂度
+		if (minValue < VM.fitThreshold) {// 初值已经很小了，没必要在遍历找更优，降低复杂度
+			/*VM锁*/
+			if (VM.stopSetCnt.count(vmID))
+				VM.stopSetCnt[vmID]++;
+			else
+				VM.stopSetCnt.insert({vmID, 1});
 			return myServer;
+		}
 		
 		/*node a*/
 		{	

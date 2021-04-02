@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "SSP_Mig_Server.h"
 #include "SSP_Mig_VM.h"
-#include "Request.h"
+#include "SSP_Mig_Request.h"
 #include <tuple>
 #include <unordered_set>
 #include <queue>
@@ -40,7 +40,7 @@ namespace cyt { // cyt分支的部分代码
 
 // subset-sum problem
 void ssp(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request);
-void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request);
+void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request);
 
 // 每天 bestFit部署 + knapSack购买+部署 + 删除
 void dailyPurchaseDeploy(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request, int iDay,
@@ -63,7 +63,7 @@ tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int b
 
 													// 每天 后迁移
 void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet, unordered_set<string> &dayWorkingVM,
-	int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM);
+	int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request);
 
 /*迁移挑选服务器*/
 cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSSP_Mig_VM &VM, int index,
