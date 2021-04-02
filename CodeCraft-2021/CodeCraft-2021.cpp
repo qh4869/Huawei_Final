@@ -35,14 +35,14 @@ int main()
 	server.gGamma = 1.03;
 	server.args[2] = 0.51;
 	server.args[3] = 1.02;
-	VM.migFind = 10000000;
-	VM.ratio = 2; // 只搜索vmSourceOrder的一部分
-	VM.maxIter = 5; // 迁移最大迭代次数
-	VM.fitThreshold = 10;
-	VM.stopTimes = 5;
-	VM.delayTimes = 30; // 越大越不易解锁
+	VM.migFind = 1000000;
+	VM.ratio = 1.5; // 只搜索vmSourceOrder的一部分
+	VM.maxIter = 10; // 迁移最大迭代次数 -- 可微调提高
+	VM.fitThreshold = 10; // 微调
+	VM.stopTimes = 10;
+	VM.delayTimes = 20; // 越大越不易解锁
 	VM.delCntMax = 2000;
-	request.delLarge = 200;
+	request.delLarge = 300;
 
 	/*读取非请求部分*/
 	infoDataIn(cin, server, VM, request);
@@ -74,7 +74,6 @@ int main()
 		/*每日功耗计算*/
 		server.energyCostEachDay();
 #endif
-
 	}
 
 #ifdef LOCAL

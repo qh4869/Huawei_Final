@@ -122,7 +122,8 @@ void cSSP_Mig_Server::updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, 
 	int alastCPU, alastRAM, blastCPU, blastRAM;
 
 	/*加入新结点*/
-	vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU][bIdleRAM].push_back(serID);
+	if (isOpen(serID)) // 如果服务器已清空，就不加入VmTarOrder列表里，直接不作为迁入服务器备选
+		vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU][bIdleRAM].push_back(serID);
 
 	if (flag) {
 		alastCPU = aIdleCPU + needCPUa;

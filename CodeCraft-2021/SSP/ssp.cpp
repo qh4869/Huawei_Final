@@ -142,6 +142,7 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 
 	/*先统计我可以迁移多少台*/
 	int maxMigrateNum = vmNumStart * 3 / 100;
+	// VM.migFind = maxMigrateNum * 15;
 	int cntMig = 0; // 当天已经迁移了多少台
 	VM.saveGoal.clear();
 
@@ -150,8 +151,10 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 	if (request.delNum[iDay] > request.delLarge) { // 某一天的del特别多
 		VM.stopSetCnt.clear();
 		VM.delCnt = 0;
+		cout << "---------------" << iDay << ":全部清空" << endl;
 	}
 	else if (VM.delCnt > VM.delCntMax) { // del累计很多
+		int sizeBeg = VM.stopSetCnt.size();
 		for (auto it = VM.stopSetCnt.begin(); it != VM.stopSetCnt.end();) {
 			if (it->second >= VM.delayTimes)
 				it = VM.stopSetCnt.erase(it);
@@ -159,6 +162,7 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 				it++;
 		}
 		VM.delCnt = 0;
+		cout << "---------------" << iDay << ":部分清空:" << sizeBeg << "->" << VM.stopSetCnt.size() <<endl;
 	}
 
 	/*vmSourceOrder统计非空的个数*/
@@ -640,8 +644,8 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 						for (int inSerID : itramb->second) {
 
 							/*如果inSerID已经空了，那就不选择这台服务器*/
-							if (!server.isOpen(inSerID))
-								continue;
+							// if (!server.isOpen(inSerID))
+							// 	continue;
 
 							/*如果inSerID就是ourSerID，那么不做判断，因为初值就是这台服务器*/
 							if (outSerID == inSerID) 
@@ -804,8 +808,8 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 							for (int inSerID : itramb->second) {
 
 								/*如果inSerID已经空了，那就不选择这台服务器*/
-								if (!server.isOpen(inSerID))
-									continue;
+								// if (!server.isOpen(inSerID))
+								// 	continue;
 
 								/*如果inSer就是outSer，那么不做判断，因为初值就是这台服务器*/
 								if (outSerID == inSerID && outNode == true)
@@ -861,8 +865,8 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 							for (int inSerID : itramb->second) {
 
 								/*如果inSerID已经空了，那就不选择这台服务器*/
-								if (!server.isOpen(inSerID))
-									continue;
+								// if (!server.isOpen(inSerID))
+								// 	continue;
 
 								/*如果inSer就是outSer，那么不做判断，因为初值就是这台服务器*/
 								if (outSerID == inSerID && outNode == false)

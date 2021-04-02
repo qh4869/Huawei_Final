@@ -27,7 +27,7 @@ public:
 	int delCnt = 0;
 
 	/*自定义参数*/
-	int ratio = 1;
+	double ratio = 1;
 	int migFind = 1000;
 	int maxIter = 1;
 	int fitThreshold = 1000;
