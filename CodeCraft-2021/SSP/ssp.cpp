@@ -553,6 +553,10 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 	int tempValue;
 	bool findFlag = false;// 能不能找到除自己之外的其他服务器
 
+	/*如果一台vm总是找不到迁入服务器，那就直接跳过*/
+	if (VM.stopSetCnt.count(vmID) && VM.stopSetCnt[vmID] >= VM.stopTimes)
+		return myServer;
+
 	if (requestVM.nodeStatus) {// 双节点 
 
 		/*快速判断，提高速度*/
@@ -681,6 +685,14 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 				VM.saveGoal.insert({vmName, oneGoal});
 			}
 		}
+
+		/*stopSet*/
+		if (!findFlag) {
+			if (VM.stopSetCnt.count(vmID))
+				VM.stopSetCnt[vmID]++;
+			else
+				VM.stopSetCnt.insert({vmID, 1});
+		}
 	}
 	else {  // 单节点
 
@@ -727,7 +739,7 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 		minValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
 		if (minValue < VM.fitThreshold) // 初值已经很小了，没必要在遍历找更优，降低复杂度
 			return myServer;
-
+		
 		/*node a*/
 		{	
 
@@ -897,6 +909,14 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 				oneGoal.node = (minValue < tempValue)? myServer.node : outNode;
 				VM.saveGoal.insert({vmName, oneGoal});
 			}
+		}
+
+		/*stopSet*/
+		if (!findFlag) {
+			if (VM.stopSetCnt.count(vmID))
+				VM.stopSetCnt[vmID]++;
+			else
+				VM.stopSetCnt.insert({vmID, 1});
 		}
 	}
 // endloop: return myServer;

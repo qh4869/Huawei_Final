@@ -35,11 +35,11 @@ int main()
 	server.gGamma = 1.03;
 	server.args[2] = 0.51;
 	server.args[3] = 1.02;
-	VM.migFind = 400;
-	VM.ratio = 3; // 只搜索vmSourceOrder的一部分
-	VM.maxIter = 3; // 迁移最大迭代次数
+	VM.migFind = 100000000;
+	VM.ratio = 2; // 只搜索vmSourceOrder的一部分
+	VM.maxIter = 8; // 迁移最大迭代次数
 	VM.fitThreshold = 10;
-
+	VM.stopTimes = 50;
 
 	/*读取非请求部分*/
 	infoDataIn(cin, server, VM, request);

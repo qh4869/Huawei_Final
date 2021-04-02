@@ -20,10 +20,13 @@ public:
 
 	/*记录某种型号当前的最优位置，不摘除自己。防止同一种型号vm遍历迁入ser时候，执行相同的计算*/
 	unordered_map<string, sPosGoal> saveGoal;
+	/*如果某台虚拟机总是找不到合适的迁入服务器，那就加入到这个集合，暂时永不解除封印*/
+	unordered_map<string, int> stopSetCnt; // <vmID, cnt>
 
 	/*自定义参数*/
 	int ratio = 1;
 	int migFind = 1000;
 	int maxIter = 1;
 	int fitThreshold = 1000;
+	int stopTimes = 3;
 };
