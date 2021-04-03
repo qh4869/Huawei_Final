@@ -1,6 +1,7 @@
 ﻿#include "ssp.h"
 
 int dday;
+bool ompFlag = true;
 
 void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request) {
 /* Fn: ssp复赛版本
@@ -151,7 +152,9 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 	if (request.delNum[iDay] > request.delLarge) { // 某一天的del特别多
 		VM.stopSetCnt.clear();
 		VM.delCnt = 0;
+#ifdef LOCAL
 		cout << "---------------" << iDay << ":全部清空" << endl;
+#endif
 	}
 	else if (VM.delCnt > VM.delCntMax) { // del累计很多
 		int sizeBeg = VM.stopSetCnt.size();
@@ -162,7 +165,9 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 				it++;
 		}
 		VM.delCnt = 0;
+#ifdef LOCAL
 		cout << "---------------" << iDay << ":部分清空:" << sizeBeg << "->" << VM.stopSetCnt.size() <<endl;
+#endif
 	}
 
 	/*vmSourceOrder统计非空的个数*/
@@ -186,17 +191,16 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 			unordered_map<string, int> tempSerVmSet = server.serverVMSet[outSerID];
 			for (auto ite = tempSerVmSet.begin(); ite != tempSerVmSet.end(); ite++) { // 虚拟机
 				if (cntVM++ >= VM.migFind) {
-					cout << iDay << ":" << "vm迁出" << endl;
+					//cout << iDay << ":" << "vm迁出" << endl;
 					return;
 				}
 
 				if (cntMig == maxMigrateNum) {
-					cout << iDay << ":" << "迁移次数" << endl;
+					//cout << iDay << ":" << "迁移次数" << endl;
 					return;
 				}
 
 				string vmID = ite->first; // 虚拟机id
-
 				int outNodeTmp = ite->second; // 迁出服务器的节点
 				bool outNode;
 				if (outNodeTmp == 0) // node a
@@ -277,10 +281,10 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 		}
 	}
 
-	if (cntMig >= maxMigrateNum)
+	/*if (cntMig >= maxMigrateNum)
 		cout << iDay << ":" << "迁移次数" << endl;
 	else
-		cout << iDay << ":" << "迭代次数" << endl;
+		cout << iDay << ":" << "迭代次数" << endl;*/
 
 	
 }
@@ -637,7 +641,20 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 		needCPUb = requestVM.needCPU / 2;
 		needRAMb = requestVM.needRAM / 2;
 
+		/*omp for*/
+		cyt::sServerItem ompServer[2];
+		ompServer[0].hardCost = 1;
+		ompServer[1].hardCost = 1;
+		int ompMinValue[2];
+		ompMinValue[0] = INT_MAX;
+		ompMinValue[1] = INT_MAX;
+		vector<map<int, map<int, map<int, map<int, vector<int>>>>>::iterator> ites; 
 		for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
+			ites.push_back(itcpua);
+		}
+		#pragma omp parallel for num_threads(2) private(tempServer, restCPU, restRAM, tempValue) if(ompFlag)
+		for (int i = 0; i < (int)ites.size(); i++) {
+			auto itcpua = ites[i];
 			for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
 				for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
 					for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
@@ -660,7 +677,7 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 
 							if (tempServer.aIdleCPU < needCPUa || tempServer.bIdleCPU < needCPUb ||
 								tempServer.aIdleRAM < needRAMa || tempServer.bIdleRAM < needRAMb) {
-								break;
+								continue;
 							}
 
 							/*if (cnt < 100)
@@ -672,18 +689,34 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 							restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
 							restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
 							tempValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-							if (tempValue < minValue) {
+							if (tempValue < ompMinValue[omp_get_thread_num()]) {
 								findFlag = true;
-								minValue = tempValue;
-								myServer.energyCost = -1;
-								myServer.hardCost = -1;
-								myServer.buyID = inSerID;   // 记录服务器
+								ompMinValue[omp_get_thread_num()] = tempValue;
+								ompServer[omp_get_thread_num()].energyCost = -1;
+								ompServer[omp_get_thread_num()].hardCost = -1;
+								ompServer[omp_get_thread_num()].buyID = inSerID;   // 记录服务器
 							}
 						}
 					}
 				}
 			}
 		}
+		/*线程合并结果*/
+		cyt::sServerItem betServer;
+		int betValue;
+		if (ompMinValue[0] <= ompMinValue[1]) {
+			betServer = ompServer[0];
+			betValue = ompMinValue[0];
+		}
+		else {
+			betServer = ompServer[1];
+			betValue = ompMinValue[1];
+		}
+		if (betValue < minValue) {
+			minValue = betValue;
+			myServer = betServer;
+		}
+
 
 		/*不摘除自己的结果计算*/
 		if (delSerSet.count(outSerID)) 
@@ -716,14 +749,14 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 		else {
 			if (tempValue == -1) {
 				sPosGoal oneGoal;
-				oneGoal.goal = minValue;
-				oneGoal.serID = myServer.buyID;
+				oneGoal.goal = betValue;
+				oneGoal.serID = betServer.buyID;
 				VM.saveGoal.insert({vmName, oneGoal});
 			}
 			else {
 				sPosGoal oneGoal;
-				oneGoal.goal = (minValue < tempValue)? minValue : tempValue;
-				oneGoal.serID = (minValue < tempValue)? myServer.buyID : outSerID;
+				oneGoal.goal = (betValue < tempValue)? betValue : tempValue;
+				oneGoal.serID = (betValue < tempValue)? betServer.buyID : outSerID;
 				VM.saveGoal.insert({vmName, oneGoal});
 			}
 		}
@@ -793,6 +826,12 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			return myServer;
 		}
 		
+		cyt::sServerItem betServerA;
+		int betValueA;
+		cyt::sServerItem betServerB;
+		int betValueB;
+		cyt::sServerItem betServer;
+		int betValue;
 		/*node a*/
 		{	
 
@@ -801,7 +840,20 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			needCPUb = 0;
 			needRAMb = 0;
 
+			/*omp for*/
+			cyt::sServerItem ompServer[2];
+			ompServer[0].hardCost = 1;
+			ompServer[1].hardCost = 1;
+			int ompMinValue[2];
+			ompMinValue[0] = INT_MAX;
+			ompMinValue[1] = INT_MAX;
+			vector<map<int, map<int, map<int, map<int, vector<int>>>>>::iterator> ites; 
 			for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
+				ites.push_back(itcpua);
+			}
+			#pragma omp parallel for num_threads(2) private(tempServer, restCPU, restRAM, tempValue) if(ompFlag)
+			for (int i = 0; i < (int)ites.size(); i++) {
+				auto itcpua = ites[i];
 				for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
 					for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
 						for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
@@ -824,7 +876,7 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 								}
 
 								if (tempServer.aIdleCPU < needCPUa || tempServer.aIdleRAM < needRAMa) {
-									break;
+									continue;
 								}
 
 								// if (cnt < 100)
@@ -836,18 +888,31 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 								restCPU = tempServer.aIdleCPU - requestVM.needCPU;
 								restRAM = tempServer.aIdleRAM - requestVM.needRAM;
 								tempValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-								if (tempValue < minValue) {
+								if (tempValue < ompMinValue[omp_get_thread_num()]) {
 									findFlag = true;
-									minValue = tempValue;
-									myServer.energyCost = -1;
-									myServer.hardCost = -1;
-									myServer.buyID = inSerID;   // 记录该服务器
-									myServer.node = true;   // 返回true表示a 节点
+									ompMinValue[omp_get_thread_num()] = tempValue;
+									ompServer[omp_get_thread_num()].energyCost = -1;
+									ompServer[omp_get_thread_num()].hardCost = -1;
+									ompServer[omp_get_thread_num()].buyID = inSerID;   // 记录该服务器
+									ompServer[omp_get_thread_num()].node = true;   // 返回true表示a 节点
 								}
 							}
 						}
 					}
 				}
+			}
+			/*线程合并结果*/
+			if (ompMinValue[0] <= ompMinValue[1]) {
+				betServerA = ompServer[0];
+				betValueA = ompMinValue[0];
+			}
+			else {
+				betServerA = ompServer[1];
+				betValueA = ompMinValue[1];
+			}
+			if (betValueA < minValue) {
+				minValue = betValueA;
+				myServer = betServerA;
 			}
 		}
 
@@ -858,7 +923,20 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			needCPUb = requestVM.needCPU;
 			needRAMb = requestVM.needRAM;
 
+			/*omp for*/
+			cyt::sServerItem ompServer[2];
+			ompServer[0].hardCost = 1;
+			ompServer[1].hardCost = 1;
+			int ompMinValue[2];
+			ompMinValue[0] = INT_MAX;
+			ompMinValue[1] = INT_MAX;
+			vector<map<int, map<int, map<int, map<int, vector<int>>>>>::iterator> ites; 
 			for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
+				ites.push_back(itcpua);
+			}
+			#pragma omp parallel for num_threads(2) private(tempServer, restCPU, restRAM, tempValue) if(ompFlag)
+			for (int i = 0; i < (int)ites.size(); i++) {
+				auto itcpua = ites[i];
 				for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
 					for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
 						for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
@@ -881,7 +959,7 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 								}
 
 								if (tempServer.bIdleCPU < needCPUb || tempServer.bIdleRAM < needRAMb) {
-									break;
+									continue;
 								}
 
 								// if (cnt < 100)
@@ -893,19 +971,41 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 								restCPU = tempServer.bIdleCPU - requestVM.needCPU;
 								restRAM = tempServer.bIdleRAM - requestVM.needRAM;
 								tempValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-								if (tempValue < minValue) {
+								if (tempValue < ompMinValue[omp_get_thread_num()]) {
 									findFlag = true;
-									minValue = tempValue;
-									myServer.energyCost = -1;
-									myServer.hardCost = -1;
-									myServer.buyID = inSerID;   // 记录该服务器
-									myServer.node = false;   // 返回true表示a 节点
+									ompMinValue[omp_get_thread_num()] = tempValue;
+									ompServer[omp_get_thread_num()].energyCost = -1;
+									ompServer[omp_get_thread_num()].hardCost = -1;
+									ompServer[omp_get_thread_num()].buyID = inSerID;   // 记录该服务器
+									ompServer[omp_get_thread_num()].node = false;   // 返回true表示a 节点
 								}
 							}
 						}
 					}
 				}
 			}
+			/*线程合并结果*/
+			if (ompMinValue[0] <= ompMinValue[1]) {
+				betServerB = ompServer[0];
+				betValueB = ompMinValue[0];
+			}
+			else {
+				betServerB = ompServer[1];
+				betValueB = ompMinValue[1];
+			}
+			if (betValueB < minValue) {
+				minValue = betValueB;
+				myServer = betServerB;
+			}
+		}
+
+		if (betValueA <= betValueB) {
+			betValue = betValueA;
+			betServer = betServerA;
+		}
+		else {
+			betValue = betValueB;
+			betServer = betServerB;
 		}
 
 		/*不摘除自己的结果计算*/
@@ -950,16 +1050,16 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 		else {
 			if (tempValue == -1) {
 				sPosGoal oneGoal;
-				oneGoal.goal = minValue;
-				oneGoal.serID = myServer.buyID;
-				oneGoal.node = myServer.node;
+				oneGoal.goal = betValue;
+				oneGoal.serID = betServer.buyID;
+				oneGoal.node = betServer.node;
 				VM.saveGoal.insert({vmName, oneGoal});
 			}
 			else {
 				sPosGoal oneGoal;
-				oneGoal.goal = (minValue < tempValue)? minValue : tempValue;
-				oneGoal.serID = (minValue < tempValue)? myServer.buyID : outSerID;
-				oneGoal.node = (minValue < tempValue)? myServer.node : outNode;
+				oneGoal.goal = (betValue < tempValue)? betValue : tempValue;
+				oneGoal.serID = (betValue < tempValue)? betServer.buyID : outSerID;
+				oneGoal.node = (betValue < tempValue)? betServer.node : outNode;
 				VM.saveGoal.insert({vmName, oneGoal});
 			}
 		}

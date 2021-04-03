@@ -21,7 +21,7 @@ int main()
 #ifdef LOCAL
 	TIMEstart = clock();
 	ifstream fin;
-	fin.open("../CodeCraft-2021/training-1.txt");
+	fin.open("../CodeCraft-2021/training-2.txt");
 	cin.rdbuf(fin.rdbuf());
 #endif
 	
@@ -35,12 +35,12 @@ int main()
 	server.gGamma = 1.03;
 	server.args[2] = 0.51;
 	server.args[3] = 1.02;
-	VM.migFind = 1000000;
+	VM.migFind = 2000;
 	VM.ratio = 1.5; // 只搜索vmSourceOrder的一部分
 	VM.maxIter = 10; // 迁移最大迭代次数 -- 可微调提高
 	VM.fitThreshold = 10; // 微调
 	VM.stopTimes = 10;
-	VM.delayTimes = 20; // 越大越不易解锁
+	VM.delayTimes = 40; // 越大越不易解锁
 	VM.delCntMax = 2000;
 	request.delLarge = 300;
 
