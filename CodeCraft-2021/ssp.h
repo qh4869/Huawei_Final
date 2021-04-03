@@ -56,18 +56,30 @@ void packAndDeploy(cServer &server, cVM &VM, vector<pair<string, string>> &curSe
 // knapSack中 挑选服务器 遍历
 tuple<string, queue<int>> knapSack(const cServer &server, cVM &VM, vector<pair<string, string>> &curSet, int iDay); // 遍历服务器
 
-																													// knapSack 每台服务器的效益函数 递归剪枝
-tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int bIdleRAM,
+// knapSack 每台服务器的效益函数 递归剪枝
+tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int bIdleRAM, 
 	vector<pair<string, string>> &curSet, cVM &VM); // 计算每台服务器的背包问题
 
-													// 每天 后迁移
-void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet, unordered_set<string> &dayWorkingVM,
+// 每天 后迁移
+void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet, unordered_set<string> &dayWorkingVM, 
 	int iDay, cServer &server, cVM &VM);
 
 /*迁移挑选服务器*/
-cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, int index,
-	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
-int srchInVmSourceDouble(cServer &server, sVmItem &reqeustVM, cVM &VM, int index,
-	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
-tuple<int, bool> srchInVmSourceSingle(cServer &server, sVmItem &reqeustVM, cVM &VM, int index,
-	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
+cyt::sServerItem bestFitMigrate(cServer &server, sVmItem &requestVM, cVM &VM, int index, 
+	unordered_map<int, sMyEachServer> &delSerSet);
+int srchInVmSourceDouble(cServer &server, sVmItem &reqeustVM, cVM &VM, int index, 
+	unordered_map<int, sMyEachServer> &delSerSet);
+tuple<int, bool> srchInVmSourceSingle(cServer &server, sVmItem &reqeustVM, cVM &VM, int index, 
+	unordered_map<int, sMyEachServer> &delSerSet);
+
+map<int, vector<int>>::iterator \
+greaterEqu4(map<int, vector<int>> &set, int val);
+
+map<int, map<int, vector<int>>>::iterator \
+greaterEqu3(map<int, map<int, vector<int>>> &set, int val);
+
+map<int, map<int, map<int, vector<int>>>>::iterator \
+greaterEqu2(map<int, map<int, map<int, vector<int>>>> &set, int val);
+
+map<int, map<int, map<int, map<int, vector<int>>>>>::iterator \
+greaterEqu1(map<int, map<int, map<int, map<int, vector<int>>>>> &set, int val);

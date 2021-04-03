@@ -1,15 +1,16 @@
 ﻿#pragma once
 #include <unordered_map>
+#include <unordered_set>
 #include "Server.h"
 #include <iostream>
 #include "globalHeader.h"
 using namespace std;
 
-struct sVmItem { // hash map 的 value部分
-	int needCPU;
-	int needRAM;
-	bool nodeStatus; // true表示双节点
-};
+//struct sVmItem { // hash map 的 value部分
+//	int needCPU;
+//	int needRAM;
+//	bool nodeStatus; // true表示双节点
+//};
 
 struct sEachWorkingVM {
 	string vmName;
@@ -46,7 +47,7 @@ public:
 	vector<vector<sTransVmItem>> transVmRecord; // 每天 迁移记录 用于输出 (注意迁移是有先后顺序的)
 	vector<unordered_map<string, sDeployItem>> deployRecord; // 每天 虚拟机部署记录 用于输出 vmID -> 部署详情
 
-															 // 单节点部署
+	// 单节点部署
 	int deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node);
 	// 双节点部署
 	int deploy(cServer &server, int iDay, string VMid, string vmName, int serID);
@@ -65,4 +66,13 @@ public:
 	int reqCPU(string vmName);
 	// 输入虚拟机名字，返回需要RAM
 	int reqRAM(string vmName);
+
+	// CYT:
+	// 单节点部署
+	int cyt_deploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node, vector<double> &args);
+	// 双节点部署
+	int cyt_deploy(cServer &server, int iDay, string VMid, string vmName, int serID, vector<double> &args);
+
+	void reDeploy(cServer &server, int iDay, string VMid, string vmName, int serID, vector<double> &args);
+	void reDeploy(cServer &server, int iDay, string VMid, string vmName, int serID, bool node, vector<double> &args);
 };

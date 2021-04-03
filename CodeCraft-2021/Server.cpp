@@ -33,6 +33,39 @@ int cServer::purchase(string name, int iDay) {
 	return myServerSet.size() - 1;
 }
 
+int cServer::cyt_purchase(string name, int iDay) {
+	/* In:
+	*	- name: 服务器型号
+	* 	- iDay: 第几天
+	*
+	* Out:
+	*	- 购买的服务器ID
+	*/
+	/*add into myServerSet*/
+	sMyEachServer oneServer;
+	unordered_map<string, int> vmSet;
+
+	oneServer.serName = name;
+	oneServer.aIdleCPU = info[name].totalCPU / 2;
+	oneServer.bIdleCPU = info[name].totalCPU / 2;
+	oneServer.aIdleRAM = info[name].totalRAM / 2;
+	oneServer.bIdleRAM = info[name].totalRAM / 2;
+
+	myServerSet.push_back(oneServer);
+	serverVMSet.push_back(vmSet);
+
+	/*add into buyRecord*/
+	if (!buyRecord[iDay].count(name)) { // 当天没买过这个类型
+		buyRecord[iDay].insert(make_pair(name, 1));
+	}
+	else { // 当天买过这个类型
+		buyRecord[iDay][name]++;
+	}
+	serverNum[iDay]++;
+
+	return myServerSet.size() - 1;
+}
+
 int cServer::firstFitDouble(int reqCPU, int reqRAM) {
 	/* Fn: 双节点部署
 	*/
@@ -95,7 +128,8 @@ bool cServer::mycomp(pair<string, int> i, pair<string, int> j) {
 }
 
 bool cServer::mycompID(pair<int, int> i, pair<int, int> j) {
-	return i.second < j.second;
+	//return i.second < j.second;
+	return i.second <= j.second;
 }
 
 bool cServer::mycompIDDB(pair<int, double> i, pair<int, double> j) {
@@ -229,14 +263,152 @@ void cServer::rankMyserverbyRatio() {
 	sort(myServerOrderDB.begin(), myServerOrderDB.end(), cServer::mycompIDDB);
 }
 
+
 void cServer::genInfoV() {
 	for (const auto &xSer : info)
 		infoV.push_back(make_pair(xSer.first, xSer.second));
 }
 
-bool cyt::mycompID(pair<int, int> i, pair<int, int> j) {
-	return i.second <= j.second;
+void cServer::idMappingEachDay(int iDay) {
+	/* Fn: 每天更新id
+	*/
+	int realID = startID;
+
+	for (auto &buyItem : buyRecord[iDay]) {
+		string serName = buyItem.first;
+		int serNum = buyItem.second;
+		int cnt = 0;
+		for (int oldID = startID; cnt != serNum; oldID++) {
+			if (serName == myServerSet[oldID].serName) {
+				idMap.insert({ oldID, realID });
+				realID++;
+				cnt++;
+			}
+		}
+	}
+
+	startID = realID;
 }
+
+void cServer::energyCostEachDay() {
+	for (int iSer = 0; iSer < (int)myServerSet.size(); iSer++) {
+		if (isOpen(iSer)) {
+			string vmName = myServerSet[iSer].serName;
+			engCostStas += info[vmName].energyCost;
+		}
+	}
+}
+
+void cServer::hardCostTotal() {
+	for (int iSer = 0; iSer < (int)myServerSet.size(); iSer++) {
+		string vmName = myServerSet[iSer].serName;
+		hardCostStas += info[vmName].hardCost;
+	}
+}
+
+int cServer::getTotalCost() {
+	return engCostStas + hardCostStas;
+}
+
+
+// (CYT)对服务器按价格排序，flag为true表示第一次排序，为false表示不是第一次
+void cServer::rankServerByPrice(bool flag) {
+
+	if (flag) {   // 为true表示第一次生成数据，需构造priceOrder
+		for (auto ite = info.begin(); ite != info.end(); ite++) { // 迭代器
+			priceOrder.push_back(make_pair(ite->first, ite->second.hardCost + ite->second.energyCost * alpha));
+		}
+	}
+	else {   // 之前已经生成过数据了，现在不用重新分配内存
+		int i = 0;
+		for (auto ite = info.begin(); ite != info.end(); ite++) {
+			priceOrder[i] = make_pair(ite->first, ite->second.hardCost + ite->second.energyCost * alpha);
+			i++;
+		}
+	}
+	sort(priceOrder.begin(), priceOrder.end(), cServer::mycomp);   // 排序(全部重排)
+
+}
+
+// 对服务器里的虚拟机数量进行排序
+void cServer::updatVmSourceOrder(sVmItem &requestVm, int serID, bool flag, vector<double> &args) {  // true : add , false : delete
+
+	int pos;   // serID对应的服务器在vmNumOrder中的位置
+	if (vmSourceOrder.size() == 0) {    // 初始化
+		int value = int(requestVm.needCPU + requestVm.needRAM + args[4]);
+		//int value = 1;
+		vmSourceOrder.push_back(make_pair(serID, value));   // 最开始直接初始化
+		return;
+	}
+	else if (serID > (int)vmSourceOrder.size() - 1) {   // 新加入的服务器
+		if (!flag) {
+			cout << "sort error" << endl;
+		}
+		vmSourceOrder.insert(vmSourceOrder.begin(), make_pair(serID, 0));   // 将新加入的插进第一个位置，初始值为0
+		pos = 0;
+	}
+	else {
+		for (int i = 0; i < (int)vmSourceOrder.size(); i++) {
+			if (vmSourceOrder[i].first == serID) {   // 找到对应的位置
+				pos = i;
+				break;
+			}
+		}
+	}
+
+
+	if (!flag && pos == 0) {  // 删除并且处于第一位，则不需要移动
+		vmSourceOrder[pos].second -= int(requestVm.needCPU + requestVm.needRAM + args[4]);   // 减去删除的虚拟机资源
+		//vmSourceOrder[pos].second -= 1;   // 减去删除的虚拟机资源
+	}
+	else {
+		pair<int, int> temp = vmSourceOrder[pos];    // 取出该变量
+		if (flag) {    // true : add
+			temp.second += int(requestVm.needCPU + requestVm.needRAM + args[4]);
+			//temp.second += 1;
+		}
+		else {   // false : delete
+			temp.second -= int(requestVm.needCPU + requestVm.needRAM + args[4]);
+			//temp.second -=  1;
+		}
+		auto ite = vmSourceOrder.begin();
+		if (pos - 1 < 0 || mycompID(vmSourceOrder[pos - 1], temp)) {  // pos - 1 < 0表示是第一个元素
+			if (pos != vmSourceOrder.size() - 1) {   // 不是最后一个元素
+				for (int i = pos + 1; i < (int)vmSourceOrder.size(); i++) {
+					if (i == vmSourceOrder.size() - 1 && mycompID(vmSourceOrder[i], temp)) {  // 最后一个元素还是小
+						vmSourceOrder.erase(ite + pos);
+						vmSourceOrder.push_back(temp);
+						break;
+					}
+					if (mycompID(temp, vmSourceOrder[i])) {   // 往下找到了比自己大的，要插在这个比自己大的前面
+						vmSourceOrder.erase(ite + pos);   // 删除该元素
+						vmSourceOrder.insert(vmSourceOrder.begin() + i - 1, temp);   // 在指定的位置插入元素
+						break;   // 退出
+					}
+				}
+			}
+			else {
+				vmSourceOrder[pos] = temp;   // 赋予新值
+			}
+		}
+		else {
+			for (int i = pos - 1; i >= 0; i--) {   // 走到这里说明了pos - 1 > 0
+				if (i == 0 && mycompID(temp, vmSourceOrder[i])) {
+					vmSourceOrder.erase(ite + pos);
+					vmSourceOrder.insert(vmSourceOrder.begin() + i, temp);
+					break;
+				}
+				if (mycompID(vmSourceOrder[i], temp)) {
+					vmSourceOrder.erase(ite + pos);
+					vmSourceOrder.insert(vmSourceOrder.begin() + i + 1, temp);
+					break;
+				}
+			}
+		}
+	}
+
+}
+
 
 // 对服务器里的虚拟机数量进行排序
 void cServer::updatVmSourceOrder(int needCPU, int needRAM, int serID, bool flag) {  // true : add , false : delete
@@ -313,7 +485,16 @@ void cServer::updatVmSourceOrder(int needCPU, int needRAM, int serID, bool flag)
 
 }
 
+bool cyt::mycompID(pair<int, int> i, pair<int, int> j) {
+	return i.second <= j.second;
+}
+
+
 void cServer::updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int needRAMb, int serID, bool flag) {  // true : add , false : delete
+
+	if (serID == 2361) {
+		int a = 1;
+	}
 
 	string serName = myServerSet[serID].serName;
 	int totalCPU = info[serName].totalCPU;
@@ -326,27 +507,6 @@ void cServer::updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int need
 
 	/*加入新结点*/
 	vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU][bIdleRAM].push_back(serID);
-	// if (!vmTarOrder.count(aIdleCPU)) {
-	// 	vmTarOrder.insert({aIdleCPU, {{aIdleRAM, {{bIdleCPU, {{bIdleRAM, {serID} }} }} }} });
-	// }
-	// else {
-	// 	if (!vmTarOrder[aIdleCPU].count(aIdleRAM)) {
-	// 		vmTarOrder[aIdleCPU].insert({aIdleRAM, {{bIdleCPU, {{bIdleRAM, {serID} }} }} });
-	// 	}
-	// 	else {
-	// 		if (!vmTarOrder[aIdleCPU][aIdleRAM].count(bIdleCPU)) {
-	// 			vmTarOrder[aIdleCPU][aIdleRAM].insert({bIdleCPU, {{bIdleRAM, {serID} }} });
-	// 		}
-	// 		else {
-	// 			if (!vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU].count(bIdleRAM)) {
-	// 				vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU].insert({bIdleRAM, {serID} });
-	// 			}
-	// 			else {
-	// 				vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU][bIdleRAM].push_back(serID);
-	// 			}
-	// 		}
-	// 	}			
-	// }
 
 	if (flag) {
 		alastCPU = aIdleCPU + needCPUa;
@@ -371,7 +531,7 @@ void cServer::updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int need
 				break;
 			}
 		}
-		if (serSet.empty()) {
+		if (serSet.empty()) {  // 删除空的节点
 			vmTarOrder[alastCPU][alastRAM][blastCPU].erase(blastRAM);
 			if (vmTarOrder[alastCPU][alastRAM][blastCPU].empty()) {
 				vmTarOrder[alastCPU][alastRAM].erase(blastCPU);
@@ -379,6 +539,38 @@ void cServer::updatVmTarOrder(int needCPUa, int needRAMa, int needCPUb, int need
 					vmTarOrder[alastCPU].erase(alastRAM);
 					if (vmTarOrder[alastCPU].empty()) {
 						vmTarOrder.erase(alastCPU);
+					}
+				}
+			}
+		}
+	}
+}
+
+
+void cServer::deleteVmTar(int serID) {
+
+	int aIdleCPU = myServerSet[serID].aIdleCPU;
+	int aIdleRAM = myServerSet[serID].aIdleRAM;
+	int bIdleCPU = myServerSet[serID].bIdleCPU;
+	int bIdleRAM = myServerSet[serID].bIdleRAM;
+	/*删除旧节点*/
+	if (vmTarOrder.count(aIdleCPU) && vmTarOrder[aIdleCPU].count(aIdleRAM) \
+		&& vmTarOrder[aIdleCPU][aIdleRAM].count(bIdleCPU) && vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU].count(bIdleRAM)) {
+		vector<int> &serSet = vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU][bIdleRAM];
+		for (auto it = serSet.begin(); it != serSet.end(); it++) {
+			if (*it == serID) {
+				serSet.erase(it);
+				break;
+			}
+		}
+		if (serSet.empty()) {  // 删除空的节点
+			vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU].erase(bIdleRAM);
+			if (vmTarOrder[aIdleCPU][aIdleRAM][bIdleCPU].empty()) {
+				vmTarOrder[aIdleCPU][aIdleRAM].erase(bIdleCPU);
+				if (vmTarOrder[aIdleCPU][aIdleRAM].empty()) {
+					vmTarOrder[aIdleCPU].erase(aIdleRAM);
+					if (vmTarOrder[aIdleCPU].empty()) {
+						vmTarOrder.erase(aIdleCPU);
 					}
 				}
 			}
