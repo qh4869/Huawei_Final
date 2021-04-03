@@ -8,10 +8,18 @@ void migrateVM_3(cServer &server, cVM &VM, int whichDay, unordered_map<string, i
 	if (migrateNum <= 0) { return; }
 	int cntMig = 0;   // 迁移的服务器数量统计	
 	unordered_set<int> emptySer;    // 空的服务器集合，该服务器不可作为迁入服务器
-	double ratio = 1;
+	double ratio;
+	if (server.info.size() == 80) {
+		ratio = 1;
+		massMigrate(server, VM, whichDay, dayWorkingVM, delSerSet, cntMig, migrateNum, args);
+	}
+	else {
+		ratio = 2;
+		subMigrateVM(server, VM, whichDay, delSerSet, dayWorkingVM, emptySer, args, cntMig, migrateNum, ratio);
+	}
 	//subMigrateVM(server, VM, whichDay, delSerSet, dayWorkingVM, emptySer, args, cntMig, migrateNum, ratio);
 	//subMigrateVM(server, VM, whichDay, delSerSet, dayWorkingVM, emptySer, args, cntMig, migrateNum, ratio);
-	massMigrate(server, VM, whichDay, dayWorkingVM, delSerSet, cntMig, migrateNum, args);
+	
 
 }
 

@@ -20,7 +20,7 @@ int main()
 #ifdef LOCAL
 	TIMEstart = clock();
 	ifstream fin;
-	fin.open("training-1.txt");
+	fin.open("../CodeCraft-2021/training-1.txt");
 	cin.rdbuf(fin.rdbuf());
 #endif
 	cServer server;
