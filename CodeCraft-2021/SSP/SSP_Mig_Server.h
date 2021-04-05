@@ -7,7 +7,7 @@ namespace cyt {
 
 class cSSP_Mig_Server : public cSSP_Server {
 public:
-	// 记录服务器中虚拟机数量的排序 : serID->虚拟机占用资源cpu+ram {部署/删除更新，购买迁移不影响}
+	// 记录服务器中虚拟机数量的排序 : serID->虚拟机占用资源cpu+ram {部署/删除/迁移更新，购买不影响}
 	vector<pair<int, int>> vmSourceOrder;
 	// 更新vmSourceOrder，部署和删除写在deploy,delete函数中，迁移需要单独调用(cyt写的)
 	void updatVmSourceOrder(int needCPU, int needRAM, int serID, bool flag); // flag: true(add), false(delete)

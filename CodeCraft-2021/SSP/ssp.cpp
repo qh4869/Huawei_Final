@@ -271,7 +271,7 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 						cyt::updateDelSerSet(delSerSet, requestVM, inNode, inSerID, true);  // 添加虚拟机
 					else if (delSerSet.count(outSerID) == 1)   // 迁出的服务器当天有删除操作
 						cyt::updateDelSerSet(delSerSet, requestVM, outNode, outSerID, false);   // 删除虚拟机
-
+				
 					server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, outSerID, false);
 					server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, inSerID, true);
 				}
@@ -583,6 +583,8 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 	sMyEachServer tempServer;
 	int restCPU;
 	int restRAM;
+	int tempValue1;
+	int tempValue2;
 	int tempValue;
 	bool findFlag = false;// 能不能找到除自己之外的其他服务器
 
@@ -609,7 +611,9 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 				tempServer = server.myServerSet[outSerID];
 				restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
 				restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
-				tempValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+				tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+				tempValue2 = server.info[tempServer.serName].energyCost;
+				tempValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
 				if (tempValue < VM.saveGoal[vmName].goal) {
 					myServer.hardCost = 1;
 				}
@@ -626,7 +630,9 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 		tempServer = server.myServerSet[outSerID];
 		restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
 		restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
-		minValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+		tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+		tempValue2 = server.info[tempServer.serName].energyCost;
+		minValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
 		if (minValue < VM.fitThreshold) {// 初值已经很小了，没必要在遍历找更优，降低复杂度
 			/*VM锁*/
 			if (VM.stopSetCnt.count(vmID))
@@ -652,7 +658,7 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 		for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
 			ites.push_back(itcpua);
 		}
-		#pragma omp parallel for num_threads(2) private(tempServer, restCPU, restRAM, tempValue) if(ompFlag)
+		#pragma omp parallel for num_threads(2) private(tempServer, restCPU, restRAM, tempValue, tempValue1, tempValue2) if(ompFlag)
 		for (int i = 0; i < (int)ites.size(); i++) {
 			auto itcpua = ites[i];
 			for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
@@ -661,8 +667,8 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 						for (int inSerID : itramb->second) {
 
 							/*如果inSerID已经空了，那就不选择这台服务器*/
-							// if (!server.isOpen(inSerID))
-							// 	continue;
+							if (!server.isOpen(inSerID))
+								continue;
 
 							/*如果inSerID就是ourSerID，那么不做判断，因为初值就是这台服务器*/
 							if (outSerID == inSerID) 
@@ -688,7 +694,9 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 							tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
 							restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
 							restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
-							tempValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+							tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+							tempValue2 = server.info[tempServer.serName].energyCost;
+							tempValue = tempValue1 * tempValue2 / server.serverVMSet[inSerID].size();
 							if (tempValue < ompMinValue[omp_get_thread_num()]) {
 								findFlag = true;
 								ompMinValue[omp_get_thread_num()] = tempValue;
@@ -731,7 +739,9 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			tempServer = server.myServerSet[outSerID];
 			restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
 			restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
-			tempValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+			tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+			tempValue2 = server.info[tempServer.serName].energyCost;
+			tempValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
 		}
 		if (!findFlag) { // 不可以找到 除当前服务器其他的服务器 
 			if (tempValue == -1) { // 不摘除自己的ser 装不进去
@@ -792,7 +802,9 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 					restCPU = tempServer.bIdleCPU;
 					restRAM = tempServer.bIdleRAM;
 				}
-				tempValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+				tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+				tempValue2 = server.info[tempServer.serName].energyCost;
+				tempValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
 				if (tempValue < VM.saveGoal[vmName].goal) {
 					myServer.hardCost = 1;
 				}
@@ -806,7 +818,7 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			}
 		}
 
-		/*摘除自己的计算结果*/
+		/*摘除自己的计算初值*/
 		tempServer = server.myServerSet[outSerID];
 		if (outNode) {
 			restCPU = tempServer.aIdleCPU;
@@ -816,7 +828,9 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			restCPU = tempServer.bIdleCPU;
 			restRAM = tempServer.bIdleRAM;
 		}
-		minValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+		tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+		tempValue2 = server.info[tempServer.serName].energyCost;
+		minValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
 		if (minValue < VM.fitThreshold) {// 初值已经很小了，没必要在遍历找更优，降低复杂度
 			/*VM锁*/
 			if (VM.stopSetCnt.count(vmID))
@@ -851,7 +865,7 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
 				ites.push_back(itcpua);
 			}
-			#pragma omp parallel for num_threads(2) private(tempServer, restCPU, restRAM, tempValue) if(ompFlag)
+			#pragma omp parallel for num_threads(2) private(tempServer, restCPU, restRAM, tempValue, tempValue1, tempValue2) if(ompFlag)
 			for (int i = 0; i < (int)ites.size(); i++) {
 				auto itcpua = ites[i];
 				for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
@@ -860,8 +874,8 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 							for (int inSerID : itramb->second) {
 
 								/*如果inSerID已经空了，那就不选择这台服务器*/
-								// if (!server.isOpen(inSerID))
-								// 	continue;
+								if (!server.isOpen(inSerID))
+									continue;
 
 								/*如果inSer就是outSer，那么不做判断，因为初值就是这台服务器*/
 								if (outSerID == inSerID && outNode == true)
@@ -887,7 +901,10 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 								tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
 								restCPU = tempServer.aIdleCPU - requestVM.needCPU;
 								restRAM = tempServer.aIdleRAM - requestVM.needRAM;
-								tempValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+								tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+								tempValue2 = server.info[tempServer.serName].energyCost;
+
+								tempValue = tempValue1 * tempValue2 / server.serverVMSet[inSerID].size();
 								if (tempValue < ompMinValue[omp_get_thread_num()]) {
 									findFlag = true;
 									ompMinValue[omp_get_thread_num()] = tempValue;
@@ -934,7 +951,7 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
 				ites.push_back(itcpua);
 			}
-			#pragma omp parallel for num_threads(2) private(tempServer, restCPU, restRAM, tempValue) if(ompFlag)
+			#pragma omp parallel for num_threads(2) private(tempServer, restCPU, restRAM, tempValue, tempValue1, tempValue2) if(ompFlag)
 			for (int i = 0; i < (int)ites.size(); i++) {
 				auto itcpua = ites[i];
 				for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
@@ -943,8 +960,8 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 							for (int inSerID : itramb->second) {
 
 								/*如果inSerID已经空了，那就不选择这台服务器*/
-								// if (!server.isOpen(inSerID))
-								// 	continue;
+								if (!server.isOpen(inSerID))
+									continue;
 
 								/*如果inSer就是outSer，那么不做判断，因为初值就是这台服务器*/
 								if (outSerID == inSerID && outNode == false)
@@ -970,7 +987,9 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 								tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
 								restCPU = tempServer.bIdleCPU - requestVM.needCPU;
 								restRAM = tempServer.bIdleRAM - requestVM.needRAM;
-								tempValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+								tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+								tempValue2 = server.info[tempServer.serName].energyCost;
+								tempValue = tempValue1 * tempValue2 / server.serverVMSet[inSerID].size();
 								if (tempValue < ompMinValue[omp_get_thread_num()]) {
 									findFlag = true;
 									ompMinValue[omp_get_thread_num()] = tempValue;
@@ -1020,7 +1039,9 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 				tempServer = server.myServerSet[outSerID];
 				restCPU = tempServer.aIdleCPU - requestVM.needCPU;
 				restRAM = tempServer.aIdleRAM - requestVM.needRAM;
-				tempValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+				tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+				tempValue2 = server.info[tempServer.serName].energyCost;
+				tempValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
 			}
 		}
 		else { // Node B
@@ -1030,7 +1051,9 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 				tempServer = server.myServerSet[outSerID];
 				restCPU = tempServer.bIdleCPU - requestVM.needCPU;
 				restRAM = tempServer.bIdleRAM - requestVM.needRAM;
-				tempValue = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+				tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
+				tempValue2 = server.info[tempServer.serName].energyCost;
+				tempValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
 			}
 		}
 		if (!findFlag) {

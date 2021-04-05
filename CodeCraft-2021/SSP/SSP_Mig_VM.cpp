@@ -140,6 +140,17 @@ void cSSP_Mig_VM::transfer(cSSP_Mig_Server &server, int iDay, string VMid, int s
 		throw "not single";
 	}
 
+	// 恢复前一个服务器的资源
+	if (lastServerNode == true) { // A node
+		server.myServerSet[lastServerID].aIdleCPU += occupyCPU;
+		server.myServerSet[lastServerID].aIdleRAM += occupyRAM;
+	}
+	else {
+		server.myServerSet[lastServerID].bIdleCPU += occupyCPU;
+		server.myServerSet[lastServerID].bIdleRAM += occupyRAM;
+	}
+	server.serverVMSet[lastServerID].erase(VMid);
+
 	if (node == true) { // node A
 		if (server.myServerSet[serID].aIdleCPU < occupyCPU \
 			|| server.myServerSet[serID].aIdleRAM < occupyRAM) {
@@ -168,17 +179,6 @@ void cSSP_Mig_VM::transfer(cSSP_Mig_Server &server, int iDay, string VMid, int s
 	// 更改该虚拟机现在的位置
 	workingVmSet[VMid].serverID = serID;
 	workingVmSet[VMid].node = node;
-
-	// 恢复前一个服务器的资源
-	if (lastServerNode == true) { // A node
-		server.myServerSet[lastServerID].aIdleCPU += occupyCPU;
-		server.myServerSet[lastServerID].aIdleRAM += occupyRAM;
-	}
-	else {
-		server.myServerSet[lastServerID].bIdleCPU += occupyCPU;
-		server.myServerSet[lastServerID].bIdleRAM += occupyRAM;
-	}
-	server.serverVMSet[lastServerID].erase(VMid);
 
 	// 迁移条目更新
 	sTransVmItem oneTrans;
@@ -211,6 +211,13 @@ void cSSP_Mig_VM::transfer(cSSP_Mig_Server &server, int iDay, string VMid, int s
 		throw "not single";
 	}
 
+	// 恢复前一个服务器的资源
+	server.myServerSet[lastServerID].aIdleCPU += occupyCPU / 2;
+	server.myServerSet[lastServerID].aIdleRAM += occupyRAM / 2;
+	server.myServerSet[lastServerID].bIdleCPU += occupyCPU / 2;
+	server.myServerSet[lastServerID].bIdleRAM += occupyRAM / 2;
+	server.serverVMSet[lastServerID].erase(VMid);
+
 	if (server.myServerSet[serID].aIdleCPU < occupyCPU / 2 \
 		|| server.myServerSet[serID].aIdleRAM < occupyRAM / 2 \
 		|| server.myServerSet[serID].bIdleCPU < occupyCPU / 2 \
@@ -228,13 +235,6 @@ void cSSP_Mig_VM::transfer(cSSP_Mig_Server &server, int iDay, string VMid, int s
 	}
 
 	workingVmSet[VMid].serverID = serID;
-
-	// 恢复前一个服务器的资源
-	server.myServerSet[lastServerID].aIdleCPU += occupyCPU / 2;
-	server.myServerSet[lastServerID].aIdleRAM += occupyRAM / 2;
-	server.myServerSet[lastServerID].bIdleCPU += occupyCPU / 2;
-	server.myServerSet[lastServerID].bIdleRAM += occupyRAM / 2;
-	server.serverVMSet[lastServerID].erase(VMid);
 
 	// 迁移条目更新
 	sTransVmItem oneTrans;
