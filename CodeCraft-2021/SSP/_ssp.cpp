@@ -52,8 +52,10 @@ bool quickFindDouble(cyt::sServerItem &myServer, cSSP_Mig_Server &server, cSSP_M
 		}
 		else if (VM.saveGoal[vmName].serID != outSerID) { // 找到了 但不是自己 就和自己当前的得分比较
 			int tempValue = getSelfGoal(server, outSerID, true, false);
-			if (tempValue < VM.saveGoal[vmName].goal) 
+			if (tempValue < VM.saveGoal[vmName].goal) {
 				myServer.hardCost = 1;
+				VM.addLock(vmID);
+			}
 			else {
 				myServer.energyCost = -1;
 				myServer.hardCost = -1;
@@ -79,6 +81,7 @@ bool quickFindSingle(cyt::sServerItem &myServer, cSSP_Mig_Server &server, cSSP_M
 			int tempValue = getSelfGoal(server, outSerID, false, outNode);
 			if (tempValue < VM.saveGoal[vmName].goal) {
 				myServer.hardCost = 1;
+				VM.addLock(vmID);
 			}
 			else {
 				myServer.energyCost = -1;

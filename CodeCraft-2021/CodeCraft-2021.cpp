@@ -1,4 +1,4 @@
-#include "io.h"
+﻿#include "io.h"
 #include "SSP_Mig_Server.h"
 #include "SSP_Mig_VM.h"
 #include "SSP_Mig_Request.h"
@@ -29,7 +29,7 @@ int main()
 	cSSP_Mig_VM VM;
 	cSSP_Mig_Request request;
 
-	/*自定义参数*/
+	/*自定义参数*/ // 加不加锁
 	server.ksSize = 4;
 	server.gBeta = 0.49;
 	server.gGamma = 1.03;
@@ -39,9 +39,9 @@ int main()
 	VM.ratio = 1.5; // 只搜索vmSourceOrder的一部分
 	VM.maxIter = 10; // 迁移最大迭代次数 -- 可微调提高
 	VM.fitThreshold = 10; //10; // 微调
-	VM.stopTimes = 10;
-	VM.delayTimes = 20; // 越大越不易解锁
-	VM.delCntMax = 2000;
+	VM.stopTimes = 15;
+	VM.delayTimes = 35; // 越大越不易解锁
+	VM.delCntMax = 1500;
 	request.delLarge = 300;
 
 	/*读取非请求部分*/

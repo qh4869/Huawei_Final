@@ -446,11 +446,13 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			minValue = betValue;
 			myServer = betServer;
 		}
+		else
+			VM.addLock(vmID);
 
 		/*stopSet*/
-		if (!findFlag) {
-			VM.addLock(vmID);
-		}
+		// if (!findFlag) {
+		// 	VM.addLock(vmID);
+		// }
 	}
 	else {  // 单节点
 
@@ -494,11 +496,13 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			minValue = betValue;
 			myServer = betServer;
 		}
+		else
+			VM.addLock(vmID);
 
 		/*stopSet*/
-		if (!findFlag) {
-			VM.addLock(vmID);
-		}
+		// if (!findFlag) {
+		// 	VM.addLock(vmID);
+		// }
 	}
 
 	return myServer;
