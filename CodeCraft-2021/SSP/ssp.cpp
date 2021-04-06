@@ -20,124 +20,6 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM, request);
 }
 
-void ssp(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request) {
-/* Fn: SSP方法
-*	- 背包问题：递归剪枝
-*
-* Update 03.18
-*	- bestFit 和 knapSack 结构互相迭代
-* Update 03.31
-*	- 自定义参数都放到类中，去掉全局变量
-*/
-	/*自适应参数*/
-	double addVar, delVar;
-	tie(addVar, delVar) = request.getVarRequest();
-	if (delVar < 7) {
-		server.ksSize = 4;
-		server.gBeta = 0.49;
-		server.gGamma = 1.03;
-		server.args[2] = 0.51;
-		server.args[3] = 1.02;
-	}
-	else {
-		server.ksSize = 1;
-		server.gBeta = 0.3;
-		server.gGamma = 1.0;
-		server.args[1] = 5;
-		server.args[2] = 0.3;
-		server.args[3] = 1.0;
-	}
-
-#ifdef LOCAL
-	// 估计成本变量
-	int engCostStas = 0; // 计算功耗成本
-	int hardCostStas = 0;
-	string costName;
-
-	/*用于matlab分析的变量*/
-	ofstream svout;
-	svout.open("svOut.txt");
-	int svcnt_ = 0;
-	int svcnt = 0;
-	int wksvcnt = 0;
-	vector<double> cpuidle;
-	vector<double> ramidle;
-	vector<double> cpuall;
-	vector<double> ramall;
-	svout << "天数" << " " << "结余" << " " << "购买" << " " << "工作中" \
-		" " << "cpuRatio" << " " << "ramRatio" << " " << "addcnt" << " " << "delcnt" << endl;
-#endif
-
-	/*生成server.infoV，向量，为了写多线程*/
-	server.genInfoV();
-
-	for (int iDay = 0; iDay<request.dayNum; iDay++) { // 每一天的请求
-#ifdef LOCAL
-		cout << iDay << endl;
-		TIMEend = clock();
-		cout << (double)(TIMEend - TIMEstart) / CLOCKS_PER_SEC << endl;
-#endif
-		int vmNumStart = VM.workingVmSet.size(); // 购买部署前 工作虚拟机的个数 用来迁移
-		unordered_map<int, sMyEachServer> delSerSet; // 有删除操作的SV集合，以及其中扣除del操作的容量 用来迁移
-		unordered_set<string> dayWorkingVM; // 当天新加入的VM集合(就算del也没从中去掉)，迁移时候特殊对待
-
-		/*每天的购买和部署，
-		* 返回有删除操作服务器 因为是部署后迁移 扣除del资源的容量 ->delSerSet，
-		* 返回当天部署的VM集合，因为是部署后迁移，所以特殊对待*/
-		dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
-
-		/*后迁移（部署后计算，等效部署前实现）*/
-		// dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM);
-
-#ifdef LOCAL
-		/*一天结束统计功耗成本*/
-		for (int iServer = 0; iServer<(int)server.myServerSet.size(); iServer++) {
-			if (server.isOpen(iServer)) {
-				costName = server.myServerSet[iServer].serName;
-				engCostStas += server.info[costName].energyCost;
-			}
-		}
-
-		/*matlab数据导出*/
-		cpuidle.clear();
-		ramidle.clear();
-		cpuall.clear();
-		ramall.clear();
-		for (int iServer = 0; iServer<(int)server.myServerSet.size(); iServer++) {
-			if (server.isOpen(iServer)) {
-				wksvcnt++;
-				cpuidle.push_back(server.myServerSet[iServer].aIdleCPU + server.myServerSet[iServer].bIdleCPU);
-				ramidle.push_back(server.myServerSet[iServer].aIdleRAM + server.myServerSet[iServer].bIdleRAM);
-				cpuall.push_back(server.info.at(server.myServerSet[iServer].serName).totalCPU);
-				ramall.push_back(server.info.at(server.myServerSet[iServer].serName).totalRAM);
-			}
-		}
-
-		for (int iServer = 0; iServer<(int)server.myServerSet.size(); iServer++) {
-			costName = server.myServerSet[iServer].serName;
-			svcnt += server.info[costName].hardCost;
-		}
-		double cpu1 = accumulate(cpuidle.begin(), cpuidle.end(), 0);
-		double cpu2 = accumulate(cpuall.begin(), cpuall.end(), 0);
-		double ram1 = accumulate(ramidle.begin(), ramidle.end(), 0);
-		double ram2 = accumulate(ramall.begin(), ramall.end(), 0);
-		svout << iDay << " " << svcnt << " " << svcnt - svcnt_ << " " << wksvcnt << " "  \
-			<< cpu1 / cpu2 << " " << ram1 / ram2 << " " << request.numAddEachDay[iDay] << " " << request.numDelEachDay[iDay] << endl;
-		svcnt_ = svcnt;
-		wksvcnt = 0;
-		svcnt = 0;
-#endif
-	}
-#ifdef LOCAL
-	/*计算买服务器总成本*/
-	for (int iServer = 0; iServer<(int)server.myServerSet.size(); iServer++) {
-		costName = server.myServerSet[iServer].serName;
-		hardCostStas += server.info[costName].hardCost;
-	}
-	cout << "成本: " << engCostStas + hardCostStas << endl;
-#endif
-}
-
 void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 	unordered_set<string> &dayWorkingVM, int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request) {
 
@@ -223,6 +105,7 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 					tie(inSerID, inNode) = srchInVmSourceSingle(server, requestVM, VM, i, delSerSet, vmID);
 
 				if (inSerID != -1) { // 可以找到
+
 					if (vmIsDouble) {   // true表示双节点
 						if (inSerID == outSerID)
 							continue; // 不能原地迁移
@@ -516,508 +399,84 @@ tuple<int, bool> srchInVmSourceSingle(cSSP_Mig_Server &server, sVmItem &requestV
 	return { -1, false };
 }
 
-map<int, map<int, map<int, map<int, vector<int>>>>>::iterator \
-greaterEqu1(map<int, map<int, map<int, map<int, vector<int>>>>> &set, int val) {
-	map<int, map<int, map<int, map<int, vector<int>>>>>::iterator it = set.upper_bound(val);
-	if (it == set.begin()) {
-		return it;
-	}
-	else if ((--it)->first < val) {
-		return ++it;
-	}
-	else
-		return it;
-}
-
-map<int, map<int, map<int, vector<int>>>>::iterator \
-greaterEqu2(map<int, map<int, map<int, vector<int>>>> &set, int val) {
-	map<int, map<int, map<int, vector<int>>>>::iterator it = set.upper_bound(val);
-	if (it == set.begin()) {
-		return it;
-	}
-	else if ((--it)->first < val) {
-		return ++it;
-	}
-	else
-		return it;
-}
-
-map<int, map<int, vector<int>>>::iterator \
-greaterEqu3(map<int, map<int, vector<int>>> &set, int val) {
-	map<int, map<int, vector<int>>>::iterator it = set.upper_bound(val);
-	if (it == set.begin()) {
-		return it;
-	}
-	else if ((--it)->first < val) {
-		return ++it;
-	}
-	else
-		return it;
-}
-
-map<int, vector<int>>::iterator \
-greaterEqu4(map<int, vector<int>> &set, int val) {
-	map<int, vector<int>>::iterator it = set.upper_bound(val);
-	if (it == set.begin()) {
-		return it;
-	}
-	else if ((--it)->first < val) {
-		return ++it;
-	}
-	else
-		return it;
-}
-
 cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSSP_Mig_VM &VM, int index,
 	unordered_map<int, sMyEachServer> &delSerSet, string vmID) {
+/* Fn: 选择决定是否迁移 && 选择迁移服务器
+*
+* Note:
+*	- 调用的函数大多写在_ssp.cpp中
+*/
+
 	cyt::sServerItem myServer;
 	myServer.hardCost = 1;   // 可通过hardCost来判断是否找到了服务器
 	int minValue = INT_MAX;
-	// int cnt = 0; // 只遍历N台(双部署)，N个节点（单部署）控制复杂度
 
-	// 暂时先不写key等于的情况
-	int needCPUa, needRAMa, needCPUb, needRAMb;
 	int outSerID = server.vmSourceOrder[index].first;
 	bool outNode = VM.workingVmSet[vmID].node;
 	string vmName = VM.workingVmSet[vmID].vmName;
-	sMyEachServer tempServer;
-	int restCPU;
-	int restRAM;
-	int tempValue1;
-	int tempValue2;
-	int tempValue;
-	bool findFlag = false;// 能不能找到除自己之外的其他服务器
 
-	/*检查vm锁，如果被锁住就跳过，但是锁的值还是累计的*/
-	if (VM.stopSetCnt.count(vmID) && VM.stopSetCnt[vmID] >= VM.stopTimes){
-		VM.stopSetCnt[vmID]++;
+	/*判断vm锁*/
+	if (VM.isLocked(vmID))
 		return myServer;
-	}
 
 	if (requestVM.nodeStatus) {// 双节点 
 
 		/*快速判断，提高速度*/
-		if (VM.saveGoal.count(vmName)) {
-			if (VM.saveGoal[vmName].goal == -1) { // 找不到
-				/*vm锁*/
-				if (VM.stopSetCnt.count(vmID))
-					VM.stopSetCnt[vmID]++;
-				else
-					VM.stopSetCnt.insert({vmID, 1});
-				return myServer; 
-			}
-			else if (VM.saveGoal[vmName].serID != outSerID){
-				/*摘除自己的计算，以及比较*/
-				tempServer = server.myServerSet[outSerID];
-				restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
-				restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
-				tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-				tempValue2 = server.info[tempServer.serName].energyCost;
-				tempValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
-				if (tempValue < VM.saveGoal[vmName].goal) {
-					myServer.hardCost = 1;
-				}
-				else {
-					myServer.energyCost = -1;
-					myServer.hardCost = -1;
-					myServer.buyID = VM.saveGoal[vmName].serID;
-				}
-				return myServer;
-			}
-		}
+		if (quickFindDouble(myServer, server, VM, vmName, vmID, outSerID))
+			return myServer;
 
 		/*摘除自己的初值*/
-		tempServer = server.myServerSet[outSerID];
-		restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
-		restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
-		tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-		tempValue2 = server.info[tempServer.serName].energyCost;
-		minValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
-		if (minValue < VM.fitThreshold) {// 初值已经很小了，没必要在遍历找更优，降低复杂度
+		minValue = getSelfGoal(server, outSerID, true, false);
+		if (minValue < VM.fitThreshold) { // 初值已经很小了，没必要在遍历找更优，降低复杂度
 			/*VM锁*/
-			if (VM.stopSetCnt.count(vmID))
-				VM.stopSetCnt[vmID]++;
-			else
-				VM.stopSetCnt.insert({vmID, 1});
+			VM.addLock(vmID);
 			return myServer;
 		}
 
-		needCPUa = requestVM.needCPU / 2;
-		needRAMa = requestVM.needRAM / 2;
-		needCPUb = requestVM.needCPU / 2;
-		needRAMb = requestVM.needRAM / 2;
-
-		/*omp for*/
-		cyt::sServerItem ompServer[2];
-		ompServer[0].hardCost = 1;
-		ompServer[1].hardCost = 1;
-		int ompMinValue[2];
-		ompMinValue[0] = INT_MAX;
-		ompMinValue[1] = INT_MAX;
-		vector<map<int, map<int, map<int, map<int, vector<int>>>>>::iterator> ites; 
-		for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
-			ites.push_back(itcpua);
-		}
-		#pragma omp parallel for num_threads(2) private(tempServer, restCPU, restRAM, tempValue, tempValue1, tempValue2) if(ompFlag)
-		for (int i = 0; i < (int)ites.size(); i++) {
-			auto itcpua = ites[i];
-			for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
-				for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
-					for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
-						for (int inSerID : itramb->second) {
-
-							/*如果inSerID已经空了，那就不选择这台服务器*/
-							if (!server.isOpen(inSerID))
-								continue;
-
-							/*如果inSerID就是ourSerID，那么不做判断，因为初值就是这台服务器*/
-							if (outSerID == inSerID) 
-								continue; // 而且循环里的tempServer没有把自己这台VM摘出去，计算结果不准
-
-							if (delSerSet.count(inSerID) == 1) {   // 该服务器在当天有删除操作
-								tempServer = delSerSet[inSerID];
-							}
-							else {  // 表示这台服务器当天没有删除操作
-								tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
-							}
-
-							if (tempServer.aIdleCPU < needCPUa || tempServer.bIdleCPU < needCPUb ||
-								tempServer.aIdleRAM < needRAMa || tempServer.bIdleRAM < needRAMb) {
-								continue;
-							}
-
-							/*if (cnt < 100)
-							cnt++;
-							else
-							goto endloop;*/
-
-							tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
-							restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
-							restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
-							tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-							tempValue2 = server.info[tempServer.serName].energyCost;
-							tempValue = tempValue1 * tempValue2 / server.serverVMSet[inSerID].size();
-							if (tempValue < ompMinValue[omp_get_thread_num()]) {
-								findFlag = true;
-								ompMinValue[omp_get_thread_num()] = tempValue;
-								ompServer[omp_get_thread_num()].energyCost = -1;
-								ompServer[omp_get_thread_num()].hardCost = -1;
-								ompServer[omp_get_thread_num()].buyID = inSerID;   // 记录服务器
-							}
-						}
-					}
-				}
-			}
-		}
-		/*线程合并结果*/
-		cyt::sServerItem betServer;
+		/*搜索除自己以外的其他服务器*/
 		int betValue;
-		if (ompMinValue[0] <= ompMinValue[1]) {
-			betServer = ompServer[0];
-			betValue = ompMinValue[0];
-		}
-		else {
-			betServer = ompServer[1];
-			betValue = ompMinValue[1];
-		}
+		cyt::sServerItem betServer;
+		bool findFlag;
+		tie(betServer, betValue, findFlag) = findMigInSer(server, requestVM, delSerSet, true, false, outSerID, false);
+		// 保存搜索结果，用于快速判断，提高运行速度
+		updateGoalSaver(server, VM, delSerSet, requestVM, vmName, true, outSerID, false, betServer, betValue, findFlag);
+
+		/*自己服务器的得分 vs 其他服务器的得分*/
 		if (betValue < minValue) {
 			minValue = betValue;
 			myServer = betServer;
 		}
 
-
-		/*不摘除自己的结果计算*/
-		if (delSerSet.count(outSerID)) 
-			tempServer = delSerSet[outSerID];
-		else
-			tempServer = server.myServerSet[outSerID];
-		if (tempServer.aIdleCPU < needCPUa || tempServer.bIdleCPU < needCPUb ||
-			tempServer.aIdleRAM < needRAMa || tempServer.bIdleRAM < needRAMb) {
-			tempValue = -1;
-		}
-		else {
-			tempServer = server.myServerSet[outSerID];
-			restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
-			restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
-			tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-			tempValue2 = server.info[tempServer.serName].energyCost;
-			tempValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
-		}
-		if (!findFlag) { // 不可以找到 除当前服务器其他的服务器 
-			if (tempValue == -1) { // 不摘除自己的ser 装不进去
-				sPosGoal oneGoal;
-				oneGoal.goal = -1;
-				VM.saveGoal.insert({vmName, oneGoal});
-			}
-			else {
-				sPosGoal oneGoal;
-				oneGoal.goal = tempValue;
-				oneGoal.serID = outSerID;
-				VM.saveGoal.insert({vmName, oneGoal});
-			}
-		}
-		else {
-			if (tempValue == -1) {
-				sPosGoal oneGoal;
-				oneGoal.goal = betValue;
-				oneGoal.serID = betServer.buyID;
-				VM.saveGoal.insert({vmName, oneGoal});
-			}
-			else {
-				sPosGoal oneGoal;
-				oneGoal.goal = (betValue < tempValue)? betValue : tempValue;
-				oneGoal.serID = (betValue < tempValue)? betServer.buyID : outSerID;
-				VM.saveGoal.insert({vmName, oneGoal});
-			}
-		}
-
 		/*stopSet*/
 		if (!findFlag) {
-			if (VM.stopSetCnt.count(vmID))
-				VM.stopSetCnt[vmID]++;
-			else
-				VM.stopSetCnt.insert({vmID, 1});
+			VM.addLock(vmID);
 		}
 	}
 	else {  // 单节点
 
 		/*快速判断，提高速度*/
-		if (VM.saveGoal.count(vmName)) {
-			if (VM.saveGoal[vmName].goal == -1) { 
-				/*vm锁*/
-				if (VM.stopSetCnt.count(vmID))
-					VM.stopSetCnt[vmID]++;
-				else
-					VM.stopSetCnt.insert({vmID, 1});
-				return myServer; 
-			}
-			else if (VM.saveGoal[vmName].serID != outSerID || VM.saveGoal[vmName].node != outNode){
-				/*摘除自己的计算，以及比较*/
-				tempServer = server.myServerSet[outSerID];
-				if (outNode) {
-					restCPU = tempServer.aIdleCPU;
-					restRAM = tempServer.aIdleRAM;
-				}
-				else {
-					restCPU = tempServer.bIdleCPU;
-					restRAM = tempServer.bIdleRAM;
-				}
-				tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-				tempValue2 = server.info[tempServer.serName].energyCost;
-				tempValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
-				if (tempValue < VM.saveGoal[vmName].goal) {
-					myServer.hardCost = 1;
-				}
-				else {
-					myServer.energyCost = -1;
-					myServer.hardCost = -1;
-					myServer.buyID = VM.saveGoal[vmName].serID;
-					myServer.node = VM.saveGoal[vmName].node;
-				}
-				return myServer;
-			}
-		}
+		if (quickFindSingle(myServer, server, VM, vmName, vmID, outSerID, outNode))
+			return myServer;
 
 		/*摘除自己的计算初值*/
-		tempServer = server.myServerSet[outSerID];
-		if (outNode) {
-			restCPU = tempServer.aIdleCPU;
-			restRAM = tempServer.aIdleRAM;
-		}
-		else {
-			restCPU = tempServer.bIdleCPU;
-			restRAM = tempServer.bIdleRAM;
-		}
-		tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-		tempValue2 = server.info[tempServer.serName].energyCost;
-		minValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
-		if (minValue < VM.fitThreshold) {// 初值已经很小了，没必要在遍历找更优，降低复杂度
-			/*VM锁*/
-			if (VM.stopSetCnt.count(vmID))
-				VM.stopSetCnt[vmID]++;
-			else
-				VM.stopSetCnt.insert({vmID, 1});
+		minValue = getSelfGoal(server, outSerID, false, outNode);
+		if (minValue < VM.fitThreshold) {
+			VM.addLock(vmID);
 			return myServer;
 		}
 		
+		/*搜索除自己以外的其他服务器 node A && node B*/
 		cyt::sServerItem betServerA;
 		int betValueA;
+		bool findFlagA;
 		cyt::sServerItem betServerB;
 		int betValueB;
+		bool findFlagB;
 		cyt::sServerItem betServer;
 		int betValue;
-		/*node a*/
-		{	
-
-			needCPUa = requestVM.needCPU;
-			needRAMa = requestVM.needRAM;
-			needCPUb = 0;
-			needRAMb = 0;
-
-			/*omp for*/
-			cyt::sServerItem ompServer[2];
-			ompServer[0].hardCost = 1;
-			ompServer[1].hardCost = 1;
-			int ompMinValue[2];
-			ompMinValue[0] = INT_MAX;
-			ompMinValue[1] = INT_MAX;
-			vector<map<int, map<int, map<int, map<int, vector<int>>>>>::iterator> ites; 
-			for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
-				ites.push_back(itcpua);
-			}
-			#pragma omp parallel for num_threads(2) private(tempServer, restCPU, restRAM, tempValue, tempValue1, tempValue2) if(ompFlag)
-			for (int i = 0; i < (int)ites.size(); i++) {
-				auto itcpua = ites[i];
-				for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
-					for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
-						for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
-							for (int inSerID : itramb->second) {
-
-								/*如果inSerID已经空了，那就不选择这台服务器*/
-								if (!server.isOpen(inSerID))
-									continue;
-
-								/*如果inSer就是outSer，那么不做判断，因为初值就是这台服务器*/
-								if (outSerID == inSerID && outNode == true)
-									continue;
-
-								sMyEachServer tempServer;
-								if (delSerSet.count(inSerID) == 1) {  // 该服务器在当天有删除操作
-									tempServer = delSerSet[inSerID];
-								}
-								else {  // 表示这台服务器当天没有删除操作
-									tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
-								}
-
-								if (tempServer.aIdleCPU < needCPUa || tempServer.aIdleRAM < needRAMa) {
-									continue;
-								}
-
-								// if (cnt < 100)
-								// 	cnt++;
-								// else
-								// 	goto endloop;
-
-								tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
-								restCPU = tempServer.aIdleCPU - requestVM.needCPU;
-								restRAM = tempServer.aIdleRAM - requestVM.needRAM;
-								tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-								tempValue2 = server.info[tempServer.serName].energyCost;
-
-								tempValue = tempValue1 * tempValue2 / server.serverVMSet[inSerID].size();
-								if (tempValue < ompMinValue[omp_get_thread_num()]) {
-									findFlag = true;
-									ompMinValue[omp_get_thread_num()] = tempValue;
-									ompServer[omp_get_thread_num()].energyCost = -1;
-									ompServer[omp_get_thread_num()].hardCost = -1;
-									ompServer[omp_get_thread_num()].buyID = inSerID;   // 记录该服务器
-									ompServer[omp_get_thread_num()].node = true;   // 返回true表示a 节点
-								}
-							}
-						}
-					}
-				}
-			}
-			/*线程合并结果*/
-			if (ompMinValue[0] <= ompMinValue[1]) {
-				betServerA = ompServer[0];
-				betValueA = ompMinValue[0];
-			}
-			else {
-				betServerA = ompServer[1];
-				betValueA = ompMinValue[1];
-			}
-			if (betValueA < minValue) {
-				minValue = betValueA;
-				myServer = betServerA;
-			}
-		}
-
-		/*node b*/
-		{	
-			needCPUa = 0;
-			needRAMa = 0;
-			needCPUb = requestVM.needCPU;
-			needRAMb = requestVM.needRAM;
-
-			/*omp for*/
-			cyt::sServerItem ompServer[2];
-			ompServer[0].hardCost = 1;
-			ompServer[1].hardCost = 1;
-			int ompMinValue[2];
-			ompMinValue[0] = INT_MAX;
-			ompMinValue[1] = INT_MAX;
-			vector<map<int, map<int, map<int, map<int, vector<int>>>>>::iterator> ites; 
-			for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
-				ites.push_back(itcpua);
-			}
-			#pragma omp parallel for num_threads(2) private(tempServer, restCPU, restRAM, tempValue, tempValue1, tempValue2) if(ompFlag)
-			for (int i = 0; i < (int)ites.size(); i++) {
-				auto itcpua = ites[i];
-				for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
-					for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
-						for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
-							for (int inSerID : itramb->second) {
-
-								/*如果inSerID已经空了，那就不选择这台服务器*/
-								if (!server.isOpen(inSerID))
-									continue;
-
-								/*如果inSer就是outSer，那么不做判断，因为初值就是这台服务器*/
-								if (outSerID == inSerID && outNode == false)
-									continue;
-
-								sMyEachServer tempServer;
-								if (delSerSet.count(inSerID) == 1) {  // 该服务器在当天有删除操作
-									tempServer = delSerSet[inSerID];
-								}
-								else {  // 表示这台服务器当天没有删除操作
-									tempServer = server.myServerSet[inSerID];  // 既然要根据虚拟机来，排序就没有用了，遍历所有服务器
-								}
-
-								if (tempServer.bIdleCPU < needCPUb || tempServer.bIdleRAM < needRAMb) {
-									continue;
-								}
-
-								// if (cnt < 100)
-								// 	cnt++;
-								// else
-								// 	goto endloop;
-
-								tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
-								restCPU = tempServer.bIdleCPU - requestVM.needCPU;
-								restRAM = tempServer.bIdleRAM - requestVM.needRAM;
-								tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-								tempValue2 = server.info[tempServer.serName].energyCost;
-								tempValue = tempValue1 * tempValue2 / server.serverVMSet[inSerID].size();
-								if (tempValue < ompMinValue[omp_get_thread_num()]) {
-									findFlag = true;
-									ompMinValue[omp_get_thread_num()] = tempValue;
-									ompServer[omp_get_thread_num()].energyCost = -1;
-									ompServer[omp_get_thread_num()].hardCost = -1;
-									ompServer[omp_get_thread_num()].buyID = inSerID;   // 记录该服务器
-									ompServer[omp_get_thread_num()].node = false;   // 返回true表示a 节点
-								}
-							}
-						}
-					}
-				}
-			}
-			/*线程合并结果*/
-			if (ompMinValue[0] <= ompMinValue[1]) {
-				betServerB = ompServer[0];
-				betValueB = ompMinValue[0];
-			}
-			else {
-				betServerB = ompServer[1];
-				betValueB = ompMinValue[1];
-			}
-			if (betValueB < minValue) {
-				minValue = betValueB;
-				myServer = betServerB;
-			}
-		}
-
+		bool findFlag;
+		tie(betServerA, betValueA, findFlagA) = findMigInSer(server, requestVM, delSerSet, false, true, outSerID, outNode);
+		tie(betServerB, betValueB, findFlagB) = findMigInSer(server, requestVM, delSerSet, false, false, outSerID, outNode);
 		if (betValueA <= betValueB) {
 			betValue = betValueA;
 			betServer = betServerA;
@@ -1026,76 +485,22 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			betValue = betValueB;
 			betServer = betServerB;
 		}
+		findFlag = findFlagA || findFlagB;
+		// 保存搜索结果，用于快速判断，提高运行速度
+		updateGoalSaver(server, VM, delSerSet, requestVM, vmName, false, outSerID, outNode, betServer, betValue, findFlag);
 
-		/*不摘除自己的结果计算*/
-		if (delSerSet.count(outSerID))
-			tempServer = delSerSet[outSerID];
-		else
-			tempServer = server.myServerSet[outSerID];
-		if (outNode) { // Node A
-			if (tempServer.aIdleCPU < requestVM.needCPU || tempServer.aIdleRAM < requestVM.needRAM)
-				tempValue = -1;
-			else {
-				tempServer = server.myServerSet[outSerID];
-				restCPU = tempServer.aIdleCPU - requestVM.needCPU;
-				restRAM = tempServer.aIdleRAM - requestVM.needRAM;
-				tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-				tempValue2 = server.info[tempServer.serName].energyCost;
-				tempValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
-			}
-		}
-		else { // Node B
-			if (tempServer.bIdleCPU < requestVM.needCPU || tempServer.bIdleRAM < requestVM.needRAM)
-				tempValue = -1;
-			else {
-				tempServer = server.myServerSet[outSerID];
-				restCPU = tempServer.bIdleCPU - requestVM.needCPU;
-				restRAM = tempServer.bIdleRAM - requestVM.needRAM;
-				tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-				tempValue2 = server.info[tempServer.serName].energyCost;
-				tempValue = tempValue1 * tempValue2 / server.serverVMSet[outSerID].size();
-			}
-		}
-		if (!findFlag) {
-			if (tempValue == -1) {
-				sPosGoal oneGoal;
-				oneGoal.goal = -1;
-				VM.saveGoal.insert({vmName, oneGoal});
-			}
-			else {
-				sPosGoal oneGoal;
-				oneGoal.goal = tempValue;
-				oneGoal.serID = outSerID;
-				oneGoal.node = outNode;
-				VM.saveGoal.insert({vmName, oneGoal});
-			}
-		}
-		else {
-			if (tempValue == -1) {
-				sPosGoal oneGoal;
-				oneGoal.goal = betValue;
-				oneGoal.serID = betServer.buyID;
-				oneGoal.node = betServer.node;
-				VM.saveGoal.insert({vmName, oneGoal});
-			}
-			else {
-				sPosGoal oneGoal;
-				oneGoal.goal = (betValue < tempValue)? betValue : tempValue;
-				oneGoal.serID = (betValue < tempValue)? betServer.buyID : outSerID;
-				oneGoal.node = (betValue < tempValue)? betServer.node : outNode;
-				VM.saveGoal.insert({vmName, oneGoal});
-			}
+		/*自己服务器的得分 vs 其他服务器的得分*/
+		if (betValue < minValue) {
+			minValue = betValue;
+			myServer = betServer;
 		}
 
 		/*stopSet*/
 		if (!findFlag) {
-			if (VM.stopSetCnt.count(vmID))
-				VM.stopSetCnt[vmID]++;
-			else
-				VM.stopSetCnt.insert({vmID, 1});
+			VM.addLock(vmID);
 		}
 	}
-// endloop: return myServer;
+
 	return myServer;
 }
 

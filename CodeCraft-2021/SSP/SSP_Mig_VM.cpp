@@ -289,3 +289,20 @@ void cSSP_Mig_VM::deleteVM(string vmID, cSSP_Mig_Server& server) {
 	/*delCnt*/
 	delCnt++;
 }
+
+bool cSSP_Mig_VM::isLocked(string vmID) {
+/* Fn: 检查vm锁，如果被锁住就跳过，但是锁的值还是累计的
+*/
+	if (stopSetCnt.count(vmID) && stopSetCnt[vmID] >= stopTimes){
+		stopSetCnt[vmID]++;
+		return true;
+	}
+	return false;
+}
+
+void cSSP_Mig_VM::addLock(string vmID) {
+	if (stopSetCnt.count(vmID))
+		stopSetCnt.at(vmID)++;
+	else
+		stopSetCnt.insert({vmID, 1});
+}

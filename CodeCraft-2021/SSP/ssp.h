@@ -72,3 +72,15 @@ int srchInVmSourceDouble(cSSP_Mig_Server &server, sVmItem &reqeustVM, cSSP_Mig_V
 	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
 tuple<int, bool> srchInVmSourceSingle(cSSP_Mig_Server &server, sVmItem &reqeustVM, cSSP_Mig_VM &VM, int index,
 	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
+
+/*Mig中提高运行速度*/
+int getGoal(cSSP_Mig_Server &server, int SerID, bool isDouble, bool node, int needCPU, int needRAM);
+int getSelfGoal(cSSP_Mig_Server &server, int SerID, bool isDouble, bool node);
+bool quickFindDouble(cyt::sServerItem &myServer, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, string vmName, string vmID, int outSerID);
+bool quickFindSingle(cyt::sServerItem &myServer, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, string vmName, string vmID, 
+	int outSerID, bool outNode);
+tuple<cyt::sServerItem, int, bool> findMigInSer(cSSP_Mig_Server &server, sVmItem &requestVM, 
+	unordered_map<int, sMyEachServer> &delSerSet, bool isDouble, bool inNode, int outSerID, bool outNode);
+void updateGoalSaver(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, unordered_map<int, sMyEachServer> &delSerSet, 
+	sVmItem &requestVM, string vmName, bool isDouble, int outSerID, bool outNode, 
+	cyt::sServerItem &betServer, int betValue, bool findFlag);

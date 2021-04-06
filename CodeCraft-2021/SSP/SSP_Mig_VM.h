@@ -22,6 +22,8 @@ public:
 	unordered_map<string, sPosGoal> saveGoal;
 	/*如果某台虚拟机总是找不到合适的迁入服务器，那就加入到这个集合，暂时永不解除封印*/
 	unordered_map<string, int> stopSetCnt; // <vmID, cnt>
+	bool isLocked(string vmID);
+	void addLock(string vmID);
 
 	/*记录del的次数，用于清理stopSetCnt*/
 	int delCnt = 0;
