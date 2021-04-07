@@ -8,21 +8,24 @@ void migrateVM_3(cServer &server, cVM &VM, int whichDay, unordered_map<string, i
 	if (migrateNum <= 0) { return; }
 	int cntMig = 0;   // 迁移的服务器数量统计	
 	unordered_set<int> emptySer;    // 空的服务器集合，该服务器不可作为迁入服务器
-	double ratio;
-	if (server.info.size() == 80) {
-		ratio = 1;
-		massMigrate(server, VM, whichDay, dayWorkingVM, delSerSet, cntMig, migrateNum, args);
-	}
-	else {
-		ratio = 2;
-		subMigrateVM(server, VM, whichDay, delSerSet, dayWorkingVM, emptySer, args, cntMig, migrateNum, ratio);
-	}
+	double ratio = 2;
 	//subMigrateVM(server, VM, whichDay, delSerSet, dayWorkingVM, emptySer, args, cntMig, migrateNum, ratio);
 	//subMigrateVM(server, VM, whichDay, delSerSet, dayWorkingVM, emptySer, args, cntMig, migrateNum, ratio);
-	
+	massMigrate(server, VM, whichDay, dayWorkingVM, delSerSet, cntMig, migrateNum, args);
 
 }
 
+void migrateVM_4(cServer &server, cVM &VM, int whichDay, unordered_map<string, int> &dayWorkingVM,
+	int vmTotalNum, unordered_map<int, sMyEachServer> &delSerSet, vector<double> &args, int &cntMig,
+	int migrateNum, int loopNum) {
+
+	int loopCnt = 0;
+	while (loopCnt < loopNum) {
+		massMigrate(server, VM, whichDay, dayWorkingVM, delSerSet, cntMig, migrateNum, args);
+		loopCnt++;
+	}
+
+}
 
 void subMigrateVM(cServer &server, cVM &VM, int whichDay, unordered_map<int, sMyEachServer> &delSerSet,
 	unordered_map<string, int> &dayWorkingVM, unordered_set<int> &emptySer, vector<double> &args,
@@ -370,6 +373,7 @@ sServerItem chooseFirstServer(cServer &server, sVmItem &requestVM, cVM &VM, int 
 	return myServer;
 }
 
+//////////////////////////////////////主要的迁移函数/////////////////////////////////////////////////
 // 一次迁移大量的虚拟机
 void massMigrate(cServer &server, cVM &VM, int whichDay, unordered_map<string, int> &dayWorkingVM,
 	unordered_map<int, sMyEachServer> &delSerSet, int &cntMig, int &migrateNum, vector<double> &args) {
@@ -383,15 +387,34 @@ void massMigrate(cServer &server, cVM &VM, int whichDay, unordered_map<string, i
 	sServerItem outSerInfo;  // 迁出的服务器原始信息
 	bool findNoEmpty = true;  // true表示能在非空集合中找到
 	bool findEmpty = true;  // true表示能在空服务器中找到
+	bool buyNew = false;  // true表示可以购买新的服务器
 	int empConut = 0, maxCtrl = 50;
+	int maxBuyNum = 0, buyCount = 0, Cost = 0;
+	int maxBreakCount = INT_MAX, breakCnt = 0;
+	if (whichDay > 100 && whichDay < 110)
+		maxBuyNum = 3;
+	else
+		buyNew = false;
 
 	for (int i = 0; i < server.vmSourceOrder.size(); i++) {
 
 		outSerID = server.vmSourceOrder[i].first;  // 迁出的服务器ID
+		outSer = server.myServerSet[outSerID];   // 迁出的服务器
+
+		/////////////////////////////////////////////////////////////////////////////////////////////
+		//////////// sServerItem结构体增加了buyID,node以及serName字段 ////////////////////////////
+		outSerInfo = server.info[outSer.serName];  // 迁出的服务器的原始信息
+		/////////////////////////////////////////////////////////////////////////////////////////////
+
+		if ((double)server.vmSourceOrder[i].second / (double)(outSerInfo.totalCPU + outSerInfo.totalRAM) > 0.97) {
+			continue;
+		}
+
 		// 没有可以迁出的资源则继续
 		if (server.vmSourceOrder[i].second == 0) {
+			/////////////////////////////下面这三个函数都是新加的/////////////////////////
 			server.deleteVmTar(outSerID);   // 删除空的服务器
-			deleteEmpVmTar(server, empVmTarOrder, outSerID);
+			deleteEmpVmTar(server, empVmTarOrder, outSerID);  // 避免重复加入，先删除
 			updateEmpVmTarOrder(server, empVmTarOrder, outSerID);  // 加入空的排序
 			continue;
 		}
@@ -408,7 +431,7 @@ void massMigrate(cServer &server, cVM &VM, int whichDay, unordered_map<string, i
 			return; // 处理完之后直接退出
 		}
 		// 走到这里说明容量没有达到限制
-		if (!findEmpty) {   // 表示不能从空的地方找到符合的服务器
+		if (!findEmpty && !buyNew) {   // 表示不能从空的地方找到符合的服务器
 			if (migrateSerVm(server, VM, outSerID, dayWorkingVM, empVmTarOrder, whichDay, i,
 				delSerSet, args, cntMig, migrateNum)) {   // 表示有空的服务器了
 				findEmpty = true;
@@ -418,6 +441,8 @@ void massMigrate(cServer &server, cVM &VM, int whichDay, unordered_map<string, i
 				outSerIDSet.clear();
 			}
 			empConut++;
+			breakCnt++;
+			if (breakCnt > maxBreakCount) { return; }
 			if (empConut >= maxCtrl) {
 				findEmpty = true;
 				findNoEmpty = true;
@@ -435,60 +460,38 @@ void massMigrate(cServer &server, cVM &VM, int whichDay, unordered_map<string, i
 		needRAMa += (outSerInfo.totalRAM / 2 - outSer.aIdleRAM);
 		needRAMb += (outSerInfo.totalRAM / 2 - outSer.bIdleRAM);
 		minEnergy += outSerInfo.energyCost;    // 可以节省的能耗
-		if (findNoEmpty)   // 如果可以从非空中找的话
-			myServer = chooseNoEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet, outSerID, outSerIDSet);
-		if (findNoEmpty && myServer.hardCost == -1) {    // 从非空中找到了合适的服务器
-			preServer = myServer;   // 记录这个值
-			outSerIDSet.insert(outSerID);   // 将这个可以迁出的服务器记录一下
-			cntMig += server.serverVMSet[outSerID].size();   // 更新迁移数量
-			continue;   // 继续，暂时不迁移
+
+		// 可以在非空里找，并且能够找到
+		if (findNoEmpty && migToNoEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet, outSerID,
+			outSerIDSet, myServer, preServer, cntMig, VM, dayWorkingVM, whichDay, empVmTarOrder, minEnergy, i)) {
+			breakCnt = 0;
+			continue;
 		}
-		else {
-			if (findNoEmpty && outSerIDSet.size() >= 1) {   // 表示在这之前已经记录了可以迁移的非空服务器
-				for (auto &outSerID : outSerIDSet) {   // 找出所有这些可以迁移的服务器并迁移
-					migrateSer(server, VM, outSerID, dayWorkingVM, empVmTarOrder, whichDay, delSerSet,
-						preServer.buyID, args);
-				}
-				needCPUa = 0; needCPUb = 0; needRAMa = 0; needRAMb = 0;  // 清空数据
+		else {   // 这里可以优化
+			findNoEmpty = false;   // 不能再非空里找
+		}
+
+		if (findEmpty && migToEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet, outSerID,
+			outSerIDSet, myServer, preServer, cntMig, VM, dayWorkingVM, whichDay, empVmTarOrder, minEnergy, i, findNoEmpty)) {
+			breakCnt = 0;
+			continue;
+		}
+		else {   // 这里可以优化
+			findEmpty = false;
+		}
+		if (buyNew) {
+			if (buyNewSer(server, needCPUa, needCPUb, needRAMa, needRAMb, outSerIDSet,
+				Cost, preServer, outSerID, myServer, VM, dayWorkingVM, whichDay, args,
+				empVmTarOrder, delSerSet, i, cntMig, migrateNum)) {
+				buyCount++;
+				if (buyCount >= maxBuyNum)
+					buyNew = false;
+				findEmpty = true;
+				findNoEmpty = true;
 				minEnergy = 0;
-				outSerIDSet.clear();
-				i -= 2;  //   这里暂时先这样，可能会让速度变慢/////////////????????????????????????????????
-				continue;  // 继续
-			}
-			// 走到这里说明没有可以放入的非空服务器，那么就要从空的服务器里找了
-			findNoEmpty = false;   // 表示从非空服务器中已经找不到合适的了
-			myServer = chooseEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet,  // 从空的服务器中找合适的
-				minEnergy, empVmTarOrder);   
-			if (myServer.hardCost == -1) {   // 表示从空的服务器中找到了合适的服务器
-				preServer = myServer;   // 记录该值
-				outSerIDSet.insert(outSerID);
-				cntMig += server.serverVMSet[outSerID].size();   // 更新迁移数量
-				continue;
-			}
-			else {   // 到这里说明了空的服务器也找不到合适的服务器了，先迁移
-				if (outSerIDSet.size() >= 1) {   // 表示能找到空的服务器，则继续
-					for (auto &outSerID : outSerIDSet) {   // 找出所有这些可以迁移的服务器并迁移
-						migrateSer(server, VM, outSerID, dayWorkingVM, empVmTarOrder, whichDay, delSerSet,
-							preServer.buyID, args);
-						deleteEmpVmTar(server, empVmTarOrder, preServer.buyID);  // 加入的这个空服务器需要从空排序中拿走
-					}
-					needCPUa = 0; needCPUb = 0; needRAMa = 0; needRAMb = 0;  // 清空数据
-					minEnergy = 0;
-					outSerIDSet.clear();
-					findNoEmpty = true;
-					i -= 2;  //   这里暂时先这样，可能会让速度变慢/////////////????????????????????????????????
-					continue;  // 继续
-				}
-				// 到这里说明空的也找不全了，只能一个个迁移了	// 接下来只能是一个个迁移了
-				findEmpty = false;
-				needCPUa = 0; needCPUb = 0; needRAMa = 0; needRAMb = 0;  // 清空数据
-				minEnergy = 0;
-				outSerIDSet.clear();
-				migrateSerVm(server, VM, outSerID, dayWorkingVM, empVmTarOrder, whichDay, i, delSerSet, args, cntMig, migrateNum);
-				if (cntMig == migrateNum)
-					return;
 			}
 		}
+
 	}
 
 }
@@ -541,16 +544,6 @@ sServerItem chooseNoEmptySer(cServer &server, int needCPUa, int needCPUb, int ne
 		}
 	}
 
-	// 找到了合适的服务器，与自己比较一下是否更好
-	//if (myServer.hardCost == -1) {
-	//	tempServer = server.myServerSet[outSerID];
-	//	restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU;
-	//	restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM;
-	//	tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
-	//	if (tempValue < minValue)
-	//		myServer.hardCost = 1;
-	//}
-
 	return myServer;
 
 }
@@ -570,6 +563,7 @@ void migrateSer(cServer &server, cVM &VM, int outSerID, unordered_map<string, in
 		requestVM = VM.info[workVM.vmName];
 		if (requestVM.nodeStatus) {   // true : double node
 			if (dayWorkingVM.count(vmID) == 1) {   // 如果是当天的虚拟机，则重新部署
+				/////////////////////////////增加了redeploy函数///////////////////////////////
 				VM.reDeploy(server, whichDay, vmID, workVM.vmName, inSerID, args);
 				if (delSerSet.count(inSerID) == 1) {
 					updateDelSerSet(delSerSet, requestVM, workVM.node, inSerID, true);  // 添加操作
@@ -621,6 +615,7 @@ void migrateSer(cServer &server, cVM &VM, int outSerID, unordered_map<string, in
 	}
 
 	server.deleteVmTar(outSerID);  // 虚拟机迁移结束之后，该服务器就空了
+	deleteEmpVmTar(server, empVmTarOrder, outSerID);
 	updateEmpVmTarOrder(server, empVmTarOrder, outSerID);   // 将该空的虚拟机加入空的排序里
 
 }
@@ -777,3 +772,134 @@ bool migrateSerVm(cServer &server, cVM &VM, int outSerID, unordered_map<string, 
 	}
 }
 
+// 实在是空不了了，可以考虑购买新的服务器
+bool buyNewSer(cServer &server, int &needCPUa, int &needCPUb, int &needRAMa, int &needRAMb,
+	unordered_set<int> &outSerIDSet, int &Cost, sServerItem &preServer, int outSerID, sServerItem &myServer,
+	cVM &VM, unordered_map<string, int> &dayWorkingVM, int whichDay, vector<double> &args,
+	map<int, map<int, map<int, map<int, vector<int>>>>> &empVmTarOrder,
+	unordered_map<int, sMyEachServer> &delSerSet, int &i, int &cntMig, int migrateNum) {
+
+	sServerItem outSerInfo;
+	sMyEachServer outSer;
+	myServer = chooseNewSer(server, needCPUa, needCPUb, needRAMa, needRAMb, Cost);
+	while (myServer.serName != "") {    // 表示找到了新的服务器
+		if (cntMig + server.serverVMSet[outSerID].size() > migrateNum)   // 超过容量限制则退出
+			break;
+		cntMig += server.serverVMSet[outSerID].size();
+		outSerIDSet.insert(outSerID);   // 将该服务器加入
+		preServer = myServer;
+		i++;
+		outSerID = server.vmSourceOrder[i].first;  // 迁出的服务器ID
+		outSer = server.myServerSet[outSerID];   // 迁出的服务器
+		outSerInfo = server.info[outSer.serName];  // 迁出的服务器的原始信息
+		needCPUa += (outSerInfo.totalCPU / 2 - outSer.aIdleCPU);   // 需要迁出的资源数量
+		needCPUb += (outSerInfo.totalCPU / 2 - outSer.bIdleCPU);
+		needRAMa += (outSerInfo.totalRAM / 2 - outSer.aIdleRAM);
+		needRAMb += (outSerInfo.totalRAM / 2 - outSer.bIdleRAM);
+		myServer = chooseNewSer(server, needCPUa, needCPUb, needRAMa, needRAMb, Cost);
+	}
+	if (outSerIDSet.size() >= 2) {
+		server.cyt_purchase(preServer.serName, whichDay);   // 购买新的服务器
+		int serID = server.myServerSet.size() - 1;   // 新买的服务器的ID
+		for (auto &outSerID : outSerIDSet) {   // 找出所有这些可以迁移的服务器并迁移
+			migrateSer(server, VM, outSerID, dayWorkingVM, empVmTarOrder, whichDay, delSerSet,
+				serID, args);   // 注意这里新买的服务器的ID
+		}
+		outSerIDSet.clear();
+		needCPUa = 0; needCPUb = 0; needRAMa = 0; needRAMb = 0;
+		return true;   // 表示此次为有效的购买
+	}
+	return false;   // 表示此次没有买到服务器
+
+}
+
+// 找到能满足条件的服务器，并且能耗和硬件成本最低
+sServerItem chooseNewSer(cServer &server, int needCPUa, int needCPUb, int needRAMa,
+	int needRAMb, int Cost) {
+
+	sServerItem myServer, tempServer;
+	myServer.serName = "";   // 没有serName表示没有找到合适的
+	int serCost;
+
+	for (int i = 0; i < server.priceOrder.size() / 10; i++) {
+		//serCost = server.priceOrder[i].second;   // 购买该服务器的能耗和硬件成本之和
+		//if (serCost > Cost)    // 购买新的成本过高，退出
+		//	return myServer;
+		tempServer = server.info[server.priceOrder[i].first];  // 根据名称取出服务器
+		if (tempServer.totalCPU / 2 >= needCPUa && tempServer.totalCPU / 2 >= needCPUb &&
+			tempServer.totalRAM / 2 >= needRAMa && tempServer.totalRAM / 2 >= needRAMb) {
+			myServer = tempServer;    // 能走到这里说明serCost < Cost
+			return myServer;
+		}
+	}
+
+	return myServer;   // 走到这里说明找不到合适的服务器
+}
+
+// 迁移到非空服务器中
+bool migToNoEmptySer(cServer &server, int &needCPUa, int &needCPUb, int &needRAMa, int &needRAMb, vector<double> &args,
+	unordered_map<int, sMyEachServer> &delSerSet, int outSerID, unordered_set<int> &outSerIDSet,
+	sServerItem &myServer, sServerItem &preServer, int &cntMig, cVM &VM, unordered_map<string, int> &dayWorkingVM,
+	int whichDay, map<int, map<int, map<int, map<int, vector<int>>>>> &empVmTarOrder, int &minEnergy, int &i) {
+
+	// 从非空的服务器中找到合适的
+	myServer = chooseNoEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet, outSerID, outSerIDSet);
+	if (myServer.hardCost == -1) {    // 从非空中找到了合适的服务器
+		preServer = myServer;   // 记录这个值
+		outSerIDSet.insert(outSerID);   // 将这个可以迁出的服务器记录一下
+		cntMig += server.serverVMSet[outSerID].size();   // 更新迁移数量
+	}
+	else {
+		if (outSerIDSet.size() >= 1) {   // 表示在这之前已经记录了可以迁移的非空服务器
+			for (auto &outSerID : outSerIDSet) {   // 找出所有这些可以迁移的服务器并迁移
+				migrateSer(server, VM, outSerID, dayWorkingVM, empVmTarOrder, whichDay, delSerSet,
+					preServer.buyID, args);
+			}
+			needCPUa = 0; needCPUb = 0; needRAMa = 0; needRAMb = 0;  // 清空数据
+			minEnergy = 0;
+			outSerIDSet.clear();
+			i -= 2;
+		}
+		else
+			return false;   // 表示在非空里已经无法放入虚拟机了
+	}
+
+	return true;
+
+}
+
+
+// 迁移到空的服务器中
+bool migToEmptySer(cServer &server, int &needCPUa, int &needCPUb, int &needRAMa, int &needRAMb, vector<double> &args,
+	unordered_map<int, sMyEachServer> &delSerSet, int outSerID, unordered_set<int> &outSerIDSet,
+	sServerItem &myServer, sServerItem &preServer, int &cntMig, cVM &VM, unordered_map<string, int> &dayWorkingVM,
+	int whichDay, map<int, map<int, map<int, map<int, vector<int>>>>> &empVmTarOrder, int &minEnergy, int &i, bool &findNoEmpty) {
+
+	// 从空的服务器中找到合适的
+	myServer = chooseEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet,  // 从空的服务器中找合适的
+		minEnergy, empVmTarOrder);
+	if (myServer.hardCost == -1) {   // 表示从空的服务器中找到了合适的服务器
+		preServer = myServer;   // 记录该值
+		outSerIDSet.insert(outSerID);
+		cntMig += server.serverVMSet[outSerID].size();   // 更新迁移数量
+	}
+	else {   // 到这里说明空的服务器也找不到合适的服务器了，先迁移
+		if (outSerIDSet.size() >= 1) {   // 表示能找到空的服务器，则继续
+			for (auto &outSerID : outSerIDSet) {   // 找出所有这些可以迁移的服务器并迁移
+				migrateSer(server, VM, outSerID, dayWorkingVM, empVmTarOrder, whichDay, delSerSet,
+					preServer.buyID, args);
+				deleteEmpVmTar(server, empVmTarOrder, preServer.buyID);  // 加入的这个空服务器需要从空排序中拿走
+			}
+			needCPUa = 0; needCPUb = 0; needRAMa = 0; needRAMb = 0;  // 清空数据
+			minEnergy = 0;
+			outSerIDSet.clear();
+			findNoEmpty = true;
+			i -= 2;  //   这里暂时先这样，可能会让速度变慢/////////////????????????????????????????????
+		}
+		else
+			return false;  // 到这里说明空的也找不全了
+	}
+
+	return true;
+
+}

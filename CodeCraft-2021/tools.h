@@ -55,3 +55,5 @@ void deleteEmpVmTar(cServer &server, map<int, map<int, map<int, map<int, vector<
 
 void updateEmpVmTarOrder(cServer &server, map<int, map<int, map<int, map<int, vector<int>>>>> &empVmTarOrder,
 	int serID);
+
+void orderRequest(cVM &VM, cRequests &request, int whichDay);

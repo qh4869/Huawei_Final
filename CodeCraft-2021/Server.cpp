@@ -333,10 +333,6 @@ void cServer::rankServerByPrice(bool flag) {
 // 对服务器里的虚拟机数量进行排序
 void cServer::updatVmSourceOrder(sVmItem &requestVm, int serID, bool flag, vector<double> &args) {  // true : add , false : delete
 
-	if (serID == 2155) {
-		int a = 1;
-	}
-
 	int pos;   // serID对应的服务器在vmNumOrder中的位置
 	if (vmSourceOrder.size() == 0) {    // 初始化
 		int value = int(requestVm.needCPU + requestVm.needRAM + args[4]);

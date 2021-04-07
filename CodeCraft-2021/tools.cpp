@@ -801,10 +801,6 @@ void updateEmpVmTarOrder(cServer &server, map<int, map<int, map<int, map<int, ve
 void deleteEmpVmTar(cServer &server, map<int, map<int, map<int, map<int, vector<int>>>>> &empVmTarOrder, 
 	int serID) {
 
-	if (serID == 2155) {
-		int a = 1;
-	}
-
 	string serName = server.myServerSet[serID].serName;
 	int totalCPU = server.info[serName].totalCPU;
 	int totalRAM = server.info[serName].totalRAM;
@@ -836,4 +832,62 @@ void deleteEmpVmTar(cServer &server, map<int, map<int, map<int, map<int, vector<
 			}
 		}
 	}
+}
+
+
+
+// 对request先按单节点从大到小排，再按双节点从大到小排
+void orderRequest(cVM &VM, cRequests &request, int whichDay) {
+
+	int sigBegin = 0;   // 单节点插入的位置
+	int sigNum = 0, douNum = 0;  // 碰到delete时的单节点数量和双节点数量
+	sVmItem requestVM;
+	sRequestItem tempRequest;
+	vector<sRequestItem> orderInfo(request.numEachDay[whichDay]);
+	vector<pair<int, int>> reqOrder;
+	int value, index;
+	int count = 0;
+	for (int iTerm = 0; iTerm < request.info[whichDay].size(); iTerm++) {
+		tempRequest = request.info[whichDay][iTerm];
+		if (tempRequest.type) {  // true : add
+			requestVM = VM.info[tempRequest.vmName];
+			value = requestVM.needCPU + requestVM.needRAM;
+			if (requestVM.nodeStatus) {  // true : double
+				reqOrder.push_back(make_pair(iTerm, value));  // 双节点加在后面
+				douNum++;
+			}
+			else {   // false : single
+				reqOrder.insert(reqOrder.begin() + sigBegin, make_pair(iTerm, value));
+				sigNum++;
+			}
+		}
+		else {   // false : delete
+			if (!reqOrder.empty()) {  // 不空的话
+				sort(reqOrder.begin(), reqOrder.begin()+ sigNum, mycomp);  // 先排单节点
+				sort(reqOrder.begin() + sigNum, reqOrder.end(), mycomp);  // 再排双节点
+				for (int i = 0; i < (int)reqOrder.size(); i++) {  // 把排序的赋值
+					index = reqOrder[i].first;
+					orderInfo[count] = request.info[whichDay][index];
+					count++;
+				}
+				sigNum = 0;
+				douNum = 0;
+				reqOrder.clear();
+			}
+			orderInfo[count] = request.info[whichDay][iTerm];
+			count++;
+		}
+	}
+	if (!reqOrder.empty()) {
+		sort(reqOrder.begin(), reqOrder.begin() + sigNum, mycomp);  // 先排单节点
+		sort(reqOrder.begin() + sigNum, reqOrder.end(), mycomp);  // 再排双节点
+		for (int i = 0; i < (int)reqOrder.size(); i++) {  // 把排序的赋值
+			index = reqOrder[i].first;
+			orderInfo[count] = request.info[whichDay][index];
+			count++;
+		}
+	}
+	request.realInfo.push_back(request.info[whichDay]);
+	request.info[whichDay] = orderInfo;
+
 }

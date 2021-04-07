@@ -20,7 +20,7 @@ int main()
 #ifdef LOCAL
 	TIMEstart = clock();
 	ifstream fin;
-	fin.open("../CodeCraft-2021/training-1.txt");
+	fin.open("training-1.txt");
 	cin.rdbuf(fin.rdbuf());
 #endif
 	cServer server;
@@ -40,9 +40,12 @@ int main()
 		if (!request.readOK)
 			reqDataIn(cin, request, iDay);
 
+		//vector<sRequestItem> orderInfo = request.info[iDay];
+		//orderRequest(VM, request, iDay);
 		/*购买 迁移 部署 删除*/
 		//sspEachDay(iDay, server, VM, request);
 		graphFitEachDay(server, VM, request, iDay);
+		//request.info[iDay] = orderInfo;
 
 		/*id 映射*/
 		server.idMappingEachDay(iDay);

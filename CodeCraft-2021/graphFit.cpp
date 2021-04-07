@@ -19,24 +19,26 @@ void graphFitEachDay(cServer &server, cVM &VM, cRequests &request, int whichDay)
 		server.alpha = request.dayNum - whichDay;
 		server.rankServerByPrice(false);
 	}
-
-	if (server.info.size() > 80) {
-		args[0] = 100;
-		if (whichDay > 0) 
-			migrateVM_3(server, VM, whichDay, dayWorkingVM, vmTotalNum, delSerSet, args);
-	}
-	else {
+	double befOccupy, aftOccupy;
+	// 确定当天图的节点数量
+	if (request.dayAdd[whichDay] / (request.dayDel[whichDay] + 1) > 4)
 		args[0] = 4;
+	else
+		args[0] = 4;
+
+	int cntMig = 0, migrateNum = vmTotalNum * 30 / 1000;
+	if (whichDay > 0) {
+		migrateVM_4(server, VM, whichDay, dayWorkingVM, vmTotalNum, delSerSet, args, cntMig, migrateNum,
+			3);
 	}
 
 
 	dayGraphFit(server, VM, request, whichDay, dayWorkingVM, dayDeleteVM, args);
 	delSerSet = recoverDelSerSet(server, VM, dayDeleteVM);
 
-	if (server.info.size() == 80) {
-		if (whichDay > 0) 
-			migrateVM_3(server, VM, whichDay, dayWorkingVM, vmTotalNum, delSerSet, args);
-	}
+	if (whichDay > 0) 
+		migrateVM_4(server, VM, whichDay, dayWorkingVM, vmTotalNum, delSerSet, args, cntMig, migrateNum,
+			3);
 	
 	dayWorkingVM.clear();
 	dayDeleteVM.clear();
