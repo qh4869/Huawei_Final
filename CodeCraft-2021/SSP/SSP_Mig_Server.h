@@ -24,5 +24,9 @@ public:
 	int purchase(string serName, int iDay);
 
 	/*自定义参数*/
-	double args[4]; // 迁移 best fit
+	vector<double> args; // 迁移 best fit
+
+	cSSP_Mig_Server() {
+		args.resize(4);
+	}
 };

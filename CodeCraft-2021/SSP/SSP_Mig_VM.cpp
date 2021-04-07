@@ -306,3 +306,19 @@ void cSSP_Mig_VM::addLock(string vmID) {
 	else
 		stopSetCnt.insert({vmID, 1});
 }
+
+void cSSP_Mig_VM::reDeploy(cSSP_Mig_Server &server, int iDay, string VMid, string vmName, int serID, vector<double> &args) {
+
+	deleteVM(VMid, server);   // 将该虚拟机摘除
+	deployRecord[iDay].erase(VMid);
+	deploy(server, iDay, VMid, vmName, serID);
+
+}
+
+void cSSP_Mig_VM::reDeploy(cSSP_Mig_Server &server, int iDay, string VMid, string vmName, int serID, bool node, vector<double> &args) {
+
+	deleteVM(VMid, server);
+	deployRecord[iDay].erase(VMid);
+	deploy(server, iDay, VMid, vmName, serID, node);
+
+}

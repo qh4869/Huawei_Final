@@ -24,9 +24,13 @@ public:
 	unordered_map<string, int> stopSetCnt; // <vmID, cnt>
 	bool isLocked(string vmID);
 	void addLock(string vmID);
-
 	/*记录del的次数，用于清理stopSetCnt*/
 	int delCnt = 0;
+
+	// -----------CYT-----------
+	void reDeploy(cSSP_Mig_Server &server, int iDay, string VMid, string vmName, int serID, vector<double> &args);
+	void reDeploy(cSSP_Mig_Server &server, int iDay, string VMid, string vmName, int serID, bool node, vector<double> &args);
+	//---------------------------
 
 	/*自定义参数*/
 	double ratio = 1;

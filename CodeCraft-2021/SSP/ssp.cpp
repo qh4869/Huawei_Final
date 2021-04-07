@@ -1,4 +1,5 @@
 ﻿#include "ssp.h"
+#include "MigrationPlus.h"
 
 int dday;
 bool ompFlag = true;
@@ -14,10 +15,23 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	int vmNumStart = VM.workingVmSet.size(); // 购买部署前 工作虚拟机的个数
 	unordered_map<int, sMyEachServer> delSerSet; // 有删除操作的SV集合，以及其中扣除del操作的容量
 	unordered_set<string> dayWorkingVM; // 当天新加入的VM集合(就算del也没从中去掉)
+	
+	int cntMig = 0;
+	int migrateNum = vmNumStart * 30 / 1000;
+	unordered_map<string ,int> dayWorkingMap;
+	
+	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
 
 	dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
 
-	dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM, request);
+	// dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM, request);
+	
+
+	for (auto &x : dayWorkingVM) {
+		dayWorkingMap.insert({x, 1});
+	}
+	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
+
 }
 
 void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
@@ -151,9 +165,9 @@ void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,
 					cntMig++;
 
 					if (delSerSet.count(inSerID) == 1)   // 迁入的服务器当天有删除操作
-						cyt::updateDelSerSet(delSerSet, requestVM, inNode, inSerID, true);  // 添加虚拟机
+						updateDelSerSet(delSerSet, requestVM, inNode, inSerID, true);  // 添加虚拟机
 					else if (delSerSet.count(outSerID) == 1)   // 迁出的服务器当天有删除操作
-						cyt::updateDelSerSet(delSerSet, requestVM, outNode, outSerID, false);   // 删除虚拟机
+						updateDelSerSet(delSerSet, requestVM, outNode, outSerID, false);   // 删除虚拟机
 				
 					server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, outSerID, false);
 					server.updatVmSourceOrder(requestVM.needCPU, requestVM.needRAM, inSerID, true);
@@ -716,11 +730,11 @@ void dailyPurchaseDeploy(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &re
 		return;
 	}
 
-	delSerSet = cyt::recoverDelSerSet(server, VM, dayDeleteVM);
+	delSerSet = recoverDelSerSet(server, VM, dayDeleteVM);
 }
 
 // 有删除操作的服务器需要把被删除的虚拟机容量加回去
-unordered_map<int, sMyEachServer> cyt::recoverDelSerSet(cSSP_Mig_Server &server, cSSP_Mig_VM &VM,
+unordered_map<int, sMyEachServer> recoverDelSerSet(cSSP_Mig_Server &server, cSSP_Mig_VM &VM,
 	unordered_map<string, sEachWorkingVM> &dayDeleteVM) {
 
 	unordered_map<int, sMyEachServer> delSerSet;
@@ -769,7 +783,7 @@ unordered_map<int, sMyEachServer> cyt::recoverDelSerSet(cSSP_Mig_Server &server,
 }
 
 // 更新有删除操作的服务器的CPU和RAM
-void cyt::updateDelSerSet(unordered_map<int, sMyEachServer> &delSerSet,
+void updateDelSerSet(unordered_map<int, sMyEachServer> &delSerSet,
 	sVmItem &requestVM, bool node, int serID, bool flag) {
 
 	if (flag) {   // add

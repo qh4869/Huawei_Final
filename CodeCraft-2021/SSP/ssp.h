@@ -21,6 +21,7 @@ struct sVmNode {
 	string vmName;
 };
 
+/*-----------------cyt-----------*/
 namespace cyt { // cyt分支的部分代码
 	struct sServerItem {
 		int totalCPU;
@@ -31,12 +32,12 @@ namespace cyt { // cyt分支的部分代码
 		int buyID;   // 用于记录已购买服务器的ID
 		bool node;   // 判断是a节点部署还是b节点部署，true : a节点
 	};
-
-	/*迁移之前的delSerSet初始化，放在购买部署删除部分的结尾*/
-	unordered_map<int, sMyEachServer> recoverDelSerSet(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, unordered_map<string, sEachWorkingVM> &dayDeleteVM);
-	/*每次迁移之后更新delSerSet*/
-	void updateDelSerSet(unordered_map<int, sMyEachServer> &delSerSet, sVmItem &requestVM, bool node, int serID, bool flag);
 }
+/*每次迁移之后更新delSerSet*/
+void updateDelSerSet(unordered_map<int, sMyEachServer> &delSerSet, sVmItem &requestVM, bool node, int serID, bool flag);
+/*迁移之前的delSerSet初始化，放在购买部署删除部分的结尾*/
+unordered_map<int, sMyEachServer> recoverDelSerSet(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, unordered_map<string, sEachWorkingVM> &dayDeleteVM);
+/*---------------cyt-------------*/
 
 // subset-sum problem
 void ssp(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request);
@@ -84,3 +85,10 @@ tuple<cyt::sServerItem, int, bool> findMigInSer(cSSP_Mig_Server &server, sVmItem
 void updateGoalSaver(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, unordered_map<int, sMyEachServer> &delSerSet, 
 	sVmItem &requestVM, string vmName, bool isDouble, int outSerID, bool outNode, 
 	cyt::sServerItem &betServer, int betValue, bool findFlag);
+map<int, map<int, map<int, map<int, vector<int>>>>>::iterator greaterEqu1(map<int, 
+	map<int, map<int, map<int, vector<int>>>>> &set, int val);
+map<int, map<int, map<int, vector<int>>>>::iterator greaterEqu2(map<int, map<int, 
+	map<int, vector<int>>>> &set, int val);
+map<int, map<int, vector<int>>>::iterator greaterEqu3(map<int, 
+	map<int, vector<int>>> &set, int val);
+map<int, vector<int>>::iterator greaterEqu4(map<int, vector<int>> &set, int val);
