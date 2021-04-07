@@ -1,4 +1,4 @@
-#include "ssp.h"
+﻿#include "ssp.h"
 
 int getGoal(cSSP_Mig_Server &server, int SerID, bool isDouble, bool node, int needCPU, int needRAM) {
 /* Fn: 计算迁入服务器的得分，用来选择迁入服务器
