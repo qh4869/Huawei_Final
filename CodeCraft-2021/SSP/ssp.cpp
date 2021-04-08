@@ -23,14 +23,13 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
 
 	dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
-
-	// dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM, request);
 	
-
 	for (auto &x : dayWorkingVM) {
 		dayWorkingMap.insert({x, 1});
 	}
 	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
+
+	// dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM, request);
 
 }
 
@@ -451,8 +450,9 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 		int betValue;
 		cyt::sServerItem betServer;
 		bool findFlag;
-		tie(betServer, betValue, findFlag) = findMigInSer(server, requestVM, delSerSet, true, false, outSerID, false);
-		// 保存搜索结果，用于快速判断，提高运行速度
+		tie(betServer, betValue, findFlag) = findMigInSer(server, requestVM.needCPU/2, requestVM.needRAM/2,
+			requestVM.needCPU/2, requestVM.needRAM/2, delSerSet, true, false, outSerID, false);
+		// 保存搜索结果，用于快速判断，提高运行速度	
 		updateGoalSaver(server, VM, delSerSet, requestVM, vmName, true, outSerID, false, betServer, betValue, findFlag);
 
 		/*自己服务器的得分 vs 其他服务器的得分*/
@@ -491,8 +491,10 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 		cyt::sServerItem betServer;
 		int betValue;
 		bool findFlag;
-		tie(betServerA, betValueA, findFlagA) = findMigInSer(server, requestVM, delSerSet, false, true, outSerID, outNode);
-		tie(betServerB, betValueB, findFlagB) = findMigInSer(server, requestVM, delSerSet, false, false, outSerID, outNode);
+		tie(betServerA, betValueA, findFlagA) = findMigInSer(server, requestVM.needCPU, requestVM.needRAM,
+			0, 0, delSerSet, false, true, outSerID, outNode);
+		tie(betServerB, betValueB, findFlagB) = findMigInSer(server, 0, 0, requestVM.needCPU, 
+			requestVM.needRAM, delSerSet, false, false, outSerID, outNode);
 		if (betValueA <= betValueB) {
 			betValue = betValueA;
 			betServer = betServerA;

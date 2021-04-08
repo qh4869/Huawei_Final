@@ -336,7 +336,8 @@ bool migToNoEmptySer(cSSP_Mig_Server &server, int &needCPUa, int &needCPUb, int 
 	int whichDay, map<int, map<int, map<int, map<int, vector<int>>>>> &empVmTarOrder, int &minEnergy, int &i) {
 
 	// 从非空的服务器中找到合适的
-	myServer = chooseNoEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet, outSerID, outSerIDSet);
+	// myServer = chooseNoEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet, outSerID, outSerIDSet);
+	myServer = get<0>(findMigInSer(server, needCPUa, needRAMa, needCPUb, needRAMb, delSerSet, true, false, outSerID, false));
 	if (myServer.hardCost == -1) {    // 从非空中找到了合适的服务器
 		preServer = myServer;   // 记录这个值
 		outSerIDSet.insert(outSerID);   // 将这个可以迁出的服务器记录一下
@@ -366,6 +367,9 @@ bool migToEmptySer(cSSP_Mig_Server &server, int &needCPUa, int &needCPUb, int &n
 	unordered_map<int, sMyEachServer> &delSerSet, int outSerID, unordered_set<int> &outSerIDSet,
 	cyt::sServerItem &myServer, cyt::sServerItem &preServer, int &cntMig, cSSP_Mig_VM &VM, unordered_map<string, int> &dayWorkingVM,
 	int whichDay, map<int, map<int, map<int, map<int, vector<int>>>>> &empVmTarOrder, int &minEnergy, int &i, bool &findNoEmpty) {
+
+	if (needCPUa == 52 && needCPUb==99 && outSerID==4518)
+		cont << "";
 
 	// 从空的服务器中找到合适的
 	myServer = chooseEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet,  // 从空的服务器中找合适的

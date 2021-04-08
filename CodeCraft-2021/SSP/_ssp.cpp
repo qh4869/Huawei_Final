@@ -148,7 +148,7 @@ greaterEqu4(map<int, vector<int>> &set, int val) {
 		return it;
 }
 
-tuple<cyt::sServerItem, int, bool> findMigInSer(cSSP_Mig_Server &server, sVmItem &requestVM, 
+tuple<cyt::sServerItem, int, bool> findMigInSer(cSSP_Mig_Server &server, int needCPUa, int needRAMa, int needCPUb, int needRAMb, 
 	unordered_map<int, sMyEachServer> &delSerSet, bool isDouble, bool inNode, int outSerID, bool outNode) {
 /* Fn: 4 map 嵌套搜索，不考虑迁出服务器自己的得分
 *
@@ -161,28 +161,6 @@ tuple<cyt::sServerItem, int, bool> findMigInSer(cSSP_Mig_Server &server, sVmItem
 *	- isDouble == false时，这个函数只能搜索node a或者node b (node参数)，因此全部搜索需要调用两次
 */
 	bool findFlag = false;
-
-	int needCPUa, needRAMa, needCPUb, needRAMb;
-	if (isDouble) {
-		needCPUa = requestVM.needCPU / 2;
-		needRAMa = requestVM.needRAM / 2;
-		needCPUb = requestVM.needCPU / 2;
-		needRAMb = requestVM.needRAM / 2;
-	}
-	else {
-		if (inNode) { // node a
-			needCPUa = requestVM.needCPU;
-			needRAMa = requestVM.needRAM;
-			needCPUb = 0;
-			needRAMb = 0;
-		}
-		else {
-			needCPUa = 0;
-			needRAMa = 0;
-			needCPUb = requestVM.needCPU;
-			needRAMb = requestVM.needRAM;
-		}
-	}
 
 	cyt::sServerItem ompServer[2];
 	ompServer[0].hardCost = 1;
@@ -244,7 +222,7 @@ tuple<cyt::sServerItem, int, bool> findMigInSer(cSSP_Mig_Server &server, sVmItem
 						}
 
 						/*计算得分*/
-						int tempValue = getGoal(server, inSerID, isDouble, inNode, requestVM.needCPU, requestVM.needRAM);
+						int tempValue = getGoal(server, inSerID, isDouble, inNode, needCPUa + needCPUb, needRAMa + needRAMb);
 						if (tempValue < ompMinValue[omp_get_thread_num()]) {
 							findFlag = true;
 							ompMinValue[omp_get_thread_num()] = tempValue;

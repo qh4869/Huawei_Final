@@ -80,8 +80,8 @@ int getSelfGoal(cSSP_Mig_Server &server, int SerID, bool isDouble, bool node);
 bool quickFindDouble(cyt::sServerItem &myServer, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, string vmName, string vmID, int outSerID);
 bool quickFindSingle(cyt::sServerItem &myServer, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, string vmName, string vmID, 
 	int outSerID, bool outNode);
-tuple<cyt::sServerItem, int, bool> findMigInSer(cSSP_Mig_Server &server, sVmItem &requestVM, 
-	unordered_map<int, sMyEachServer> &delSerSet, bool isDouble, bool inNode, int outSerID, bool outNode);
+tuple<cyt::sServerItem, int, bool> findMigInSer(cSSP_Mig_Server &server, int needCPUa, int needRAMa, int needCPUb, 
+	int needRAMb, unordered_map<int, sMyEachServer> &delSerSet, bool isDouble, bool inNode, int outSerID, bool outNode);
 void updateGoalSaver(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, unordered_map<int, sMyEachServer> &delSerSet, 
 	sVmItem &requestVM, string vmName, bool isDouble, int outSerID, bool outNode, 
 	cyt::sServerItem &betServer, int betValue, bool findFlag);
