@@ -4,6 +4,7 @@
 int dday;
 bool ompFlag = true;
 int xcnt;
+int xcntAdd;
 
 void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request) {
 /* Fn: ssp复赛版本
@@ -30,8 +31,10 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	for (auto &x : dayWorkingVM) {
 		dayWorkingMap.insert({x, 1});
 	}
-	while(cntIter++ < VM.maxIter && xcnt <= 5000)
+	while(cntIter++ < VM.maxIter && (xcntAdd+xcnt)/(iDay+1) <= 5000)
 		massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args, request);
+
+	xcntAdd += xcnt;
 
 	// dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM, request);
 
