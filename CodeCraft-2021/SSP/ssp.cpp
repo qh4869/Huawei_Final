@@ -3,6 +3,7 @@
 
 int dday;
 bool ompFlag = true;
+int xcnt;
 
 void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request) {
 /* Fn: ssp复赛版本
@@ -20,7 +21,8 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	int cntIter = 0;
 	int migrateNum = vmNumStart * 30 / 1000;
 	unordered_map<string ,int> dayWorkingMap;
-	
+	xcnt = 0;
+
 	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args, request);
 
 	dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);

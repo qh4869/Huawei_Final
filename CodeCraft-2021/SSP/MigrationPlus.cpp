@@ -1,5 +1,7 @@
 ﻿#include "MigrationPlus.h"
 
+extern int xcnt;
+
 //////////////////////////////////////主要的迁移函数/////////////////////////////////////////////////
 // 一次迁移大量的虚拟机
 void massMigrate(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int whichDay, unordered_map<string, int> &dayWorkingVM,
@@ -84,6 +86,9 @@ void massMigrate(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int whichDay, unorder
 		needRAMa += (outSerInfo.totalRAM / 2 - outSer.aIdleRAM);
 		needRAMb += (outSerInfo.totalRAM / 2 - outSer.bIdleRAM);
 		minEnergy += outSerInfo.energyCost;    // 可以节省的能耗
+
+		if (findNoEmpty || findEmpty)
+			VM.saveGoal.clear();
 
 		// 可以在非空里找，并且能够找到
 		if (findNoEmpty && migToNoEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet, outSerID,
@@ -240,6 +245,7 @@ bool migrateSerVm(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int outSerID, unorde
 	unordered_set<int> emptySer;
 
 	for (auto ite = tempSerVmSet.begin(); ite != tempSerVmSet.end(); ite++) {
+		xcnt++;
 		if (cntMig >= migrateNum) // 达到数量限制，直接退出
 			return false;
 		vmID = ite->first;   // 取出虚拟机ID
