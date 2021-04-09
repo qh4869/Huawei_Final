@@ -252,8 +252,8 @@ bool migrateSerVm(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int outSerID, unorde
 
 		workVM = VM.workingVmSet[vmID];   // 取出工作中的虚拟机
 		requestVM = VM.info[workVM.vmName];   // 取出该虚拟机的资源信息
-		// myServer = chooseFirstServer(server, requestVM, VM, index, delSerSet, emptySer, args, vmID);
-		myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet, vmID);
+		myServer = chooseFirstServer(server, requestVM, VM, index, delSerSet, emptySer, args, vmID);
+		// myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet, vmID);
 		if (myServer.hardCost == -1) {   // 表示找到了合适的服务器
 			cntMig++;
 			if (requestVM.nodeStatus) {  // true : double node
