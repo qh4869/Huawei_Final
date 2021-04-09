@@ -36,6 +36,7 @@ int main()
 	server.args[2] = 0.51;
 	server.args[3] = 1.02;
 	VM.migFind = 5000;
+	server.ratio = 0.97;
 	// VM.ratio = 1.5; // 只搜索vmSourceOrder的一部分
 	VM.maxIter = 6; // 迁移最大迭代次数 -- 可微调提高
 	// VM.fitThreshold = 10; //10; // 微调
