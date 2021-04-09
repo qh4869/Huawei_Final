@@ -3,7 +3,10 @@
 //////////////////////////////////////主要的迁移函数/////////////////////////////////////////////////
 // 一次迁移大量的虚拟机
 void massMigrate(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int whichDay, unordered_map<string, int> &dayWorkingVM,
-	unordered_map<int, sMyEachServer> &delSerSet, int &cntMig, int &migrateNum, vector<double> &args) {
+	unordered_map<int, sMyEachServer> &delSerSet, int &cntMig, int &migrateNum, vector<double> &args, cSSP_Mig_Request &request) {
+
+// 	/*快速搜索清空缓存*/
+	VM.saveGoal.clear();
 
 	map<int, map<int, map<int, map<int, vector<int>>>>> empVmTarOrder;   // 用于记录空服务器的排序
 	unordered_set<int> outSerIDSet;    // 迁出的服务器ID集合
@@ -240,9 +243,11 @@ bool migrateSerVm(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int outSerID, unorde
 		if (cntMig >= migrateNum) // 达到数量限制，直接退出
 			return false;
 		vmID = ite->first;   // 取出虚拟机ID
+
 		workVM = VM.workingVmSet[vmID];   // 取出工作中的虚拟机
 		requestVM = VM.info[workVM.vmName];   // 取出该虚拟机的资源信息
-		myServer = chooseFirstServer(server, requestVM, VM, index, delSerSet, emptySer, args, vmID);
+		// myServer = chooseFirstServer(server, requestVM, VM, index, delSerSet, emptySer, args, vmID);
+		myServer = bestFitMigrate(server, requestVM, VM, index, delSerSet, vmID);
 		if (myServer.hardCost == -1) {   // 表示找到了合适的服务器
 			cntMig++;
 			if (requestVM.nodeStatus) {  // true : double node
@@ -251,6 +256,8 @@ bool migrateSerVm(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int outSerID, unorde
 				}
 				if (dayWorkingVM.count(vmID) == 1) {
 					VM.reDeploy(server, whichDay, vmID, workVM.vmName, myServer.buyID, args);
+					VM.saveGoal.clear();
+
 					if (delSerSet.count(myServer.buyID) == 1) {
 						updateDelSerSet(delSerSet, requestVM, myServer.node, myServer.buyID, true);  // 添加操作
 					}
@@ -261,6 +268,8 @@ bool migrateSerVm(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int outSerID, unorde
 				}
 
 				VM.transfer(server, whichDay, vmID, myServer.buyID);
+				VM.saveGoal.clear();
+
 				server.updatVmTarOrder(requestVM.needCPU / 2, requestVM.needRAM / 2, requestVM.needCPU / 2, requestVM.needRAM / 2,
 					outSerID, false);
 				server.updatVmTarOrder(requestVM.needCPU / 2, requestVM.needRAM / 2, requestVM.needCPU / 2, requestVM.needRAM / 2,
@@ -273,6 +282,8 @@ bool migrateSerVm(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int outSerID, unorde
 				}
 				if (dayWorkingVM.count(vmID) == 1) {
 					VM.reDeploy(server, whichDay, vmID, workVM.vmName, myServer.buyID, myServer.node, args);
+					VM.saveGoal.clear();
+
 					if (delSerSet.count(myServer.buyID) == 1) {
 						updateDelSerSet(delSerSet, requestVM, myServer.node, myServer.buyID, true);  // 添加操作
 					}
@@ -282,6 +293,8 @@ bool migrateSerVm(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int outSerID, unorde
 					continue;
 				}
 				VM.transfer(server, whichDay, vmID, myServer.buyID, myServer.node);
+				VM.saveGoal.clear();
+
 				if (myServer.buyID == outSerID) {
 					if (myServer.node) {  // 往a节点加
 						server.updatVmTarOrder(requestVM.needCPU, requestVM.needRAM, -1 * requestVM.needCPU,
@@ -336,8 +349,8 @@ bool migToNoEmptySer(cSSP_Mig_Server &server, int &needCPUa, int &needCPUb, int 
 	int whichDay, map<int, map<int, map<int, map<int, vector<int>>>>> &empVmTarOrder, int &minEnergy, int &i) {
 
 	// 从非空的服务器中找到合适的
-	// myServer = chooseNoEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet, outSerID, outSerIDSet);
-	myServer = get<0>(findMigInSer(server, needCPUa, needRAMa, needCPUb, needRAMb, delSerSet, true, false, outSerID, false));
+	myServer = chooseNoEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet, outSerID, outSerIDSet);
+	// myServer = get<0>(findMigInSer(server, needCPUa, needRAMa, needCPUb, needRAMb, delSerSet, true, false, outSerID, false));
 	if (myServer.hardCost == -1) {    // 从非空中找到了合适的服务器
 		preServer = myServer;   // 记录这个值
 		outSerIDSet.insert(outSerID);   // 将这个可以迁出的服务器记录一下
@@ -367,9 +380,6 @@ bool migToEmptySer(cSSP_Mig_Server &server, int &needCPUa, int &needCPUb, int &n
 	unordered_map<int, sMyEachServer> &delSerSet, int outSerID, unordered_set<int> &outSerIDSet,
 	cyt::sServerItem &myServer, cyt::sServerItem &preServer, int &cntMig, cSSP_Mig_VM &VM, unordered_map<string, int> &dayWorkingVM,
 	int whichDay, map<int, map<int, map<int, map<int, vector<int>>>>> &empVmTarOrder, int &minEnergy, int &i, bool &findNoEmpty) {
-
-	if (needCPUa == 52 && needCPUb==99 && outSerID==4518)
-		cont << "";
 
 	// 从空的服务器中找到合适的
 	myServer = chooseEmptySer(server, needCPUa, needCPUb, needRAMa, needRAMb, args, delSerSet,  // 从空的服务器中找合适的
@@ -627,12 +637,19 @@ cyt::sServerItem chooseEmptySer(cSSP_Mig_Server &server, int needCPUa, int needC
 	vector<double> &args, unordered_map<int, sMyEachServer> &delSerSet, int minEnergy,
 	map<int, map<int, map<int, map<int, vector<int>>>>> &empVmTarOrder) {
 
-	cyt::sServerItem myServer;
-	sServerItem serInfo;
-	sMyEachServer tempServer;  // 拥有记录该服务器的真实信息
-	myServer.hardCost = 1;   // hardCost = 1 表示没有找到合适的服务器
-
+	cyt::sServerItem ompServer[2];
+	ompServer[0].hardCost = 1;
+	ompServer[1].hardCost = 1;
+	int ompMinValue[2];
+	ompMinValue[0] = minEnergy;
+	ompMinValue[1] = minEnergy;
+	vector<map<int, map<int, map<int, map<int, vector<int>>>>>::iterator> ites; 
 	for (auto itcpua = greaterEqu1(empVmTarOrder, needCPUa); itcpua != empVmTarOrder.end(); itcpua++) {
+		ites.push_back(itcpua);
+	}
+	#pragma omp parallel for num_threads(2)
+	for (int i = 0; i < (int)ites.size(); i++) {
+		auto itcpua = ites[i];
 		for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
 			for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
 				for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
@@ -641,6 +658,7 @@ cyt::sServerItem chooseEmptySer(cSSP_Mig_Server &server, int needCPUa, int needC
 						// 空的就不会往自己身上迁移了,所以不用进行ID检测
 
 						// 当天要删除操作，需要查看是否符合删除前的限制
+						sMyEachServer tempServer;
 						if (delSerSet.count(inSerID) == 1) {
 							tempServer = delSerSet[inSerID];
 							if (tempServer.aIdleCPU < needCPUa || tempServer.bIdleCPU < needCPUb ||
@@ -648,13 +666,14 @@ cyt::sServerItem chooseEmptySer(cSSP_Mig_Server &server, int needCPUa, int needC
 								continue;   // 不符合删除前的条件则继续
 						}
 						tempServer = server.myServerSet[inSerID];
+						sServerItem serInfo;
 						serInfo = server.info[tempServer.serName];
 
-						if (serInfo.energyCost < minEnergy) {  // 选择能耗最低的服务器作为迁入
-							minEnergy = serInfo.energyCost;
-							myServer.energyCost = -1;
-							myServer.hardCost = -1;
-							myServer.buyID = inSerID;
+						if (serInfo.energyCost < ompMinValue[omp_get_thread_num()]) {  // 选择能耗最低的服务器作为迁入
+							ompMinValue[omp_get_thread_num()] = serInfo.energyCost;
+							ompServer[omp_get_thread_num()].energyCost = -1;
+							ompServer[omp_get_thread_num()].hardCost = -1;
+							ompServer[omp_get_thread_num()].buyID = inSerID;
 						}
 
 					}
@@ -662,6 +681,18 @@ cyt::sServerItem chooseEmptySer(cSSP_Mig_Server &server, int needCPUa, int needC
 			}
 		}
 	}
+	/*线程合并结果*/
+	cyt::sServerItem myServer;
+	int betValue;
+	if (ompMinValue[0] <= ompMinValue[1]) {
+		myServer = ompServer[0];
+		betValue = ompMinValue[0];
+	}
+	else {
+		myServer = ompServer[1];
+		betValue = ompMinValue[1];
+	}
+
 
 	return myServer;
 }
@@ -671,13 +702,19 @@ cyt::sServerItem chooseNoEmptySer(cSSP_Mig_Server &server, int needCPUa, int nee
 	vector<double> &args, unordered_map<int, sMyEachServer> &delSerSet, int outSerID,
 	unordered_set<int> outSerIDSet) {
 
-	cyt::sServerItem myServer;
-	sMyEachServer tempServer;  // 拥有记录该服务器的真实信息
-	myServer.hardCost = 1;   // hardCost = 1 表示没有找到合适的服务器
-	int minValue = INT_MAX; // 记录找到的最小值
-	int restCPU, restRAM, tempValue;  // 用于记录剩余资源以及临时的最小值
-
+	cyt::sServerItem ompServer[2];
+	ompServer[0].hardCost = 1;
+	ompServer[1].hardCost = 1;
+	int ompMinValue[2];
+	ompMinValue[0] = INT_MAX;
+	ompMinValue[1] = INT_MAX;
+	vector<map<int, map<int, map<int, map<int, vector<int>>>>>::iterator> ites; 
 	for (auto itcpua = greaterEqu1(server.vmTarOrder, needCPUa); itcpua != server.vmTarOrder.end(); itcpua++) {
+		ites.push_back(itcpua);
+	}
+	#pragma omp parallel for num_threads(2)
+	for (int i = 0; i < (int)ites.size(); i++) {
+		auto itcpua = ites[i];
 		for (auto itrama = greaterEqu2(itcpua->second, needRAMa); itrama != itcpua->second.end(); itrama++) {
 			for (auto itcpub = greaterEqu3(itrama->second, needCPUb); itcpub != itrama->second.end(); itcpub++) {
 				for (auto itramb = greaterEqu4(itcpub->second, needRAMb); itramb != itcpub->second.end(); itramb++) {
@@ -688,6 +725,7 @@ cyt::sServerItem chooseNoEmptySer(cSSP_Mig_Server &server, int needCPUa, int nee
 							continue;
 
 						// 当天要删除操作，需要查看是否符合删除前的限制
+						sMyEachServer tempServer;
 						if (delSerSet.count(inSerID) == 1) {
 							tempServer = delSerSet[inSerID];
 							if (tempServer.aIdleCPU < needCPUa || tempServer.bIdleCPU < needCPUb ||
@@ -695,23 +733,34 @@ cyt::sServerItem chooseNoEmptySer(cSSP_Mig_Server &server, int needCPUa, int nee
 								continue;   // 不符合删除前的条件则继续
 						}
 						tempServer = server.myServerSet[inSerID];
-						restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - (needCPUa + needCPUb);
-						restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - (needRAMa + needRAMb);
-						tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+						int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - (needCPUa + needCPUb);
+						int restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - (needRAMa + needRAMb);
+						int tempValue = restCPU + restRAM + abs(restCPU - args[2] * restRAM) * args[3];
+						// int tempValue = getGoal(server, inSerID, true, false, needCPUa + needCPUb, needRAMa + needRAMb);
 
-						if (tempValue < minValue) {  // 选择最合适的服务器作为迁入对象
-							minValue = tempValue;
-							myServer.energyCost = -1;
-							myServer.hardCost = -1;
-							myServer.buyID = inSerID;
+						if (tempValue < ompMinValue[omp_get_thread_num()]) {  // 选择最合适的服务器作为迁入对象
+							ompMinValue[omp_get_thread_num()] = tempValue;
+							ompServer[omp_get_thread_num()].energyCost = -1;
+							ompServer[omp_get_thread_num()].hardCost = -1;
+							ompServer[omp_get_thread_num()].buyID = inSerID;
 						}
-
 					}
 				}
 			}
 		}
 	}
+	/*线程合并结果*/
+	cyt::sServerItem myServer;
+	myServer.hardCost = 1; 
+	int minValue = INT_MAX; 
+	if (ompMinValue[0] <= ompMinValue[1]) {
+		myServer = ompServer[0];
+		minValue = ompMinValue[0];
+	}
+	else {
+		myServer = ompServer[1];
+		minValue = ompMinValue[1];
+	}
 
 	return myServer;
-
 }

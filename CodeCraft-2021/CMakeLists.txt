@@ -20,9 +20,9 @@ set(AllSrcFile ${DIR_SRCS} ${DIR_COMMON} ${DIR_OUR_SCHEME})
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/../bin)
 
 # 生成debug版本
-SET(CMAKE_BUILD_TYPE "debug")
+#SET(CMAKE_BUILD_TYPE "debug")
 # 生成release版本
-#SET(CMAKE_BUILD_TYPE "release")
+SET(CMAKE_BUILD_TYPE "release")
 if (CMAKE_BUILD_TYPE STREQUAL debug)
     add_definitions(-D_DEBUG)
 endif ()

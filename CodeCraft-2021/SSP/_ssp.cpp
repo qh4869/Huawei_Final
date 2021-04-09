@@ -1,5 +1,13 @@
 ﻿#include "ssp.h"
 
+double weightChart(int vmNum) {
+	unordered_map<int, double> chart({{1, 2}, {2, 1.5}, {3, 1}, {4, 0.5}, {5, 0.3}, {-1, 0.1}});
+	if (chart.count(vmNum))
+		return chart.at(vmNum);
+	else
+		return chart.at(-1);
+}
+
 int getGoal(cSSP_Mig_Server &server, int SerID, bool isDouble, bool node, int needCPU, int needRAM) {
 /* Fn: 计算迁入服务器的得分，用来选择迁入服务器
 *
@@ -27,7 +35,8 @@ int getGoal(cSSP_Mig_Server &server, int SerID, bool isDouble, bool node, int ne
 
 	int tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
 	int tempValue2 = server.info[tempServer.serName].energyCost;
-	int tempValue = tempValue1 * tempValue2 / server.serverVMSet[SerID].size();
+	// int tempValue = tempValue1 * tempValue2 / server.serverVMSet[SerID].size();
+	int tempValue = tempValue1 * tempValue2 * weightChart(server.serverVMSet[SerID].size());
 
 	return tempValue;
 

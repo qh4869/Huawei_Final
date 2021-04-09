@@ -17,17 +17,19 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	unordered_set<string> dayWorkingVM; // 当天新加入的VM集合(就算del也没从中去掉)
 	
 	int cntMig = 0;
+	int cntIter = 0;
 	int migrateNum = vmNumStart * 30 / 1000;
 	unordered_map<string ,int> dayWorkingMap;
 	
-	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
+	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args, request);
 
 	dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
 	
 	for (auto &x : dayWorkingVM) {
 		dayWorkingMap.insert({x, 1});
 	}
-	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
+	while(cntIter++ < VM.maxIter)
+		massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args, request);
 
 	// dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM, request);
 
@@ -429,8 +431,8 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 	string vmName = VM.workingVmSet[vmID].vmName;
 
 	/*判断vm锁*/
-	if (VM.isLocked(vmID))
-		return myServer;
+	// if (VM.isLocked(vmID))
+	// 	return myServer;
 
 	if (requestVM.nodeStatus) {// 双节点 
 

@@ -1,11 +1,11 @@
-#pragma once
+﻿#pragma once
 #include "io.h"
 #include "VM.h"
 // #include "tools.h"
 #include "ssp.h"
 
 void massMigrate(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int whichDay, unordered_map<string, int> &dayWorkingVM,
-	unordered_map<int, sMyEachServer> &delSerSet, int &cntMig, int &migrateNum, vector<double> &args);
+	unordered_map<int, sMyEachServer> &delSerSet, int &cntMig, int &migrateNum, vector<double> &args, cSSP_Mig_Request &request);
 
 void deleteEmpVmTar(cSSP_Mig_Server &server, map<int, map<int, map<int, map<int, vector<int>>>>> &empVmTarOrder,
 	int serID);

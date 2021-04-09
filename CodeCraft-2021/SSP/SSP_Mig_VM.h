@@ -36,7 +36,7 @@ public:
 	double ratio = 1;
 	int migFind = 1000;
 	int maxIter = 1;
-	int fitThreshold = 1000;
+	int fitThreshold = 0;
 	int stopTimes = 3;
 	int delayTimes = -1;
 	int delCntMax = -1;
