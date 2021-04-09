@@ -31,7 +31,7 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	for (auto &x : dayWorkingVM) {
 		dayWorkingMap.insert({x, 1});
 	}
-	while(cntIter++ < VM.maxIter && (xcntAdd+xcnt)/(iDay+1) <= 5000)
+	while(cntIter++ < VM.maxIter && (xcntAdd+xcnt)/(iDay+1) <= VM.migFind)
 		massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args, request);
 
 	xcntAdd += xcnt;

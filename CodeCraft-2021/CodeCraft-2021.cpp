@@ -35,10 +35,10 @@ int main()
 	server.gGamma = 1.03;
 	server.args[2] = 0.51;
 	server.args[3] = 1.02;
-	// VM.migFind = 5000;
+	VM.migFind = 5000;
 	// VM.ratio = 1.5; // 只搜索vmSourceOrder的一部分
 	VM.maxIter = 6; // 迁移最大迭代次数 -- 可微调提高
-	VM.fitThreshold = 10; //10; // 微调
+	// VM.fitThreshold = 10; //10; // 微调
 	// VM.stopTimes = 5000;
 	// VM.delayTimes = 5000; // 越大越不易解锁
 	// VM.delCntMax = 1500;
