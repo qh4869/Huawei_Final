@@ -35,14 +35,13 @@ int main()
 	server.gGamma = 1.03;
 	server.args[2] = 0.51;
 	server.args[3] = 1.02;
-	// VM.migFind = 5000;
-	// VM.ratio = 1.5; // 只搜索vmSourceOrder的一部分
+	VM.migFind = 3000;
 	VM.maxIter = 6; // 迁移最大迭代次数 -- 可微调提高
 	VM.fitThreshold = 10; //10; // 微调
-	// VM.stopTimes = 5000;
-	// VM.delayTimes = 5000; // 越大越不易解锁
-	// VM.delCntMax = 1500;
-	// request.delLarge = 300;
+	VM.stopTimes = 25;
+	VM.delayTimes = 35; // 越大越不易解锁
+	VM.delCntMax = 1800;
+	request.delLarge = 300;
 
 	/*读取非请求部分*/
 	infoDataIn(cin, server, VM, request);

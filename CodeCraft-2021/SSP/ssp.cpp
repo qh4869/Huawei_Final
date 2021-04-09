@@ -24,6 +24,29 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	unordered_map<string ,int> dayWorkingMap;
 	xcnt = 0;
 
+	/*自适应解vm锁*/
+	request.getReqNumEachDay(iDay);
+	if (request.delNum[iDay] > request.delLarge) { // 某一天的del特别多
+		VM.stopSetCnt.clear();
+		VM.delCnt = 0;
+#ifdef LOCAL
+		cout << "---------------" << iDay << ":全部清空" << endl;
+#endif
+	}
+	else if (VM.delCnt > VM.delCntMax) { // del累计很多
+		int sizeBeg = VM.stopSetCnt.size();
+		for (auto it = VM.stopSetCnt.begin(); it != VM.stopSetCnt.end();) {
+			if (it->second >= VM.delayTimes)
+				it = VM.stopSetCnt.erase(it);
+			else
+				it++;
+		}
+		VM.delCnt = 0;
+#ifdef LOCAL
+		cout << "---------------" << iDay << ":部分清空:" << sizeBeg << "->" << VM.stopSetCnt.size() <<endl;
+#endif
+	}
+
 	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args, request);
 
 	dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
@@ -31,7 +54,7 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	for (auto &x : dayWorkingVM) {
 		dayWorkingMap.insert({x, 1});
 	}
-	while(cntIter++ < VM.maxIter && (xcntAdd+xcnt)/(iDay+1) <= 5000)
+	while(cntIter++ < VM.maxIter && (xcntAdd+xcnt)/(iDay+1) <= VM.migFind)
 		massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args, request);
 
 	xcntAdd += xcnt;
@@ -436,8 +459,8 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 	string vmName = VM.workingVmSet[vmID].vmName;
 
 	/*判断vm锁*/
-	// if (VM.isLocked(vmID))
-	// 	return myServer;
+	if (VM.isLocked(vmID))
+		return myServer;
 
 	if (requestVM.nodeStatus) {// 双节点 
 
@@ -467,13 +490,13 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			minValue = betValue;
 			myServer = betServer;
 		}
-		else
-			VM.addLock(vmID);
+		// else
+		// 	VM.addLock(vmID);
 
 		/*stopSet*/
-		// if (!findFlag) {
-		// 	VM.addLock(vmID);
-		// }
+		if (!findFlag) {
+			VM.addLock(vmID);
+		}
 	}
 	else {  // 单节点
 
@@ -519,13 +542,13 @@ cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSS
 			minValue = betValue;
 			myServer = betServer;
 		}
-		else
-			VM.addLock(vmID);
+		// else
+		// 	VM.addLock(vmID);
 
 		/*stopSet*/
-		// if (!findFlag) {
-		// 	VM.addLock(vmID);
-		// }
+		if (!findFlag) {
+			VM.addLock(vmID);
+		}
 	}
 
 	return myServer;
