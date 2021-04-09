@@ -25,6 +25,7 @@ public:
 
 	/*自定义参数*/
 	vector<double> args; // 迁移 best fit
+	double ratio;
 
 	cSSP_Mig_Server() {
 		args.resize(4);

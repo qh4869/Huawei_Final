@@ -32,7 +32,7 @@ void massMigrate(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int whichDay, unorder
 		outSerInfo = server.info[outSer.serName];  // 迁出的服务器的原始信息
 		/////////////////////////////////////////////////////////////////////////////////////////////
 
-		if ((double)server.vmSourceOrder[i].second / (double)(outSerInfo.totalCPU + outSerInfo.totalRAM) > 0.97) {
+		if ((double)server.vmSourceOrder[i].second / (double)(outSerInfo.totalCPU + outSerInfo.totalRAM) > server.ratio) {
 			continue;
 		}
 

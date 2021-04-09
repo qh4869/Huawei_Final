@@ -35,6 +35,7 @@ int main()
 	server.gGamma = 1.03;
 	server.args[2] = 0.51;
 	server.args[3] = 1.02;
+	server.ratio = 0.97;
 	VM.migFind = 3000;
 	VM.maxIter = 6; // 迁移最大迭代次数 -- 可微调提高
 	VM.fitThreshold = 10; //10; // 微调
