@@ -58,11 +58,11 @@ void packAndDeploy(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, vector<pair<string,
 // knapSack中 挑选服务器 遍历
 tuple<string, queue<int>> knapSack(const cSSP_Mig_Server &server, cSSP_Mig_VM &VM, vector<pair<string, string>> &curSet, int iDay); // 遍历服务器
 
-																													// knapSack 每台服务器的效益函数 递归剪枝
+// knapSack 每台服务器的效益函数 递归剪枝
 tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int bIdleRAM,
 	vector<pair<string, string>> &curSet, cSSP_Mig_VM &VM); // 计算每台服务器的背包问题
 
-													// 每天 后迁移
+// 每天 后迁移
 void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet, unordered_set<string> &dayWorkingVM,
 	int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request);
 
