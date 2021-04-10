@@ -31,6 +31,7 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 		dayWorkingMap.insert({x, 1});
 	}
 	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
+	//transferSingleVm(server, VM, cntMig, migrateNum, iDay, server.args, delSerSet, dayWorkingMap);
 
 }
 
