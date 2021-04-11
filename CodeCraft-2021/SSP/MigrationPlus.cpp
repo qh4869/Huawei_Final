@@ -465,7 +465,7 @@ cyt::sServerItem chooseFirstServer(cSSP_Mig_Server &server, sVmItem &requestVM, 
 
 								if (tempServer.aIdleCPU < needCPUa || tempServer.bIdleCPU < needCPUb ||
 									tempServer.aIdleRAM < needRAMa || tempServer.bIdleRAM < needRAMb) {
-									break;
+									continue;
 								}
 
 								tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
@@ -532,7 +532,7 @@ cyt::sServerItem chooseFirstServer(cSSP_Mig_Server &server, sVmItem &requestVM, 
 									}
 
 									if (tempServer.aIdleCPU < needCPUa || tempServer.aIdleRAM < needRAMa) {
-										break;
+										continue;
 									}
 
 									tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
@@ -599,7 +599,7 @@ cyt::sServerItem chooseFirstServer(cSSP_Mig_Server &server, sVmItem &requestVM, 
 									}
 
 									if (tempServer.bIdleCPU < needCPUb || tempServer.bIdleRAM < needRAMb) {
-										break;
+										continue;
 									}
 
 									tempServer = server.myServerSet[inSerID];   // 最后算比较值的时候还是得用myServerSet里的值
