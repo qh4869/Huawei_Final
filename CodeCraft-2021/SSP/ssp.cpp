@@ -6,6 +6,8 @@ bool ompFlag = true;
 int xcnt;
 int xcntAdd;
 
+bool moreMig = true;
+
 void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request) {
 /* Fn: ssp复赛版本
 *
@@ -24,6 +26,19 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	unordered_map<string ,int> dayWorkingMap;
 	xcnt = 0;
 
+	request.getReqNumEachDay(iDay);
+	bool moreIter = false;
+	if (moreMig && iDay > 0 && vmNumStart > 15000 &&
+		(double)request.delNum[iDay] / (double)request.delNum[iDay - 1] > 3.5) {
+		migrateNum = vmNumStart;
+		moreMig = false;
+		moreIter = true;
+	}
+	// if (iDay == int(request.dayNum *2 / 3)) {
+	// 	migrateNum = vmNumStart;
+	// 	moreIter = true;
+	// }
+
 	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args, request);
 
 	dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
@@ -31,8 +46,14 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	for (auto &x : dayWorkingVM) {
 		dayWorkingMap.insert({x, 1});
 	}
-	while(cntIter++ < VM.maxIter && (xcntAdd+xcnt)/(iDay+1) <= VM.migFind)
+
+	if (moreIter) {
+		while(cntIter++ < 10 && (xcntAdd+xcnt)/(iDay+1) <= 10000)
+			massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args, request);
+	}
+	else {
 		massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args, request);
+	}
 
 	xcntAdd += xcnt;
 
