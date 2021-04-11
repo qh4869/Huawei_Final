@@ -325,11 +325,11 @@ int getGoal(cSSP_Mig_Server &server, int SerID, bool isDouble, bool node, int ne
 	}
 
 	int tempValue1 = restCPU + restRAM + abs(restCPU - server.args[2] * restRAM) * server.args[3];
-	int tempValue2 = server.info[tempServer.serName].energyCost;
+	// int tempValue2 = server.info[tempServer.serName].energyCost;
 	// int tempValue = tempValue1 * tempValue2 / server.serverVMSet[SerID].size();
-	int tempValue = tempValue1 * tempValue2 * weightChart(server.serverVMSet[SerID].size());
+	// int tempValue = tempValue1 * tempValue2 * weightChart(server.serverVMSet[SerID].size());
 
-	return tempValue;
+	return tempValue1;
 
 }
 

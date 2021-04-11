@@ -36,13 +36,13 @@ int main()
 	server.args[2] = 0.51;
 	server.args[3] = 1.02;
 	server.ratio = 0.97;
-	VM.migFind = 3000;
-	VM.maxIter = 6; // 迁移最大迭代次数 -- 可微调提高
-	VM.fitThreshold = 10; //10; // 微调
-	VM.stopTimes = 25;
-	VM.delayTimes = 35; // 越大越不易解锁
-	VM.delCntMax = 1800;
-	request.delLarge = 300;
+	// VM.migFind = 3000;
+	VM.maxIter = 1; // 迁移最大迭代次数 -- 可微调提高
+	VM.fitThreshold = 8; //10; // 微调
+	VM.stopTimes = 15;
+	VM.delayTimes = 25; // 越大越不易解锁
+	VM.delCntMax = 2000;
+	request.delLarge = 500;
 
 	/*读取非请求部分*/
 	infoDataIn(cin, server, VM, request);
