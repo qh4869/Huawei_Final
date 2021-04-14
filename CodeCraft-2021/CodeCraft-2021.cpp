@@ -16,7 +16,7 @@ using namespace std;
 clock_t TIMEstart, TIMEend;
 #endif
 
-int main()
+int main() 
 {
 #ifdef LOCAL
 	TIMEstart = clock();
