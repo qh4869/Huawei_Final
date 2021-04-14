@@ -10,6 +10,9 @@ struct sRequestItem {
 	bool type; // operation type, true表示add false表示delete
 	string vmName; // delete类型下这个值为空
 	string vmID;
+	/****** 决赛新增内容 ******/
+	int lifetime;   // 虚拟机的寿命
+	int quote;    // 用户报价
 };
 
 class cRequests {

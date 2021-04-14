@@ -275,3 +275,51 @@ void cVM::deleteVM(string vmID, cServer& server) {
 
 	workingVmSet.erase(vmID);
 }
+
+/******** 决赛新增内容 *******/
+void cVM::updateRequest(int iDay, cRequests &request) {
+
+	string inputStr;
+	vector<sRequestItem> tempItem = request.info[iDay];
+	vector<int> dayCompQuote;
+	int count = 0;
+
+	for (auto &req : tempItem) {
+		if (req.type) {  // true : add
+			cin >> inputStr;
+			inputStr.erase(inputStr.begin()); // 删除左括号
+			inputStr.erase(inputStr.end() - 1); // 逗号
+			if (inputStr == "0") {   // 没有抢到该虚拟机
+				request.info[iDay].erase(request.info[iDay].begin() + count);  // 删除
+				request.numEachDay[iDay]--;  // 当天请求数-1
+				lostVmSet.insert(req.vmID);   // 加入丢失集合
+			}
+			else  // 抢到该虚拟机
+				count++;
+			/* 获取对手报价 */
+			cin >> inputStr;  
+			inputStr.erase(inputStr.end() - 1); // 逗号
+			dayCompQuote.push_back(atoi(inputStr.c_str()));
+		}
+		else {  // delete
+			if (lostVmSet.count(req.vmID) == 1) {  // 没获得该虚拟机，不需要删除操作
+				request.info[iDay].erase(request.info[iDay].begin() + count);  // 删除
+				request.numEachDay[iDay]--;  // 当天请求数-1
+			}
+			else
+				count++;
+		}
+
+	}
+	compQuote.push_back(dayCompQuote);
+}
+
+void cVM::setQuote(cRequests &request, int iDay) {
+	vector<int> dayQuote;  // 当天的报价
+	double ratio = 0.8;  // 折扣
+	for (auto &req : request.info[iDay]) {
+		if (req.type)  // true : add
+			dayQuote.push_back(req.quote * ratio);
+	}
+	quote.push_back(dayQuote);
+}

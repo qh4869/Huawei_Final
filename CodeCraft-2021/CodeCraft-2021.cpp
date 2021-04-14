@@ -21,7 +21,7 @@ int main()
 #ifdef LOCAL
 	TIMEstart = clock();
 	ifstream fin;
-	fin.open("../CodeCraft-2021/training-1.txt");
+	fin.open("myTest.txt");
 	cin.rdbuf(fin.rdbuf());
 #endif
 	
@@ -60,6 +60,11 @@ int main()
 		/*读取请求部分*/
 		if (!request.readOK)
 			reqDataIn(cin, request, iDay);
+
+		/******* 决赛新增内容 ******/
+		VM.setQuote(request, iDay);   // 给出我方定价
+		dataOutQuote(iDay, VM);  // 输出我方定价
+		VM.updateRequest(iDay, request);  
 
 		/*购买 迁移 部署 删除*/
 		sspEachDay(iDay, server, VM, request);

@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <unordered_map>
+#include <unordered_set>
 #include "Server.h"
 #include <iostream>
 #include "globalHeader.h"
@@ -65,4 +66,12 @@ public:
 	int reqCPU(string vmName);
 	// 输入虚拟机名字，返回需要RAM
 	int reqRAM(string vmName);
+
+	/******** 决赛新增内容 ********/
+	vector<vector<int>> quote;   // 我方给出的虚拟机报价
+	vector<vector<int>> compQuote; // 对方给出的虚拟机报价
+	unordered_set<string> lostVmSet;   // 失去的虚拟机集合，存放vmID(记得添加头文件)
+	void updateRequest(int iDay, cRequests &request);   // 根据报价结果更新request.info
+	void setQuote(cRequests &request, int iDay);   // 给出我方的报价
+
 };

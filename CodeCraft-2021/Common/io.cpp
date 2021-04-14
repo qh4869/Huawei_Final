@@ -348,6 +348,20 @@ void reqDataIn(istream &cin, cRequests &request, int iDay) {
 			cin >> inputStr;
 			inputStr.erase(inputStr.end() - 1); // 逗号
 			request.info[day][iTerm].vmID = inputStr;
+
+			/******* 决赛新增内容 *******/
+			if (request.info[day][iTerm].type) {  // true : add
+				/*请求虚拟机寿命*/
+				cin >> inputStr;
+				inputStr.erase(inputStr.end() - 1); // 逗号
+				request.info[day][iTerm].lifetime = atoi(inputStr.c_str());
+
+				/*请求虚拟机用户报价*/
+				cin >> inputStr;
+				inputStr.erase(inputStr.end() - 1); // 逗号
+				request.info[day][iTerm].quote = atoi(inputStr.c_str());
+			}
+
 		}
 	}
 }
@@ -453,4 +467,12 @@ void dataOutEachDay(int iDay, cServer &server, cVM &VM, cRequests &request) {
 	}
 	fflush(stdout);
 #endif
+}
+
+
+/*********************** 决赛新增内容 ***********************/
+void dataOutQuote(int iDay, cVM &VM) {
+	for (auto &quote : VM.quote[iDay])
+		cout << quote << endl;
+	fflush(stdout);
 }
