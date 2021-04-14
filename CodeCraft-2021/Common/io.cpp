@@ -472,7 +472,9 @@ void dataOutEachDay(int iDay, cServer &server, cVM &VM, cRequests &request) {
 
 /*********************** 决赛新增内容 ***********************/
 void dataOutQuote(int iDay, cVM &VM, cRequests &request) {
-	for (auto &req : request.info[iDay]) 
-		cout << VM.quote[iDay][req.vmID] << endl;
+	for (auto &req : request.info[iDay]) {
+		if (req.type)
+			cout << VM.quote[iDay][req.vmID] << endl;
+	}
 	fflush(stdout);
 }
