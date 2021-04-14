@@ -20,7 +20,7 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	int migrateNum = vmNumStart * 30 / 1000;
 	unordered_map<string ,int> dayWorkingMap;
 	
-	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
+	// massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
 
 	dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
 
