@@ -26,4 +26,4 @@ void dataOutEachDay(int iDay, cServer &server, cVM &VM, cRequests &request);
 
 /*********** 决赛新增内容 **********/
 // 输出我方报价
-void dataOutQuote(int iDay, cVM &VM);
+void dataOutQuote(int iDay, cVM &VM, cRequests &request);

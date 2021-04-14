@@ -63,7 +63,7 @@ int main()
 
 		/******* 决赛新增内容 ******/
 		VM.setQuote(request, iDay);   // 给出我方定价
-		dataOutQuote(iDay, VM);  // 输出我方定价
+		dataOutQuote(iDay, VM, request);  // 输出我方定价
 		VM.updateRequest(iDay, request);  
 
 		/*购买 迁移 部署 删除*/

@@ -68,8 +68,8 @@ public:
 	int reqRAM(string vmName);
 
 	/******** 决赛新增内容 ********/
-	vector<vector<int>> quote;   // 我方给出的虚拟机报价
-	vector<vector<int>> compQuote; // 对方给出的虚拟机报价
+	vector<unordered_map<string, int>> quote;   // 我方给出的虚拟机报价 : vmID->price
+	vector<unordered_map<string, int>> compQuote; // 对方给出的虚拟机报价 : vmID->price
 	unordered_set<string> lostVmSet;   // 失去的虚拟机集合，存放vmID(记得添加头文件)
 	void updateRequest(int iDay, cRequests &request);   // 根据报价结果更新request.info
 	void setQuote(cRequests &request, int iDay);   // 给出我方的报价
