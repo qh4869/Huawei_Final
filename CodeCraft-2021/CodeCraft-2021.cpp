@@ -3,6 +3,7 @@
 #include "SSP_Mig_VM.h"
 #include "SSP_Mig_Request.h"
 #include "ssp.h"
+#include "Pricer.h"
 // #include "FF_Server.h"
 // #include "firstFit.h"
 #include <iostream>
@@ -28,6 +29,7 @@ int main()
 	cSSP_Mig_Server server;
 	cSSP_Mig_VM VM;
 	cSSP_Mig_Request request;
+	cPricer pricer(0.703); // 小数点多几位，不想跟对手参数撞上而平局
 
 	/*自定义参数*/ // 加不加锁
 	server.ksSize = 4;
@@ -62,7 +64,8 @@ int main()
 			reqDataIn(cin, request, iDay);
 
 		/******* 决赛新增内容 ******/
-		VM.setQuote(request, iDay);   // 给出我方定价
+		// VM.setQuote(request, iDay);   // 给出我方定价
+		pricer.setQuote(VM, request, iDay);
 		dataOutQuote(iDay, VM, request);  // 输出我方定价
 		VM.updateRequest(iDay, request);  
 
