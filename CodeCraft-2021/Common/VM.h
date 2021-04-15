@@ -73,5 +73,7 @@ public:
 	unordered_set<string> lostVmSet;   // 失去的虚拟机集合，存放vmID(记得添加头文件)
 	void updateRequest(int iDay, cRequests &request);   // 根据报价结果更新request.info
 	void setQuote(cRequests &request, int iDay);   // 给出我方的报价
+	vector<int> winNum; // 博弈成功次数
+	vector<int> lossNum; // 博弈失败次数
 
 };

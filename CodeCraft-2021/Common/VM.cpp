@@ -283,6 +283,8 @@ void cVM::updateRequest(int iDay, cRequests &request) {
 	vector<sRequestItem> tempItem = request.info[iDay];
 	unordered_map<string, int> dayCompQuote;
 	int count = 0;
+	winNum.push_back(0);
+	lossNum.push_back(0);
 
 	for (auto &req : tempItem) {
 		if (req.type) {  // true : add
@@ -293,9 +295,12 @@ void cVM::updateRequest(int iDay, cRequests &request) {
 				request.info[iDay].erase(request.info[iDay].begin() + count);  // 删除
 				request.numEachDay[iDay]--;  // 当天请求数-1
 				lostVmSet.insert(req.vmID);   // 加入丢失集合
+				lossNum.at(iDay)++;
 			}
-			else  // 抢到该虚拟机
+			else  { // 抢到该虚拟机
 				count++;
+				winNum.at(iDay)++;
+			}
 			/* 获取对手报价 */
 			cin >> inputStr;  
 			inputStr.erase(inputStr.end() - 1); // 逗号
