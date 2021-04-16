@@ -144,10 +144,17 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 				int purDate = server.purchaseDate[serID];
 				string serName = pseudoServerSet[serID].serName;
 				sServerItem Serinfo = server.info[serName];
-				estHardCost = Serinfo.hardCost / (request.dayNum - purDate) * lifeTime \
+				int hardTax;
+				if (iDay <= request.dayNum *4 / 5 && server.purchaseDate[serID] == iDay) // 这个服务器也是今天买的就上税
+					hardTax = hardTax0;
+				else if (iDay > request.dayNum *4 / 5 && server.purchaseDate[serID] != iDay)
+					hardTax = hardTax1;
+				else
+					hardTax = 1;
+				estHardCost = (double)Serinfo.hardCost / (request.dayNum - purDate) * lifeTime \
 					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
 				/*平摊功耗成本*/
-				estEnergyCost = Serinfo.energyCost * lifeTime \
+				estEnergyCost = (double)Serinfo.energyCost * lifeTime \
 					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
 			}
 			else {
@@ -159,14 +166,19 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 					pseudoDeploy(VM, vmName, serID, true);
 				/*每天平摊硬件成本*/
 				sServerItem Serinfo = server.info[serName];
-				estHardCost = Serinfo.hardCost / (request.dayNum - iDay) * lifeTime \
-					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
+				int hardTax;
+				if (iDay <= request.dayNum *4 / 5)
+					hardTax = hardTax0;
+				else
+					hardTax = hardTax1;
+				estHardCost = (double)Serinfo.hardCost / (request.dayNum - iDay) * lifeTime \
+					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM) * hardTax;
 				/*平摊功耗成本*/
-				estEnergyCost = Serinfo.energyCost * lifeTime \
+				estEnergyCost = (double)Serinfo.energyCost * lifeTime \
 					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
 			}
 
-			minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * 1.5);
+			minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale);
 		}
 	}
 	// for (auto &x : minRatio) {
