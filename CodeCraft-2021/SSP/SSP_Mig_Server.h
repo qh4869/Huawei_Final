@@ -23,6 +23,9 @@ public:
 	/*purchase重载，记录每一台服务器内部的虚拟机*/
 	int purchase(string serName, int iDay);
 
+	/*记录每一个server是哪天买的 serID->iDay*/
+	unordered_map<int, int> purchaseDate;
+
 	/*自定义参数*/
 	vector<double> args; // 迁移 best fit
 

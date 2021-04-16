@@ -25,11 +25,11 @@ int main()
 	fin.open("../CodeCraft-2021/training-1.txt");
 	cin.rdbuf(fin.rdbuf());
 #endif
-	
+
 	cSSP_Mig_Server server;
 	cSSP_Mig_VM VM;
 	cSSP_Mig_Request request;
-	cPricer pricer(0.703); // 小数点多几位，不想跟对手参数撞上而平局
+	cPricer pricer; // 小数点多几位，不想跟对手参数撞上而平局
 
 	/*自定义参数*/ // 加不加锁
 	server.ksSize = 4;
@@ -52,6 +52,7 @@ int main()
 	/*初始化，排序等操作*/
 	request.initReqNum(); // 需要统计每天的请求数
 	server.genInfoV();// 生成server.infoV，向量，为了写多线程
+	server.rankServerByPrice(); // 可购买的服务器排序
 
 	for (int iDay = 0; iDay < request.dayNum; iDay++) {
 #ifdef LOCAL
@@ -65,7 +66,7 @@ int main()
 
 		/******* 决赛新增内容 ******/
 		// VM.setQuote(request, iDay);   // 给出我方定价
-		pricer.setQuote(VM, request, iDay);
+		pricer.setQuote(VM, request, server, iDay);
 		dataOutQuote(iDay, VM, request);  // 输出我方定价
 		VM.updateRequest(iDay, request);  
 

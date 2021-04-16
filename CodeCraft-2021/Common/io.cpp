@@ -367,7 +367,7 @@ void reqDataIn(istream &cin, cRequests &request, int iDay) {
 }
 
 void dataOutEachDay(int iDay, cServer &server, cVM &VM, cRequests &request) {
-#ifndef LOCAL
+// #ifndef LOCAL
 	//输出（purchase,Q) , Q表示当天购买的服务器种类数
 	cout << "(" << "purchase" << "," << server.buyRecord[iDay].size() << ")" << endl;
 	//输出(服务器型号，购买数量）
@@ -414,9 +414,9 @@ void dataOutEachDay(int iDay, cServer &server, cVM &VM, cRequests &request) {
 			cout << "(" << serID << ")" << endl;
 	}
 	fflush(stdout);
-#endif
+// #endif
 
-#ifdef LOCAL
+/*#ifdef LOCAL
 	ofstream fout;
 	fout.open("dataOut.txt", ios::app);
 
@@ -466,7 +466,7 @@ void dataOutEachDay(int iDay, cServer &server, cVM &VM, cRequests &request) {
 			fout << "(" << serID << ")" << endl;
 	}
 	fflush(stdout);
-#endif
+#endif*/
 }
 
 

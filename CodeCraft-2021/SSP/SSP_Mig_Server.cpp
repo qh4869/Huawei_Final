@@ -18,6 +18,9 @@ int cSSP_Mig_Server::purchase(string name, int iDay) {
 	oneServer.bIdleRAM = info[name].totalRAM / 2;
 	myServerSet.push_back(oneServer);
 
+	/*记录购买日期*/
+	purchaseDate.insert({myServerSet.size() - 1, iDay});
+
 	/*add into serverVMSet-empty*/
 	unordered_map<string, int> vmSet;
 	serverVMSet.push_back(vmSet);
