@@ -6,10 +6,9 @@
 class cPricer {
 public:
 	double genRatio;
-	vector<double> upRate;
-	vector<double> downRate;
+	vector<double> fixRate;
 	int state = 0;
-	bool deter = false;
+	bool deter = false; // 标记第1天，第0天进不去调价循环
 	bool curstate;
 	bool toggle = false;
 	double winValue = 0.7;
@@ -18,7 +17,7 @@ public:
 	double maxRatio = 1;
 	int cnt;
 
-	cPricer() : genRatio(-1), upRate({0.01, 0.01, 0.0005}), downRate({0.01, 0.01, 0.0005}) {
+	cPricer() : genRatio(-1), fixRate({0.01, -0.01, 0.0005}) {
 	}
 
 	void setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int iDay);

@@ -2,13 +2,19 @@
 #include <fstream>
 
 void cPricer::updateRate(int winRatio) {
-	if (winRatio < lossValue) {
-		genRatio -= downRate.at(state);
-		genRatio = (genRatio < minRatio)? minRatio : genRatio;
+	if (minRatio >= 1) {
+		genRatio = -1; // -1折表示不卖
+		return;
 	}
-	else if (winRatio > winValue) {
-		genRatio += upRate.at(state);
-		genRatio = (genRatio > maxRatio)? maxRatio : genRatio;
+
+	if (genRatio == -1) // 上一天没有卖，这一天就最低价开始
+		genRatio = minRatio;
+	else {
+		genRatio += fixRate.at(state);
+		if (genRatio < minRatio)
+			genRatio = minRatio;
+		else if (genRatio > maxRatio)
+			genRatio = maxRatio;
 	}
 }
 
@@ -89,8 +95,8 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 /* Fn: 有限状态机方案
 */
 
-	ofstream fout;
-	fout.open("tmpOut.txt", ios::app);
+	// ofstream fout;
+	// fout.open("tmpOut.txt", ios::app);
 
 	// 更新伪变量
 	updatePseudoVar(server);
@@ -154,13 +160,12 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 		}
 	}
 	// 总成本均摊到所有的请求上，再决定最小的折扣
-	double tmp = -1;
-	if (userTotalQuote != 0)
-		tmp = (double)(estHardCost + estEnergyCost) / userTotalQuote;
-	fout << iDay << "---min:" << tmp << endl;
+	if (userTotalQuote != 0) // 万一某一天没有add请求，除数就是0了
+		minRatio = (double)(estHardCost + estEnergyCost) / userTotalQuote;
+
 
 	if (iDay == 0) {
-		genRatio = 0.7; // 第一天直接给成本价
+		genRatio = minRatio; // 第一天直接给成本价
 	}
 	else { // 之后的每一天要调价
 		// 前一天的胜率
@@ -168,7 +173,8 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 
 		/*查看win/loss反转，如果winRatio在lossValue和winValue之间，那就不可能win/loss反转*/
 		if (winRatio < lossValue) {
-			if (!deter) {
+			if (!deter) { // 第1天
+				state = 1;
 				curstate = true;
 				deter = true;
 			}
@@ -179,6 +185,7 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 		}
 		else if (winRatio > winValue) {
 			if (!deter) {
+				state = 0;
 				curstate = false;
 				deter = true;
 			}
@@ -188,34 +195,29 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 			}
 		}
 
-		/*state1/2的计数器*/
-		if (state == 1 || state == 2)
+		/*state2的计数器*/
+		if (state == 2)
 			cnt++;
 
 		/*状态转移*/
 		switch (state) {
-			case 0:
+			case 0: // 涨价状态
 				if (toggle) {
 					toggle = false;
-					state = 1;
-					cnt = 0;		
+					state = 1;	
 				}
 				break;
-			case 1:
+			case 1: // 降价状态
 				if (toggle) {
 					toggle = false;
 					state = 2;
 					cnt = 0;
 				}
-				else if (cnt >= 3) { // 三次计数
-					state = 0;
-				}
 				break;
-			case 2:
+			case 2: // 维持稳定，缓慢上涨
 				if (toggle) {
 					toggle = false;
 					state = 1;
-					cnt = 0;
 				}
 				else if (cnt >= 50) { // 50次计数
 					state = 0;
@@ -234,16 +236,13 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 void cPricer::setEqualPrice(cVM &VM, cRequests &request, int iDay) {
 /* Fn: 同一天按照同比例出价
 */
-
-	if (genRatio == -1) {
-		cerr << "报价未初始化" << endl;
-		throw "not initilized";
-	}
-
 	unordered_map<string, int> dayQuote;  // 当天的报价
 	for (auto &req : request.info[iDay]) {
 		if (req.type) { // true : add
-			dayQuote.insert({ req.vmID, req.quote * genRatio}); 
+			if (genRatio != -1)
+				dayQuote.insert({ req.vmID, req.quote * genRatio}); 
+			else // 不卖
+				dayQuote.insert({req.vmID, -1});
 		} 
 	}
 	VM.quote.push_back(dayQuote);
