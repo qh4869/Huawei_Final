@@ -2,10 +2,11 @@
 #include "SSP_Mig_VM.h"
 #include "SSP_Mig_Request.h"
 #include "SSP_Mig_Server.h"
+#include <numeric>
 
 class cPricer {
 public:
-	double genRatio;
+	double genRatio; // <第一天估计成本后要初始化，之后每次调价更新>
 	vector<double> fixRate;
 	int state = 0;
 	bool deter = false; // 标记第1天，第0天进不去调价循环
@@ -13,7 +14,8 @@ public:
 	bool toggle = false;
 	double winValue = 0.7;
 	double lossValue = 0.3;
-	double minRatio = 0.5;
+	// double minRatio = 0.5;
+	vector<double> minRatio; // 对应于每个add请求的成本折扣 <定价估计成本时初始化>
 	double maxRatio = 1;
 	int cnt;
 

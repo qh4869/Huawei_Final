@@ -2,20 +2,21 @@
 #include <fstream>
 
 void cPricer::updateRate() {
-	if (minRatio >= 1) {
-		genRatio = -1; // -1折表示不卖
+
+	int min = accumulate(minRatio.begin(), minRatio.end(), 0) / minRatio.size();
+	if (min > maxRatio)
+		min = maxRatio;
+
+	if (genRatio == -1) {
+		genRatio = min;
 		return;
 	}
 
-	if (genRatio == -1) // 上一天没有卖，这一天就最低价开始
-		genRatio = minRatio;
-	else {
-		genRatio += fixRate.at(state);
-		if (genRatio < minRatio)
-			genRatio = minRatio;
-		else if (genRatio > maxRatio)
-			genRatio = maxRatio;
-	}
+	genRatio += fixRate.at(state);
+	if (genRatio < min) // genRatio不能偏移的太离谱，最小值为每个请求 成本折扣均值 min(且不能大于1)
+		genRatio = min;
+	else if (genRatio > maxRatio)
+		genRatio = maxRatio;
 }
 
 void cPricer::updatePseudoVar(cServer &server) {
@@ -102,9 +103,13 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 	updatePseudoVar(server);
 
 	/*FF部署，估计成本*/
-	int estHardCost = 0;
-	int estEnergyCost = 0;
-	int userTotalQuote = 0;
+	// int estHardCost = 0;
+	// int estEnergyCost = 0;
+	// int userTotalQuote = 0;
+
+	/*获取请求数*/
+	minRatio.clear();
+
 	for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) {
 		string vmID = request.info[iDay][iTerm].vmID;
 		if (request.info[iDay][iTerm].type) { // add
@@ -118,7 +123,10 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 			bool serNode;
 
 			/*所有请求的用户出价求和*/
-			userTotalQuote += userQuote;
+			// userTotalQuote += userQuote;
+			int userTotalQuote = userQuote;
+			int estEnergyCost;
+			int estHardCost;
 
 			if (vmIsDouble) {
 				serID = pseudoFfDouble(vmReqCPU, vmReqRAM);
@@ -136,10 +144,10 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 				int purDate = server.purchaseDate[serID];
 				string serName = pseudoServerSet[serID].serName;
 				sServerItem Serinfo = server.info[serName];
-				estHardCost += Serinfo.hardCost / (request.dayNum - purDate) * lifeTime \
+				estHardCost = Serinfo.hardCost / (request.dayNum - purDate) * lifeTime \
 					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
 				/*平摊功耗成本*/
-				estEnergyCost += Serinfo.energyCost * lifeTime \
+				estEnergyCost = Serinfo.energyCost * lifeTime \
 					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
 			}
 			else {
@@ -151,20 +159,26 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 					pseudoDeploy(VM, vmName, serID, true);
 				/*每天平摊硬件成本*/
 				sServerItem Serinfo = server.info[serName];
-				estHardCost += Serinfo.hardCost / (request.dayNum - iDay) * lifeTime \
+				estHardCost = Serinfo.hardCost / (request.dayNum - iDay) * lifeTime \
 					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
 				/*平摊功耗成本*/
-				estEnergyCost += Serinfo.energyCost * lifeTime \
+				estEnergyCost = Serinfo.energyCost * lifeTime \
 					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
 			}
+
+			minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * 1.5);
 		}
 	}
+	// for (auto &x : minRatio) {
+	// 	fout << x << endl;
+	// }
+	// fout << "------------" << endl;
 	// 总成本均摊到所有的请求上，再决定最小的折扣
-	if (userTotalQuote != 0) // 万一某一天没有add请求，除数就是0了
-		minRatio = (double)(estHardCost + estEnergyCost) / userTotalQuote * 1.5;
+	// if (userTotalQuote != 0) // 万一某一天没有add请求，除数就是0了
+	// 	minRatio = (double)(estHardCost + estEnergyCost) / userTotalQuote * 1.5;
 
 	if (iDay == 0) {
-		genRatio = minRatio; // 第一天直接给成本价
+		genRatio = -1; // -1是个标记，即按照minRatio定价
 	}
 	else { // 之后的每一天要调价
 		// 前一天的胜率
@@ -235,14 +249,27 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 void cPricer::setEqualPrice(cVM &VM, cRequests &request, int iDay) {
 /* Fn: 同一天按照同比例出价
 */
+	int cnt = 0;
+
 	unordered_map<string, int> dayQuote;  // 当天的报价
 	for (auto &req : request.info[iDay]) {
 		if (req.type) { // true : add
-			if (genRatio != -1)
-				dayQuote.insert({ req.vmID, req.quote * genRatio}); 
-			else // 不卖
-				dayQuote.insert({req.vmID, -1});
-		} 
+			if (genRatio == -1) {
+				if (minRatio.at(cnt) <= maxRatio)
+					dayQuote.insert({req.vmID, req.quote * minRatio.at(cnt)}); // 按照每个请求的成本价出价
+				else
+					dayQuote.insert({req.vmID, req.quote}); // 按照用户出的价不打折
+			}
+			else {
+				if (genRatio < minRatio.at(cnt) && minRatio.at(cnt) <= maxRatio) // 不能给出低于成本价
+					dayQuote.insert({req.vmID, req.quote * minRatio.at(cnt)});
+				else if (genRatio < minRatio.at(cnt) && minRatio.at(cnt) > maxRatio) // 不卖
+					dayQuote.insert({req.vmID, -1});
+				else
+					dayQuote.insert({req.vmID, req.quote * genRatio});
+			}
+			cnt++;
+		}
 	}
 	VM.quote.push_back(dayQuote);
 }
