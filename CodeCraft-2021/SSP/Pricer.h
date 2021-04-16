@@ -22,7 +22,7 @@ public:
 
 	void setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int iDay);
 	void setEqualPrice(cVM &VM, cRequests &request, int iDay);
-	void updateRate(int winRatio);
+	void updateRate();
 
 	/*伪部署*/
 	vector<sMyEachServer> pseudoServerSet;

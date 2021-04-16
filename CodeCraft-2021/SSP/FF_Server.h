@@ -17,7 +17,7 @@ public:
 	string chooseSer(int reqCPU, int reqRAM, bool isDoubleNode);
 
 	/*自定义参数*/
-	int alpha; // 价格加权参数
+	int alpha = 500; // 价格加权参数
 	
 	/*初始化->服务器排序*/
 	static bool mycomp(pair<string, int> i, pair<string, int> j);

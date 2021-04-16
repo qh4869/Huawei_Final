@@ -1,7 +1,7 @@
 ﻿#include "Pricer.h"
 #include <fstream>
 
-void cPricer::updateRate(int winRatio) {
+void cPricer::updateRate() {
 	if (minRatio >= 1) {
 		genRatio = -1; // -1折表示不卖
 		return;
@@ -161,8 +161,7 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 	}
 	// 总成本均摊到所有的请求上，再决定最小的折扣
 	if (userTotalQuote != 0) // 万一某一天没有add请求，除数就是0了
-		minRatio = (double)(estHardCost + estEnergyCost) / userTotalQuote;
-
+		minRatio = (double)(estHardCost + estEnergyCost) / userTotalQuote * 1.5;
 
 	if (iDay == 0) {
 		genRatio = minRatio; // 第一天直接给成本价
@@ -226,7 +225,7 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 		}
 
 		/*调价*/
-		updateRate(winRatio);
+		updateRate();
 	}
 
 	/*定价*/
