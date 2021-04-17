@@ -119,3 +119,38 @@ void cServer::hardCostTotal() {
 int cServer::getTotalCost() {
 	return engCostStas + hardCostStas;
 }
+
+void cServer::getMeanPerCost() {
+
+	double totalCPU_1 = 0, totalRAM_1 = 0, totalEnergyCost_1 = 0, totalHardCost_1 = 0;
+	double totalCPU_2 = 0, totalRAM_2 = 0, totalEnergyCost_2 = 0, totalHardCost_2 = 0;
+
+	sServerItem serInfo;
+	int count = 0;
+	for (auto &ite : info) {
+		serInfo = ite.second;
+		if (count % 2 == 0) {
+			totalCPU_1 += serInfo.totalCPU;
+			totalRAM_1 += serInfo.totalRAM;
+			totalEnergyCost_1 += serInfo.energyCost;
+			totalHardCost_1 += serInfo.hardCost;
+		}
+		else {
+			totalCPU_2 += serInfo.totalCPU;
+			totalRAM_2 += serInfo.totalRAM;
+			totalEnergyCost_2 += serInfo.energyCost;
+			totalHardCost_2 += serInfo.hardCost;
+		}
+		count++;
+	}
+
+	RAMHardCost = (totalHardCost_1 * totalCPU_2 - totalHardCost_2 * totalCPU_1) /
+		(totalRAM_1 * totalCPU_2 - totalRAM_2 * totalCPU_1);
+	CPUHardCost = (totalHardCost_1 * totalRAM_2 - totalHardCost_2 * totalRAM_1) /
+		(totalCPU_1 * totalRAM_2 - totalCPU_2 * totalRAM_1);
+	RAMEnergyCost = (totalEnergyCost_1 * totalCPU_2 - totalEnergyCost_2 * totalCPU_1) /
+		(totalRAM_1 * totalCPU_2 - totalRAM_2 * totalCPU_1);
+	CPUEnergyCost = (totalEnergyCost_1 * totalRAM_2 - totalEnergyCost_2 * totalRAM_1) /
+		(totalCPU_1 * totalRAM_2 - totalCPU_2 * totalRAM_1);
+
+}

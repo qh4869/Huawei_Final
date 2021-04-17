@@ -50,6 +50,7 @@ int main()
 	/*初始化，排序等操作*/
 	request.initReqNum(); // 需要统计每天的请求数
 	server.genInfoV();// 生成server.infoV，向量，为了写多线程
+	server.getMeanPerCost();
 
 	for (int iDay = 0; iDay < request.dayNum; iDay++) {
 #ifdef LOCAL

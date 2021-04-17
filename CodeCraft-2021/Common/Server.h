@@ -53,4 +53,10 @@ public:
 	void hardCostTotal();
 	void energyCostEachDay();
 	int getTotalCost();
+
+	double CPUHardCost;    // 单个CPU的硬件成本
+	double RAMHardCost;    // 单个RAM的硬件成本
+	double CPUEnergyCost;  // 单个CPU的能耗成本
+	double RAMEnergyCost;  // 单个RAM的能耗成本
+	void getMeanPerCost();  // 获取平均的消耗
 };
