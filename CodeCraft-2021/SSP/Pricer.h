@@ -37,7 +37,7 @@ public:
 
 	/*自定义参数*/
 	double estCostScale = 1.4;
-	double hardTax0 = 1.4; // 需要购买服务器的请求 更多提价，因为这个SV空闲天数 是没有均摊价格的VM
-	double hardTax1 = 20; // 后20%天数，购买服务器的请求涨价
+	double hardTax0 = 1; // 需要购买服务器的请求 更多提价，因为这个SV空闲天数 是没有均摊价格的VM
+	double hardTax1 = 1; // 后20%天数，购买服务器的请求涨价
 	
 };
