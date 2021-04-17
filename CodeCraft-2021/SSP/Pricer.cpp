@@ -152,7 +152,7 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 				else
 					hardTax = 1;
 				estHardCost = (double)Serinfo.hardCost / (request.dayNum - purDate) * lifeTime \
-					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
+					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM) * hardTax;
 				/*平摊功耗成本*/
 				estEnergyCost = (double)Serinfo.energyCost * lifeTime \
 					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
