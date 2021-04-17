@@ -33,6 +33,18 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
 	//transferSingleVm(server, VM, cntMig, migrateNum, iDay, server.args, delSerSet, dayWorkingMap);
 
+	/*更新占空比*/
+	server.updateResourceRatio();
+	server.updateResourceRatioIncludeALL();
+
+	// ofstream fout;
+	// fout.open("tmpOut.txt", ios::app);
+	// if (iDay<10) {
+	// 	fout << "=====" << iDay << endl;
+	// 	fout << server.myServerSet.size() << endl;
+		// for (auto &x : server.cpuRatio)
+		// 	fout << x << endl;
+	// }
 }
 
 void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet,

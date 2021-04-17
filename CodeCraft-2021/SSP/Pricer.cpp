@@ -99,16 +99,13 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 	// ofstream fout;
 	// fout.open("tmpOut.txt", ios::app);
 
-	// 更新伪变量
+	// 初始化
 	updatePseudoVar(server);
-
-	/*FF部署，估计成本*/
-	// int estHardCost = 0;
-	// int estEnergyCost = 0;
-	// int userTotalQuote = 0;
-
-	/*获取请求数*/
 	minRatio.clear();
+	double cpuAveRatio, ramAveRatio;
+	tie(cpuAveRatio, ramAveRatio) = server.getAveResourceRatio(); // 计算占空比(之前所有天的均值，不考虑空SV)
+	double cpuAveRatioIncAll, ramAveRatioIncAll;
+	tie(cpuAveRatioIncAll, ramAveRatioIncAll) = server.getAveResourceRatioIncludeALL();
 
 	for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) {
 		string vmID = request.info[iDay][iTerm].vmID;
@@ -143,7 +140,7 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 				/*每天平摊硬件成本*/ // 这种方法估计的成本是比较保守的，因为服务器会装不满
 				int purDate = server.purchaseDate[serID];
 				string serName = pseudoServerSet[serID].serName;
-				sServerItem Serinfo = server.info[serName];
+				// sServerItem Serinfo = server.info[serName];
 				int hardTax;
 				if (iDay <= request.dayNum *4 / 5 && server.purchaseDate[serID] == iDay) // 这个服务器也是今天买的就上税
 					hardTax = hardTax0;
@@ -151,15 +148,26 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 					hardTax = hardTax1;
 				else
 					hardTax = 1;
-				// estHardCost = (double)Serinfo.hardCost / (request.dayNum - purDate) * lifeTime \
-				// 	* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM) * hardTax;
-				estHardCost = ((double)vmReqCPU * server.CPUHardCost +  (double)vmReqRAM * server.RAMHardCost) \
-					/ (request.dayNum - purDate) * lifeTime * hardTax;
+
+				if (cpuAveRatioIncAll != -1 && ramAveRatioIncAll != -1) {
+					estHardCost = ((double)vmReqCPU * server.CPUHardCost / cpuAveRatioIncAll \
+						+  (double)vmReqRAM * server.RAMHardCost / ramAveRatioIncAll) \
+						/ (request.dayNum - purDate) * lifeTime * hardTax;
+				}
+				else {
+					estHardCost = ((double)vmReqCPU * server.CPUHardCost +  (double)vmReqRAM * server.RAMHardCost) \
+						/ (request.dayNum - purDate) * lifeTime * hardTax;
+				}
 				/*平摊功耗成本*/
-				// estEnergyCost = (double)Serinfo.energyCost * lifeTime \
-				// 	* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
-				estEnergyCost = ((double)vmReqCPU * server.CPUEnergyCost + (double)vmReqRAM * server.RAMEnergyCost) \
-					* lifeTime;
+				if (cpuAveRatio != -1 && ramAveRatio != -1) {
+					estEnergyCost = ((double)vmReqCPU * server.CPUEnergyCost / cpuAveRatio \
+						+ (double)vmReqRAM * server.RAMEnergyCost / ramAveRatio) \
+						* lifeTime;
+				}
+				else {
+					estEnergyCost = ((double)vmReqCPU * server.CPUEnergyCost + (double)vmReqRAM * server.RAMEnergyCost) \
+						* lifeTime;
+				}
 			}
 			else {
 				string serName = server.chooseSer(vmReqCPU, vmReqRAM, vmIsDouble);
@@ -169,21 +177,32 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 				else
 					pseudoDeploy(VM, vmName, serID, true);
 				/*每天平摊硬件成本*/
-				sServerItem Serinfo = server.info[serName];
+				// sServerItem Serinfo = server.info[serName];
 				int hardTax;
 				if (iDay <= request.dayNum *4 / 5)
 					hardTax = hardTax0;
 				else
 					hardTax = hardTax1;
-				// estHardCost = (double)Serinfo.hardCost / (request.dayNum - iDay) * lifeTime \
-				// 	* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM) * hardTax;
-				estHardCost = ((double)vmReqCPU * server.CPUHardCost + (double)vmReqRAM * server.RAMHardCost) \
-					/ (request.dayNum - iDay) * lifeTime * hardTax;
+
+				if (cpuAveRatioIncAll != -1 && ramAveRatioIncAll != -1) {
+					estHardCost = ((double)vmReqCPU * server.CPUHardCost / cpuAveRatioIncAll \
+						+ (double)vmReqRAM * server.RAMHardCost / ramAveRatioIncAll) \
+						/ (request.dayNum - iDay) * lifeTime * hardTax;
+				}
+				else {
+					estHardCost = ((double)vmReqCPU * server.CPUHardCost + (double)vmReqRAM * server.RAMHardCost) \
+						/ (request.dayNum - iDay) * lifeTime * hardTax;
+				}
 				/*平摊功耗成本*/
-				// estEnergyCost = (double)Serinfo.energyCost * lifeTime \
-				// 	* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
-				estEnergyCost = ((double)vmReqCPU * server.CPUEnergyCost + (double)vmReqRAM * server.RAMEnergyCost) \
-					* lifeTime;
+				if (cpuAveRatio != -1 && ramAveRatio != -1) {
+					estEnergyCost = ((double)vmReqCPU * server.CPUEnergyCost / cpuAveRatio \
+						+ (double)vmReqRAM * server.RAMEnergyCost / ramAveRatio) \
+						* lifeTime;
+				}
+				else {
+					estEnergyCost = ((double)vmReqCPU * server.CPUEnergyCost + (double)vmReqRAM * server.RAMEnergyCost) \
+						* lifeTime;
+				}			
 			}
 
 			minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale);
@@ -261,6 +280,7 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 		/*调价*/
 		updateRate();
 	}
+	genRatio = -1;
 
 	/*定价*/
 	setEqualPrice(VM, request, iDay);

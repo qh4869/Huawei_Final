@@ -8,6 +8,7 @@
 #include "Request.h"
 #include "globalHeader.h"
 #include <map>
+#include <numeric>
 using namespace std;
 
 struct sServerItem {
@@ -59,4 +60,13 @@ public:
 	double CPUEnergyCost;  // 单个CPU的能耗成本
 	double RAMEnergyCost;  // 单个RAM的能耗成本
 	void getMeanPerCost();  // 获取平均的消耗
+
+	vector<double> cpuRatio; // 每天的cpu占比 <每天部署迁移之后更新>，不考虑空的服务器
+	vector<double> ramRatio;
+	vector<double> cpuRatioIncAll; // 考虑空的服务器
+	vector<double> ramRatioIncAll;
+	void updateResourceRatio();
+	tuple<double, double> getAveResourceRatio();
+	void updateResourceRatioIncludeALL();
+	tuple<double, double> getAveResourceRatioIncludeALL();
 };

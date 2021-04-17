@@ -154,3 +154,133 @@ void cServer::getMeanPerCost() {
 		(totalCPU_1 * totalRAM_2 - totalCPU_2 * totalRAM_1);
 
 }
+
+void cServer::updateResourceRatio() {
+/* Fn: 统计每天资源占空比，如果没有服务器或者所有服务器都空，push -1
+* 
+*/
+	int totalCPUadd = 0;
+	int totalRAMadd = 0;
+	int occCPUadd = 0;
+	int occRAMadd = 0;
+
+	for (auto &x : myServerSet) {
+		string serName = x.serName;
+		int totalCPU = info[serName].totalCPU;
+		int totalRAM = info[serName].totalRAM;
+		int occCPU = totalCPU - x.aIdleCPU - x.bIdleCPU;
+		int occRAM = totalRAM - x.aIdleRAM - x.bIdleRAM;
+
+		if (occCPU == 0 && occRAM == 0) // 是空的服务器就跳过
+			continue;
+
+		totalCPUadd += totalCPU;
+		totalRAMadd += totalRAM;
+		occCPUadd += occCPU;
+		occRAMadd += occRAM;
+	}
+
+	if (totalCPUadd == 0 && totalRAMadd == 0) { // 所有服务器全是空的，或者一个服务器也没有
+		cpuRatio.push_back(-1);
+		ramRatio.push_back(-1);
+	}
+	else {
+		cpuRatio.push_back( (double)occCPUadd / totalCPUadd );
+		ramRatio.push_back( (double)occRAMadd / totalRAMadd );
+	}
+}
+
+void cServer::updateResourceRatioIncludeALL() {
+/* Fn: 功能同上，不跳过空的服务器
+*/
+	int totalCPUadd = 0;
+	int totalRAMadd = 0;
+	int occCPUadd = 0;
+	int occRAMadd = 0;
+
+	for (auto &x : myServerSet) {
+		string serName = x.serName;
+		int totalCPU = info[serName].totalCPU;
+		int totalRAM = info[serName].totalRAM;
+		int occCPU = totalCPU - x.aIdleCPU - x.bIdleCPU;
+		int occRAM = totalRAM - x.aIdleRAM - x.bIdleRAM;
+
+		totalCPUadd += totalCPU;
+		totalRAMadd += totalRAM;
+		occCPUadd += occCPU;
+		occRAMadd += occRAM;
+	}
+
+	if (totalCPUadd == 0 && totalRAMadd == 0) {// 一个服务器都没有
+		cpuRatioIncAll.push_back(-1);
+		ramRatioIncAll.push_back(-1);
+	}
+	else {
+		cpuRatioIncAll.push_back((double)occCPUadd / totalCPUadd);
+		ramRatioIncAll.push_back((double)occRAMadd / totalRAMadd);
+	}
+}
+
+tuple<double, double> cServer::getAveResourceRatio() {
+/* Fn: 返回资源占比的均值，如果vector为空（第0天，或者任何一天都没有有效值），返回-1 -1
+* Note:
+*	- cpuCnt 和 ramCnt 应该是相等的
+*/
+	double cpuAdd = 0;
+	int cpuCnt = 0;
+	double ramAdd = 0;
+	int ramCnt = 0;
+
+	for (auto &x : cpuRatio) {
+		if (x == -1)
+			continue;
+		else {
+			cpuAdd += x;
+			cpuCnt++;
+		}
+	}
+	for (auto &x : ramRatio) {
+		if (x == -1)
+			continue;
+		else {
+			ramAdd += x;
+			ramCnt++;
+		}
+	}
+
+	if (cpuCnt != 0 && ramCnt != 0)
+		return {cpuAdd / cpuCnt, ramAdd / ramCnt};
+	else
+		return {-1, -1};
+}
+
+tuple<double, double> cServer::getAveResourceRatioIncludeALL() {
+/* Fn: 类似同上 cpuRatioIncAll ramRatioIncAll
+*/
+	double cpuAdd = 0;
+	int cpuCnt = 0;
+	double ramAdd = 0;
+	int ramCnt = 0;
+
+	for (auto &x : cpuRatioIncAll) {
+		if (x == -1)
+			continue;
+		else {
+			cpuAdd += x;
+			cpuCnt++;
+		}
+	}
+	for (auto &x : ramRatioIncAll) {
+		if (x == -1)
+			continue;
+		else {
+			ramAdd += x;
+			ramCnt++;
+		}
+	}
+
+	if (cpuCnt != 0 && ramCnt != 0)
+		return {cpuAdd / cpuCnt, ramAdd / ramCnt};
+	else
+		return {-1, -1};
+}
