@@ -151,11 +151,15 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 					hardTax = hardTax1;
 				else
 					hardTax = 1;
-				estHardCost = (double)Serinfo.hardCost / (request.dayNum - purDate) * lifeTime \
-					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM) * hardTax;
+				// estHardCost = (double)Serinfo.hardCost / (request.dayNum - purDate) * lifeTime \
+				// 	* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM) * hardTax;
+				estHardCost = ((double)vmReqCPU * server.CPUHardCost +  (double)vmReqRAM * server.RAMHardCost) \
+					/ (request.dayNum - purDate) * lifeTime * hardTax;
 				/*平摊功耗成本*/
-				estEnergyCost = (double)Serinfo.energyCost * lifeTime \
-					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
+				// estEnergyCost = (double)Serinfo.energyCost * lifeTime \
+				// 	* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
+				estEnergyCost = ((double)vmReqCPU * server.CPUEnergyCost + (double)vmReqRAM * server.RAMEnergyCost) \
+					* lifeTime;
 			}
 			else {
 				string serName = server.chooseSer(vmReqCPU, vmReqRAM, vmIsDouble);
@@ -171,11 +175,15 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 					hardTax = hardTax0;
 				else
 					hardTax = hardTax1;
-				estHardCost = (double)Serinfo.hardCost / (request.dayNum - iDay) * lifeTime \
-					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM) * hardTax;
+				// estHardCost = (double)Serinfo.hardCost / (request.dayNum - iDay) * lifeTime \
+				// 	* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM) * hardTax;
+				estHardCost = ((double)vmReqCPU * server.CPUHardCost + (double)vmReqRAM * server.RAMHardCost) \
+					/ (request.dayNum - iDay) * lifeTime * hardTax;
 				/*平摊功耗成本*/
-				estEnergyCost = (double)Serinfo.energyCost * lifeTime \
-					* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
+				// estEnergyCost = (double)Serinfo.energyCost * lifeTime \
+				// 	* (vmReqCPU + vmReqRAM) / (Serinfo.totalCPU + Serinfo.totalRAM);
+				estEnergyCost = ((double)vmReqCPU * server.CPUEnergyCost + (double)vmReqRAM * server.RAMEnergyCost) \
+					* lifeTime;
 			}
 
 			minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale);
@@ -270,7 +278,7 @@ void cPricer::setEqualPrice(cVM &VM, cRequests &request, int iDay) {
 				if (minRatio.at(cnt) <= maxRatio)
 					dayQuote.insert({req.vmID, req.quote * minRatio.at(cnt)}); // 按照每个请求的成本价出价
 				else
-					dayQuote.insert({req.vmID, req.quote}); // 按照用户出的价不打折
+					dayQuote.insert({req.vmID, -1});
 			}
 			else {
 				if (genRatio < minRatio.at(cnt) && minRatio.at(cnt) <= maxRatio) // 不能给出低于成本价
