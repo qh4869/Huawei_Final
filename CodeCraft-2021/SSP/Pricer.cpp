@@ -128,7 +128,6 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 			bool serNode;
 
 			/*所有请求的用户出价求和*/
-			// userTotalQuote += userQuote;
 			int userTotalQuote = userQuote;
 			int estEnergyCost;
 			int estHardCost;
@@ -140,31 +139,51 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 				tie(serID, serNode) = pseudoFfSingle(vmReqCPU, vmReqRAM);
 			}
 
-			if (serID != -1) {
+			if (serID != -1) { // 装入已有服务器
 				if (vmIsDouble)
 					pseudoDeploy(VM, vmName, serID);
 				else
 					pseudoDeploy(VM, vmName, serID, serNode);
-				/*每天平摊硬件成本*/ // 这种方法估计的成本是比较保守的，因为服务器会装不满
-				int purDate = server.purchaseDate[serID];
+				/*每天平摊硬件成本*/ 
 				string serName = pseudoServerSet[serID].serName;
-				// sServerItem Serinfo = server.info[serName];
-				int hardTax;
-				if (iDay <= request.dayNum *4 / 5 && server.purchaseDate[serID] == iDay) // 这个服务器也是今天买的就上税
-					hardTax = hardTax0;
-				else if (iDay > request.dayNum *4 / 5 && server.purchaseDate[serID] != iDay)
-					hardTax = hardTax1;
+				int hardTax, hardBuyTax;
+				int purDate;
+				if (server.purchaseDate.count(serID)) // 不是当日伪购买的
+					purDate = server.purchaseDate[serID];
 				else
-					hardTax = 1;
+					purDate = iDay;
+				if (purDate != iDay) { // 直接就能放入已有的服务器
+					hardBuyTax = 1;
+					if (purDate <= earlyDay) { // 前期购入
+						hardTax = 1;
+					}
+					else { // 中期或者后期购入
+						hardTax = hardTax0;
+					}
+				}
+				else { // 当天伪购买，同下面伪购买的策略
+					if (iDay <= earlyDay) {
+						hardTax = 1;
+						hardBuyTax = 1;
+					}
+					else if (iDay <= laterDay) {
+						hardTax = hardTax0;
+						hardBuyTax = 1;
+					}
+					else {
+						hardTax = hardTax0;
+						hardBuyTax = hardTax1;
+					}
+				}
 
 				if (cpuAveRatioIncAll != -1 && ramAveRatioIncAll != -1) {
 					estHardCost = ((double)vmReqCPU * server.CPUHardCost / cpuAveRatioIncAll \
 						+  (double)vmReqRAM * server.RAMHardCost / ramAveRatioIncAll) \
-						/ (request.dayNum - purDate) * lifeTime * hardTax;
+						/ (request.dayNum - purDate) * lifeTime * hardTax * hardBuyTax;
 				}
 				else {
 					estHardCost = ((double)vmReqCPU * server.CPUHardCost +  (double)vmReqRAM * server.RAMHardCost) \
-						/ (request.dayNum - purDate) * lifeTime * hardTax;
+						/ (request.dayNum - purDate) * lifeTime * hardTax * hardBuyTax;
 				}
 				/*平摊功耗成本*/
 				if (cpuAveRatio != -1 && ramAveRatio != -1) {
@@ -185,21 +204,29 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 				else
 					pseudoDeploy(VM, vmName, serID, true);
 				/*每天平摊硬件成本*/
-				// sServerItem Serinfo = server.info[serName];
 				int hardTax;
-				if (iDay <= request.dayNum *4 / 5)
+				int hardBuyTax;
+				if (iDay <= earlyDay) { // 前期
+					hardTax = 1;
+					hardBuyTax = 1;
+				}
+				else if (iDay <= laterDay){ // 中期
 					hardTax = hardTax0;
-				else
-					hardTax = hardTax1;
+					hardBuyTax = 1;
+				}
+				else { // 后期
+					hardTax = hardTax0;
+					hardBuyTax = hardTax1;
+				}
 
 				if (cpuAveRatioIncAll != -1 && ramAveRatioIncAll != -1) {
 					estHardCost = ((double)vmReqCPU * server.CPUHardCost / cpuAveRatioIncAll \
 						+ (double)vmReqRAM * server.RAMHardCost / ramAveRatioIncAll) \
-						/ (request.dayNum - iDay) * lifeTime * hardTax;
+						/ (request.dayNum - iDay) * lifeTime * hardTax * hardBuyTax;
 				}
 				else {
 					estHardCost = ((double)vmReqCPU * server.CPUHardCost + (double)vmReqRAM * server.RAMHardCost) \
-						/ (request.dayNum - iDay) * lifeTime * hardTax;
+						/ (request.dayNum - iDay) * lifeTime * hardTax * hardBuyTax;
 				}
 				/*平摊功耗成本*/
 				if (cpuAveRatio != -1 && ramAveRatio != -1) {
@@ -216,13 +243,6 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 			minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale);
 		}
 	}
-	// for (auto &x : minRatio) {
-	// 	fout << x << endl;
-	// }
-	// fout << "------------" << endl;
-	// 总成本均摊到所有的请求上，再决定最小的折扣
-	// if (userTotalQuote != 0) // 万一某一天没有add请求，除数就是0了
-	// 	minRatio = (double)(estHardCost + estEnergyCost) / userTotalQuote * 1.5;
 
 	if (iDay == 0) {
 		genRatio = -1; // -1是个标记，即按照minRatio定价
@@ -320,4 +340,9 @@ void cPricer::setEqualPrice(cVM &VM, cRequests &request, int iDay) {
 		}
 	}
 	VM.quote.push_back(dayQuote);
+}
+
+void cPricer::updateDayThreadhold(int dayNum) {
+	earlyDay = (int)(early * dayNum);
+	laterDay = (int)(later * dayNum);
 }

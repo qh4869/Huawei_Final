@@ -38,13 +38,23 @@ public:
 	void pseudoDeploy(cVM &VM, string vmName, int serID, bool serNode);
 	int pseudoPurchase(cServer &server, string serName);
 
+	/*分段成本*/
+	int earlyDay;
+	int laterDay;
+	void updateDayThreadhold(int dayNum);
+
 	/*自定义参数*/
 	/*1、估计成本时（自己和自己博弈）使用的是简单部署算法没有迁移，因此成本估计可能会偏高
 	  2、估计了个成本后，如果对手迅速降价，导致自己的服务器占空比迅速降低（占空比分布不平稳），可能收不回成本，考虑这一点成本因子稍微大一丢丢比较好
 	  3、Plan B: 调参卡不赔钱的成本价出价，完全不管别的因素
 	  4、Plan A: 尽可能准确估价，调价，预测对手，分段成本分摊等各种方法*/
-	double estCostScale = 0.965; 
-	double hardTax0 = 1; // 需要购买服务器的请求 更多提价，因为这个SV空闲天数 是没有均摊价格的VM
-	double hardTax1 = 1; // 后20%天数，购买服务器的请求涨价
+	double estCostScale = 0.96; 
+	// 中期硬件成本提价 防止因为后期占空比较小导致硬件成本收不回来(占空比估计后期偏高),后期占空比的影响对前期购买的服务器影响较小，所以不提价
+	double hardTax0 = 1.1; 
+	// 后期天数，购买服务器的请求涨价，后期的硬件成本不容易收回来，除了中期开始的硬件成本提价，购买服务器的请求还提价
+	double hardTax1 = 3; 
+	double early = 0.3; // 前期天数比例
+	double later = 0.75; // 后期天数
+
 	
 };
