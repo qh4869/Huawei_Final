@@ -7,8 +7,10 @@
 
 class cPricer {
 public:
-	double genRatio; // <第一天估计成本后要初始化，之后每次调价更新>
+	// 一般性折扣 <第一天估计成本后要初始化，之后每次调价更新>，-1表示按照每个请求的最低价出价，目前只有第0天或者debug能用到
+	double genRatio;
 	vector<double> fixRate;
+	double controlRatio = 0; // genRatio = min + controlRatio，调价控制contrilRatio
 	int state = 0;
 	bool deter = false; // 标记第1天，第0天进不去调价循环
 	bool curstate;

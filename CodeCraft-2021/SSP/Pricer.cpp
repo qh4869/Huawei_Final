@@ -15,17 +15,16 @@ void cPricer::updateRate() {
 	if (min > maxRatio)
 		min = maxRatio;
 
-	/*genRatio=-1就是表示按照min来出价，这两个是等价的*/
-	if (genRatio == -1) {
+	controlRatio += fixRate.at(state);
+	genRatio = min + controlRatio;
+	if (genRatio < min) {
 		genRatio = min;
+		controlRatio = 0;
 	}
-
-	/*根据状态机的状态来调价*/
-	genRatio += fixRate.at(state);
-	if (genRatio < min) // genRatio不能偏移的太离谱，最小值为每个请求 成本折扣均值 min(且不能大于1)
-		genRatio = min;
-	else if (genRatio > maxRatio)
+	else if (genRatio > maxRatio) {
 		genRatio = maxRatio;
+		controlRatio = maxRatio - min;
+	}
 }
 
 void cPricer::updatePseudoVar(cServer &server) {
