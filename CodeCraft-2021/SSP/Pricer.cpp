@@ -3,15 +3,24 @@
 
 void cPricer::updateRate() {
 
-	int min = accumulate(minRatio.begin(), minRatio.end(), 0) / minRatio.size();
+	/*统计当日的最低折扣*/
+	int min;
+	auto minIte = min_element(minRatio.begin(), minRatio.end());
+	if (minIte == minRatio.end()) // minRatio is empty
+		return;
+	else
+		min = *minIte;
+
+	/*最低折扣不能大于maxRatio*/
 	if (min > maxRatio)
 		min = maxRatio;
 
+	/*genRatio=-1就是表示按照min来出价，这两个是等价的*/
 	if (genRatio == -1) {
 		genRatio = min;
-		return;
 	}
 
+	/*根据状态机的状态来调价*/
 	genRatio += fixRate.at(state);
 	if (genRatio < min) // genRatio不能偏移的太离谱，最小值为每个请求 成本折扣均值 min(且不能大于1)
 		genRatio = min;
@@ -280,7 +289,7 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 		/*调价*/
 		updateRate();
 	}
-	genRatio = -1;
+	// genRatio = -1;
 
 	/*定价*/
 	setEqualPrice(VM, request, iDay);

@@ -3,6 +3,7 @@
 #include "SSP_Mig_Request.h"
 #include "SSP_Mig_Server.h"
 #include <numeric>
+#include <algorithm>
 
 class cPricer {
 public:
