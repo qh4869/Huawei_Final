@@ -39,7 +39,11 @@ public:
 	int pseudoPurchase(cServer &server, string serName);
 
 	/*自定义参数*/
-	double estCostScale = 0.96;
+	/*1、估计成本时（自己和自己博弈）使用的是简单部署算法没有迁移，因此成本估计可能会偏高
+	  2、估计了个成本后，如果对手迅速降价，导致自己的服务器占空比迅速降低（占空比分布不平稳），可能收不回成本，考虑这一点成本因子稍微大一丢丢比较好
+	  3、Plan B: 调参卡不赔钱的成本价出价，完全不管别的因素
+	  4、Plan A: 尽可能准确估价，调价，预测对手，分段成本分摊等各种方法*/
+	double estCostScale = 0.965; 
 	double hardTax0 = 1; // 需要购买服务器的请求 更多提价，因为这个SV空闲天数 是没有均摊价格的VM
 	double hardTax1 = 1; // 后20%天数，购买服务器的请求涨价
 	
