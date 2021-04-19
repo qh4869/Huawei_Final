@@ -27,7 +27,7 @@ public:
 
 	void setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int iDay);
 	void setEqualPrice(cVM &VM, cRequests &request, int iDay);
-	void updateRate();
+	void updateRate(int iDay);
 
 	/*伪部署*/
 	vector<sMyEachServer> pseudoServerSet;
@@ -68,8 +68,8 @@ public:
 	double veryEarly = 0.0125; // 非常早期
 	double early = 0.25; // 前期天数比例
 	double later = 0.75; // 后期天数
-	int arOrder = 6; // AR预测阶数
-	int validDays = 20; // 只用最多前二十天的数据来训练（担心数据不平稳影响结果）
+	int arOrder = 5; // AR预测阶数
+	int validDays = 10; // 只用最多前二十天的数据来训练（担心数据不平稳影响结果）
 
 	
 };

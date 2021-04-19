@@ -1,7 +1,11 @@
 ﻿#include "Pricer.h"
 #include <fstream>
 
-void cPricer::updateRate() {
+void cPricer::updateRate(int iDay) {
+/* Fn: 调价
+* Note:
+*	- 每次运行迭代调整controlRatio，并输出对应的genRatio
+*/
 
 	/*统计当日的最低折扣*/
 	int min;
@@ -11,23 +15,38 @@ void cPricer::updateRate() {
 	else
 		min = *minIte;
 
-	/*最低折扣不能大于maxRatio*/ //这个逻辑不对，这里不应该是一台都不卖吗？？？？？？？
-	if (min > maxRatio)
-		min = maxRatio;
-
-	controlRatio += fixRate.at(state);
-	genRatio = min + controlRatio;
-	if (genRatio < min) {
-		genRatio = min;
-		controlRatio = 0;
+	if (min > maxRatio) { // 顾客当日所有报价 都比 我的各个成本价还高
+		/*controlRatio 跟上一天的一样*/
+		// 其实这里genRatio等于什么无所谓，出价的时候必然一个都不卖，只是为了程序可读性而已
+		genRatio = min + controlRatio; 
 	}
-	else if (genRatio > maxRatio) {
-		genRatio = maxRatio;
-		controlRatio = maxRatio - min;
+	else {
+		/*根据state调价*/
+		controlRatio += fixRate.at(state);
+		genRatio = min + controlRatio;
+		if (genRatio < min) {
+			genRatio = min;
+			controlRatio = 0;
+		}
+		else if (genRatio > maxRatio) {
+			genRatio = maxRatio;
+			controlRatio = maxRatio - min;
+		}
 	}
 
-	/*预测对手平均折扣*/
-	// double predictedQuote = predictCompNextQuote(); // 前几天越界会报错啊？？？？？？
+	// /*debug*/
+	// ofstream fout;
+	// fout.open("tmpOut.txt", ios::app);
+	// if (iDay > 0)
+	// 	fout << "lastDay:" << iDay - 1 << " " << compDiscount.at(iDay-1) << " -> ";
+
+	// /*预测对手平均折扣*/
+	// if (iDay > validDays) { // 有足够多的天数数据，才能开始预测对手
+	// 	double predictedQuote = predictCompNextQuote(); 
+	// 	fout << "today:" << iDay << " " << predictedQuote << endl;
+	// }
+	// else
+	// 	fout << endl;
 	// if (predictedQuote < min) { // 对手报价可能比我的成本价还低，
 	// 	genRatio = min; // 那我就出成本价
 	// 	controlRatio = 0;
@@ -267,11 +286,11 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 		// 前一天的胜率
 		double winRatio = VM.winNum.at(iDay-1) / (VM.winNum.at(iDay-1) + VM.lossNum.at(iDay-1));
 
-		/*查看win/loss反转，如果winRatio在lossValue和winValue之间，那就不可能win/loss反转*/
+		/*判断win/loss反转*/
 		if (winRatio < lossValue) {
 			if (!deter) { // 第1天
 				state = 1;
-				curstate = true;
+				curstate = true; // 上一天博弈失败比较多
 				deter = true;
 			}
 			else if (curstate == false){
@@ -282,7 +301,7 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 		else if (winRatio > winValue) {
 			if (!deter) {
 				state = 0;
-				curstate = false;
+				curstate = false; // 上一天博弈成功比较多
 				deter = true;
 			}
 			else if (curstate == true) {
@@ -301,12 +320,14 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 				if (toggle) {
 					toggle = false;
 					state = 1;	
+					curstate = true;
 				}
 				break;
 			case 1: // 降价状态
 				if (toggle) {
 					toggle = false;
 					state = 2;
+					curstate = false;
 					cnt = 0;
 				}
 				break;
@@ -314,15 +335,17 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 				if (toggle) {
 					toggle = false;
 					state = 1;
+					curstate = true;
 				}
 				else if (cnt >= 50) { // 50次计数
 					state = 0;
+					curstate = false;
 				}
 				break;
 		}
 
 		/*调价*/
-		updateRate();
+		updateRate(iDay);
 	}
 	// genRatio = -1;
 
@@ -331,7 +354,10 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 }
 
 void cPricer::setEqualPrice(cVM &VM, cRequests &request, int iDay) {
-/* Fn: 同一天按照同比例出价
+/* Fn: 出价
+*
+* Note:
+*	- genRatio == -1 表示按照成本价出价
 */
 	int cnt = 0;
 
@@ -345,12 +371,20 @@ void cPricer::setEqualPrice(cVM &VM, cRequests &request, int iDay) {
 					dayQuote.insert({req.vmID, -1});
 			}
 			else {
-				if (genRatio < minRatio.at(cnt) && minRatio.at(cnt) <= maxRatio) // 不能给出低于成本价
-					dayQuote.insert({req.vmID, req.quote * minRatio.at(cnt)});
-				else if (genRatio < minRatio.at(cnt) && minRatio.at(cnt) > maxRatio) // 不卖
+				if (minRatio.at(cnt) > maxRatio) { // 顾客给出的价格比我的成本价还低 -> 不卖
 					dayQuote.insert({req.vmID, -1});
-				else
-					dayQuote.insert({req.vmID, req.quote * genRatio});
+				}
+				else { // minRatio.at(cnt) <= maxRatio
+					if (genRatio < minRatio.at(cnt)) { // 计划出价 低于成本价 -> 按照成本价出价
+						dayQuote.insert({req.vmID, req.quote * minRatio.at(cnt)});
+					}
+					else if (genRatio > maxRatio) { // 出价不能高于顾客的最高价 -> 按照顾客可接受的最高价出价
+						dayQuote.insert({req.vmID, req.quote});
+					}
+					else { // genRatio >= minRatio.at(cnt) && genRatio <= maxRatio
+						dayQuote.insert({req.vmID, req.quote * genRatio});
+					}
+				}
 			}
 			cnt++;
 		}
@@ -454,7 +488,8 @@ int cPricer::levDur(vector<double>::iterator r, vector<double>::iterator b, vect
 }
 
 double cPricer::predictCompNextQuote() {
-/* Fn: 预测对手下一天的平均折扣 by AR model
+/* Fn: 预测对手下一天的平均折扣 by AR model，目前结果不是很靠谱所以没用上
+* 还需要平稳性检验
 */
 	vector<double> corr(arOrder+1);
 	vector<double> a(arOrder); // ar 系数
@@ -466,7 +501,7 @@ double cPricer::predictCompNextQuote() {
 	double predictedQuote = 0;
 	int vsize = compDiscount.size();
 	for (int j=0; j<arOrder; j++) {
-		predictedQuote += a[j] * compDiscount[vsize - 1 - j];
+		predictedQuote += a.at(j) * compDiscount.at(vsize - 1 - j);
 	}
 
 	return predictedQuote;
