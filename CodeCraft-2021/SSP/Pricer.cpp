@@ -56,7 +56,6 @@ void cPricer::updateRate(int iDay) {
 	// 	controlRatio = genRatio - min;
 	// }
 
-	genRatio = -1;
 }
 
 void cPricer::updatePseudoVar(cServer &server) {
@@ -347,7 +346,6 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 		/*调价*/
 		updateRate(iDay);
 	}
-	// genRatio = -1;
 
 	/*定价*/
 	setEqualPrice(VM, request, iDay);
