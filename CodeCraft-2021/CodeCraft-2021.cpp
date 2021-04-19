@@ -71,6 +71,7 @@ int main()
 		pricer.setQuote(VM, request, server, iDay);
 		dataOutQuote(iDay, VM, request);  // 输出我方定价
 		VM.updateRequest(iDay, request);  
+		pricer.updateCompDiscount(request, VM, iDay); // 统计对手的平均折扣
 
 		/*购买 迁移 部署 删除*/
 		sspEachDay(iDay, server, VM, request);

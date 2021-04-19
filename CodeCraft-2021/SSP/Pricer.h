@@ -43,18 +43,29 @@ public:
 	int laterDay;
 	void updateDayThreadhold(int dayNum);
 
+	/*预测对手*/
+	vector<double> compDiscount; // 统计对手每天的平均折扣，用于预测
+	void updateCompDiscount(cRequests &request, cVM &VM, int iDay);
+	int autocorr(vector<double> &x, vector<double> &corr, int n); // 计算自相关
+	int levDur(vector<double>::iterator r, vector<double>::iterator b, vector<double>::iterator a, int l);
+	double predictCompNextQuote();
+
 	/*自定义参数*/
 	/*1、估计成本时（自己和自己博弈）使用的是简单部署算法没有迁移，因此成本估计可能会偏高
 	  2、估计了个成本后，如果对手迅速降价，导致自己的服务器占空比迅速降低（占空比分布不平稳），可能收不回成本，考虑这一点成本因子稍微大一丢丢比较好
 	  3、Plan B: 调参卡不赔钱的成本价出价，完全不管别的因素
 	  4、Plan A: 尽可能准确估价，调价，预测对手，分段成本分摊等各种方法*/
 	double estCostScale = 0.96; 
+	// 早起硬件成本打折 为了多拉拢用户
+	double hardTaxEarly = 0.98;
 	// 中期硬件成本提价 防止因为后期占空比较小导致硬件成本收不回来(占空比估计后期偏高),后期占空比的影响对前期购买的服务器影响较小，所以不提价
-	double hardTax0 = 1.1; 
+	double hardTaxMid = 1.1; 
 	// 后期天数，购买服务器的请求涨价，后期的硬件成本不容易收回来，除了中期开始的硬件成本提价，购买服务器的请求还提价
-	double hardTax1 = 3; 
+	double hardTaxLaterBuy = 3; 
 	double early = 0.3; // 前期天数比例
 	double later = 0.75; // 后期天数
+	int arOrder = 6; // AR预测阶数
+	int validDays = 20; // 只用最多前二十天的数据来训练（担心数据不平稳影响结果）
 
 	
 };
