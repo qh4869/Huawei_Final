@@ -253,7 +253,10 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 				}			
 			}
 
-			minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale);
+			if (iDay < veryEarlyDay)
+				minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale * 0.7);
+			else
+				minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale);
 		}
 	}
 
@@ -358,6 +361,7 @@ void cPricer::setEqualPrice(cVM &VM, cRequests &request, int iDay) {
 void cPricer::updateDayThreadhold(int dayNum) {
 	earlyDay = (int)(early * dayNum);
 	laterDay = (int)(later * dayNum);
+	veryEarlyDay = (int)(veryEarly * dayNum);
 }
 
 void cPricer::updateCompDiscount(cRequests &request, cVM &VM, int iDay) {
