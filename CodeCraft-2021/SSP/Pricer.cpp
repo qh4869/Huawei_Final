@@ -278,7 +278,7 @@ void cPricer::setQuote(cVM &VM, cSSP_Mig_Request &request, cSSP_Mig_Server &serv
 			}
 
 			if (iDay <= veryEarlyDay)
-				minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale * 0.7);
+				minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale * disCountVeryEarly);
 			else
 				minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale);
 		}
