@@ -43,7 +43,6 @@ public:
 
 	/*id 映射*/
 	unordered_map<int, int> idMap; // 新旧id的映射关系
-	int idMapping();
 	/*每日id映射*/
 	int startID = 0; // 每天服务器起始编号
 	void idMappingEachDay(int iDay);

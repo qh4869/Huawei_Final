@@ -62,10 +62,6 @@ tuple<string, queue<int>> knapSack(const cSSP_Mig_Server &server, cSSP_Mig_VM &V
 tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int bIdleRAM,
 	vector<pair<string, string>> &curSet, cSSP_Mig_VM &VM); // 计算每台服务器的背包问题
 
-													// 每天 后迁移
-void dailyMigrate(int vmNumStart, unordered_map<int, sMyEachServer> &delSerSet, unordered_set<string> &dayWorkingVM,
-	int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request);
-
 /*迁移挑选服务器*/
 cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSSP_Mig_VM &VM, int index,
 	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
