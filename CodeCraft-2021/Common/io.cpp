@@ -307,7 +307,7 @@ void infoDataIn(istream &cin, cServer &server, cVM &VM, cRequests &request) {
 	VM.deployRecord.resize(request.dayNum);
 }
 
-void reqDataIn(istream &cin, cRequests &request, int iDay) {
+void reqDataIn(istream &cin, cSSP_Mig_Request &request, int iDay) {
 /* Fn: 读取部分天数的请求
 */
 	string inputStr;
@@ -363,6 +363,8 @@ void reqDataIn(istream &cin, cRequests &request, int iDay) {
 			}
 
 		}
+
+		request.getReqNumEachDay(day); // 统计每天的总请求数（不一定能得到
 	}
 }
 

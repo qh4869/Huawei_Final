@@ -1,6 +1,8 @@
 ﻿#include "Pricer.h"
 #include <fstream>
 
+bool planB = true;
+
 void cPricer::updateRate(int iDay) {
 /* Fn: 调价
 * Note:
@@ -131,10 +133,11 @@ int cPricer::pseudoPurchase(cServer &server, string serName) {
 	return pseudoServerSet.size() - 1;
 }
 
-void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int iDay) {
+void cPricer::setQuote(cVM &VM, cSSP_Mig_Request &request, cSSP_Mig_Server &server, int iDay) {
 /* Fn: 有限状态机方案
 */
 
+	/*debug*/
 	// ofstream fout;
 	// fout.open("tmpOut.txt", ios::app);
 
@@ -145,6 +148,9 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 	tie(cpuAveRatio, ramAveRatio) = server.getAveResourceRatio(); // 计算占空比(之前所有天的均值，不考虑空SV)
 	double cpuAveRatioIncAll, ramAveRatioIncAll;
 	tie(cpuAveRatioIncAll, ramAveRatioIncAll) = server.getAveResourceRatioIncludeALL();
+	if (iDay == veryEarlyDay && veryEarlyExtended == false) {
+		moreVeryEarlyDay(request); // veryEarlyDay判断顺延
+	}
 
 	for (int iTerm=0; iTerm<request.numEachDay[iDay]; iTerm++) {
 		string vmID = request.info[iDay][iTerm].vmID;
@@ -271,7 +277,7 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 				}			
 			}
 
-			if (iDay < veryEarlyDay)
+			if (iDay <= veryEarlyDay)
 				minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale * 0.7);
 			else
 				minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale);
@@ -346,6 +352,9 @@ void cPricer::setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int
 		/*调价*/
 		updateRate(iDay);
 	}
+
+	if (planB)
+		genRatio = -1;
 
 	/*定价*/
 	setEqualPrice(VM, request, iDay);
@@ -503,4 +512,23 @@ double cPricer::predictCompNextQuote() {
 	}
 
 	return predictedQuote;
+}
+
+void cPricer::moreVeryEarlyDay(cSSP_Mig_Request &request) {
+/* Fn: 初期的天数顺延
+* Note:
+*	- 如果能够读到请求的天数里有一天add请求超过2500，那就延长到这一天 or 最多6%天
+*	- 如果目标顺延日期已经过了，那就不调整veraEarlyDay，但是exteded = true
+*/
+	for (int day = 0; day < request.toDay && day < (int)(request.dayNum * 0.06); day++) {
+
+		if (request.addNum.at(day) > 2500) {
+			if (day > veryEarlyDay) {
+				veryEarlyDay = day;
+			}
+			veryEarlyExtended = true;
+			return;
+		}
+	}
+
 }

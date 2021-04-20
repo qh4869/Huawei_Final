@@ -19,6 +19,10 @@ clock_t TIMEstart, TIMEend;
 
 int main()
 {
+	/*debug*/
+	// ofstream fout;
+	// fout.open("tmpOut.txt", ios::app);
+
 #ifdef LOCAL
 	TIMEstart = clock();
 	ifstream fin;
@@ -65,7 +69,7 @@ int main()
 		/*读取请求部分*/
 		if (!request.readOK)
 			reqDataIn(cin, request, iDay);
-
+		
 		/******* 决赛新增内容 ******/
 		// VM.setQuote(request, iDay);   // 给出我方定价
 		pricer.setQuote(VM, request, server, iDay);

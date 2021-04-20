@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "Server.h"
 #include "VM.h"
-#include "Request.h"
+#include "SSP_Mig_Request.h"
 #include <tuple>
 #include <fstream>
 #include <iostream>
@@ -19,7 +19,7 @@ void dataOut(cServer &server, cVM &VM, const cRequests &request);
 void infoDataIn(istream &cin, cServer &server, cVM &VM, cRequests &request);
 
 // 读取请求部分
-void reqDataIn(istream &cin, cRequests &request, int iDay);
+void reqDataIn(istream &cin, cSSP_Mig_Request &request, int iDay);
 
 // 每天输出
 void dataOutEachDay(int iDay, cServer &server, cVM &VM, cRequests &request);

@@ -6,6 +6,10 @@ void cSSP_Mig_Request::getReqNumEachDay(int iDay) {
 		throw "not readed yet";
 	}
 
+	/*防止重复统计*/
+	addNum.at(iDay) = 0;
+	delNum.at(iDay) = 0;
+
 	for (auto &x : info[iDay]) {
 		if (x.type) // add
 			addNum[iDay]++;

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "SSP_Mig_VM.h"
 #include "SSP_Mig_Request.h"
 #include "SSP_Mig_Server.h"
@@ -25,7 +25,7 @@ public:
 	cPricer() : genRatio(-1), fixRate({0.01, -0.01, 0.0005}) {
 	}
 
-	void setQuote(cVM &VM, cRequests &request, cSSP_Mig_Server &server, int iDay);
+	void setQuote(cVM &VM, cSSP_Mig_Request &request, cSSP_Mig_Server &server, int iDay);
 	void setEqualPrice(cVM &VM, cRequests &request, int iDay);
 	void updateRate(int iDay);
 
@@ -41,8 +41,10 @@ public:
 	/*分段成本*/
 	int earlyDay;
 	int laterDay;
-	int veryEarlyDay;
+	int veryEarlyDay; //这一天会再次确定一下veryEarlyDay需不需要延长，可能延长至add请求特别多的那一天
+	bool veryEarlyExtended = false;
 	void updateDayThreadhold(int dayNum);
+	void moreVeryEarlyDay(cSSP_Mig_Request &request);
 
 	/*预测对手*/
 	vector<double> compDiscount; // 统计对手每天的平均折扣，用于预测
@@ -65,7 +67,7 @@ public:
 	double hardTaxMid = 1.15; 
 	// 后期购买服务器的请求涨价，后期的硬件成本不容易收回来，除了中期开始的硬件成本提价，购买服务器的请求还提价
 	double hardTaxLaterBuy = 3; 
-	double veryEarly = 0.0125; // 非常早期
+	double veryEarly = 0.02; // 非常早期，
 	double early = 0.25; // 前期天数比例
 	double later = 0.75; // 后期天数
 	int arOrder = 5; // AR预测阶数
