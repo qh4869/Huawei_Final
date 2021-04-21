@@ -7,14 +7,10 @@ project("CodeCraft-2021")
 # include路径 (.h路径)
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/lib)
-include_directories(${PROJECT_SOURCE_DIR}/Common)
-include_directories(${PROJECT_SOURCE_DIR}/SSP) # ------目前方案的.h路径------
 
 # 查找当前目录下的所有源文件 (.cpp路径)
 aux_source_directory(. DIR_SRCS)
-aux_source_directory(Common DIR_COMMON)
-aux_source_directory(SSP DIR_OUR_SCHEME) # -----目前方案的.cpp路径------
-set(AllSrcFile ${DIR_SRCS} ${DIR_COMMON} ${DIR_OUR_SCHEME})
+set(AllSrcFile ${DIR_SRCS})
 
 # 设置可执行文件生成路径
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/../bin)
