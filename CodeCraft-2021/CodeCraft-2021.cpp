@@ -78,7 +78,7 @@ int main()
 		pricer.updateCompDiscount(request, VM, iDay); // 统计对手的平均折扣
 
 		/*购买 迁移 部署 删除*/
-		sspEachDay(iDay, server, VM, request);
+		sspEachDay(iDay, server, VM, request, pricer.laterDay);
 
 		/*id 映射*/
 		server.idMappingEachDay(iDay);

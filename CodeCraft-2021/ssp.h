@@ -41,7 +41,7 @@ unordered_map<int, sMyEachServer> recoverDelSerSet(cSSP_Mig_Server &server, cSSP
 
 // subset-sum problem
 void ssp(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request);
-void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request);
+void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request, int laterDay);
 
 // 每天 bestFit部署 + knapSack购买+部署 + 删除
 void dailyPurchaseDeploy(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request, int iDay,

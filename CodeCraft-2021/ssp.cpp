@@ -4,7 +4,7 @@
 int dday;
 bool ompFlag = true;
 
-void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request) {
+void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request, int laterDay) {
 /* Fn: ssp复赛版本
 *
 * Update 03.31
@@ -17,21 +17,31 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	unordered_set<string> dayWorkingVM; // 当天新加入的VM集合(就算del也没从中去掉)
 	
 	int cntMig = 0;
-	int migrateNum = vmNumStart * 30 / 1000;
+
+	int migrateNum;
+	if (iDay == laterDay) {
+		migrateNum = vmNumStart; // 大规模迁移
+	}
+	else {
+		migrateNum = vmNumStart * 30 / 1000;
+	}
+
 	unordered_map<string ,int> dayWorkingMap;
-	
-	// massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
 
 	dailyPurchaseDeploy(server, VM, request, iDay, delSerSet, dayWorkingVM);
-
-	// dailyMigrate(vmNumStart, delSerSet, dayWorkingVM, iDay, server, VM, request);
 	
 
 	for (auto &x : dayWorkingVM) {
 		dayWorkingMap.insert({x, 1});
 	}
-	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
-	//transferSingleVm(server, VM, cntMig, migrateNum, iDay, server.args, delSerSet, dayWorkingMap);
+
+	if (iDay == laterDay) { // 大量迁移
+		for (int k = 0; k < 8; k++) {
+			massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
+		}
+	}
+	else
+		massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
 
 	/*更新占空比*/
 	server.updateResourceRatio();
