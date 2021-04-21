@@ -67,8 +67,8 @@ public:
 	double hardTaxMid = 1.2; 
 	// 后期购买服务器的请求涨价，后期的硬件成本不容易收回来，除了中期开始的硬件成本提价，购买服务器的请求还提价
 	double hardTaxLaterBuy = 2.5; 
-	double veryEarly = 1; // 非常早期，
-	double early = 0.3; // 前期天数比例
+	double veryEarly = 0.05; // 非常早期，
+	double early = 0.25; // 前期天数比例
 	double later = 0.75; // 后期天数
 	int arOrder = 5; // AR预测阶数
 	int validDays = 10; // 只用最多前二十天的数据来训练（担心数据不平稳影响结果）
