@@ -58,16 +58,16 @@ public:
 	  2、估计了个成本后，如果对手迅速降价，导致自己的服务器占空比迅速降低（占空比分布不平稳），可能收不回成本，考虑这一点成本因子稍微大一丢丢比较好
 	  3、Plan B: 调参卡不赔钱的成本价出价，完全不管别的因素
 	  4、Plan A: 尽可能准确估价，调价，预测对手，分段成本分摊等各种方法*/
-	double estCostScale = 0.92; 
+	double estCostScale = 0.98; 
 	// 我也不知道为啥：最前期往已购买的服务器里装 成本会高估 - >然后进入前期 已有的服务器越多 估算的成本越低 (这个是应该的)
-	double disCountVeryEarly = 0.7;
+	double disCountVeryEarly = 0.8;
 	// 早期硬件成本不调整
 	double hardTaxEarly = 1;
 	// 中期硬件成本提价 防止因为后期占空比较小导致硬件成本收不回来(占空比估计后期偏高),后期占空比的影响对前期购买的服务器影响较小，所以不提价
-	double hardTaxMid = 1.15; 
+	double hardTaxMid = 1.2; 
 	// 后期购买服务器的请求涨价，后期的硬件成本不容易收回来，除了中期开始的硬件成本提价，购买服务器的请求还提价
 	double hardTaxLaterBuy = 2.5; 
-	double veryEarly = 0.02; // 非常早期，
+	double veryEarly = 0.1; // 非常早期，
 	double early = 0.25; // 前期天数比例
 	double later = 0.75; // 后期天数
 	int arOrder = 5; // AR预测阶数
