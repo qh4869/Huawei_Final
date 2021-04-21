@@ -284,7 +284,7 @@ void cPricer::setQuote(cVM &VM, cSSP_Mig_Request &request, cSSP_Mig_Server &serv
 		}
 	}
 
-	if (iDay == 0 || iDay <= veryEarlyDay) { // 初期争夺用户时期完全按照最低价出价
+	if (iDay == 0) { // 初期争夺用户时期完全按照最低价出价
 		genRatio = -1; // -1是个标记，即按照minRatio定价
 	}
 	else { // 之后的每一天要调价
