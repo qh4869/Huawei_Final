@@ -1,5 +1,6 @@
 ﻿#include "Pricer.h"
 #include <fstream>
+#include <cstdlib>
 
 bool planB = false;
 
@@ -360,7 +361,7 @@ void cPricer::setQuote(cVM &VM, cSSP_Mig_Request &request, cSSP_Mig_Server &serv
 	setEqualPrice(VM, request, iDay);
 }
 
-void cPricer::setEqualPrice(cVM &VM, cRequests &request, int iDay) {
+void cPricer::setEqualPrice(cVM &VM, cSSP_Mig_Request &request, int iDay) {
 /* Fn: 出价
 *
 * Note:
@@ -389,7 +390,19 @@ void cPricer::setEqualPrice(cVM &VM, cRequests &request, int iDay) {
 						dayQuote.insert({req.vmID, req.quote});
 					}
 					else { // genRatio >= minRatio.at(cnt) && genRatio <= maxRatio
-						dayQuote.insert({req.vmID, req.quote * genRatio});
+						if (request.addNum.at(iDay) > 500 && genRatio < minRatio.at(cnt) * 1.05) {
+							double roll = (double)rand() / RAND_MAX;
+							if (roll < 0.5) { // 50%的概率不出这么低的价
+								double newRatio = minRatio.at(cnt) * 1.025;
+								if (newRatio > maxRatio)
+									dayQuote.insert({req.vmID, req.quote});
+								else
+									dayQuote.insert({req.vmID, req.quote * newRatio});
+							}
+							else {
+								dayQuote.insert({req.vmID, req.quote * genRatio});
+							}
+						}
 					}
 				}
 			}
