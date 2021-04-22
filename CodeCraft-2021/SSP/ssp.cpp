@@ -33,10 +33,11 @@ void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Req
 	massMigrate(server, VM, iDay, dayWorkingMap, delSerSet, cntMig, migrateNum, server.args);
 	//transferSingleVm(server, VM, cntMig, migrateNum, iDay, server.args, delSerSet, dayWorkingMap);
 
-	/*更新占空比*/
-	server.updateResourceRatio();
-	server.updateResourceRatioIncludeALL();
+	/*决赛新增内容*/
+	server.setSourceEmptyRatio(iDay);
+
 }
+
 
 tuple<string, queue<int>> knapSack(const cSSP_Mig_Server &server, cSSP_Mig_VM &VM, \
 	vector<pair<string, string>> &curSet, int iDay)
@@ -52,7 +53,6 @@ tuple<string, queue<int>> knapSack(const cSSP_Mig_Server &server, cSSP_Mig_VM &V
 
 	int dayNum = server.buyRecord.size(); // 总天数
 
-	/*2个线程*/
 	double utility_[2] = { 0 };
 	string bestSer[2];
 	queue<int> bestPath[2];
@@ -234,7 +234,6 @@ void packAndDeploy(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, vector<pair<string,
 	}
 }
 
-
 cyt::sServerItem bestFit(cSSP_Mig_Server &server, sVmItem &requestVM) {
 	/* Fn: cyt写的，best fit，源程序在cyt分支的tools.cpp中
 	*/
@@ -258,7 +257,7 @@ cyt::sServerItem bestFit(cSSP_Mig_Server &server, sVmItem &requestVM) {
 				if (tempServer.aIdleCPU >= requestVM.needCPU && tempServer.aIdleRAM >= requestVM.needRAM) {    // a节点
 					int restCPU = tempServer.aIdleCPU - requestVM.needCPU;
 					int restRAM = tempServer.aIdleRAM - requestVM.needRAM;
-					int tempValue = restCPU + restRAM + abs(restCPU - server.gBeta * restRAM) * server.gGamma;
+					int tempValue = int(restCPU + restRAM + abs(restCPU - server.gBeta * restRAM) * server.gGamma);
 					if (tempValue < minValue[omp_get_thread_num()]) {
 						minValue[omp_get_thread_num()] = tempValue;
 						ompServer[omp_get_thread_num()].energyCost = -1;
@@ -271,7 +270,7 @@ cyt::sServerItem bestFit(cSSP_Mig_Server &server, sVmItem &requestVM) {
 				if (tempServer.bIdleCPU >= requestVM.needCPU && tempServer.bIdleRAM >= requestVM.needRAM) {  // b 节点
 					int restCPU = tempServer.bIdleCPU - requestVM.needCPU;
 					int restRAM = tempServer.bIdleRAM - requestVM.needRAM;
-					int tempValue = restCPU + restRAM + abs(restCPU - server.gBeta * restRAM) * server.gGamma;
+					int tempValue = int(restCPU + restRAM + abs(restCPU - server.gBeta * restRAM) * server.gGamma);
 					if (tempValue < minValue[omp_get_thread_num()]) {
 						minValue[omp_get_thread_num()] = tempValue;
 						ompServer[omp_get_thread_num()].energyCost = -1;
@@ -286,7 +285,7 @@ cyt::sServerItem bestFit(cSSP_Mig_Server &server, sVmItem &requestVM) {
 					&& tempServer.bIdleCPU >= requestVM.needCPU / 2 && tempServer.bIdleRAM >= requestVM.needRAM / 2) {
 					int restCPU = tempServer.aIdleCPU + tempServer.bIdleCPU - requestVM.needCPU;
 					int restRAM = tempServer.aIdleRAM + tempServer.bIdleRAM - requestVM.needRAM;
-					int tempValue = restCPU + restRAM + abs(restCPU - server.gBeta * restRAM) * server.gGamma;
+					int tempValue = int(restCPU + restRAM + abs(restCPU - server.gBeta * restRAM) * server.gGamma);
 					if (tempValue < minValue[omp_get_thread_num()]) {
 						minValue[omp_get_thread_num()] = tempValue;
 						ompServer[omp_get_thread_num()].energyCost = -1;
@@ -400,7 +399,7 @@ void dailyPurchaseDeploy(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &re
 					}
 				}
 				if (flag == false) {
-					cout << "不能删除不存在的虚拟机2" << endl;
+					//cout << "不能删除不存在的虚拟机2" << endl;
 				}
 			}
 		}

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "io.h"
 #include "VM.h"
 // #include "tools.h"
@@ -48,23 +48,3 @@ cyt::sServerItem chooseEmptySer(cSSP_Mig_Server &server, int needCPUa, int needC
 cyt::sServerItem chooseNoEmptySer(cSSP_Mig_Server &server, int needCPUa, int needCPUb, int needRAMa, int needRAMb,
 	vector<double> &args, unordered_map<int, sMyEachServer> &delSerSet, int outSerID,
 	unordered_set<int> outSerIDSet);
-
-void transferOneVm(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int whichDay, string vmID, int inSerID,
-	unordered_map<string, int> &dayWorkingVM, vector<double> &args, int outSerID,
-	unordered_map<int, sMyEachServer> &delSerSet);
-
-// 迁移单节点虚拟机
-void transferOneVm(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int whichDay, string vmID, int inSerID,
-	unordered_map<string, int> &dayWorkingVM, vector<double> &args, int outSerID,
-	unordered_map<int, sMyEachServer> &delSerSet, bool node);
-
-void tryToSwapServer(cSSP_Mig_Server &server, sVmItem &requestVM, cSSP_Mig_VM &VM, int outSerID, int whichDay,
-	unordered_map<int, sMyEachServer> &delSerSet, vector<double> &args, string vmID, sVmItem &rRequestVM,
-	unordered_map<string, int> &dayWorkingVM);
-
-cyt::sServerItem chooseRelayServer(cSSP_Mig_Server &server, sVmItem &requestVM, cSSP_Mig_VM &VM, int outSerID,
-	unordered_map<int, sMyEachServer> &delSerSet, vector<double> &args, string vmID, int otherSerID);
-
-void transferSingleVm(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, int &cntMig, int migrateNum, int whichDay,
-	vector<double> &args, unordered_map<int, sMyEachServer> &delSerSet,
-	unordered_map<string, int> &dayWorkingVM);

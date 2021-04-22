@@ -3,6 +3,7 @@
 #include <unordered_set>
 #include "Server.h"
 #include <iostream>
+#include <fstream>
 #include "globalHeader.h"
 using namespace std;
 
@@ -38,6 +39,13 @@ struct sPreDeployItem {
 	string vmName;
 };
 
+struct sExtraVmInfo {
+	int lifetime;     // 寿命
+	int uQuote;       // 用户报价
+	int buyDay;       // 购买时间
+	int cost;   // 这台虚拟机我们给出的成本价
+};
+
 class cVM {
 public:
 	int vmTypeNum;
@@ -71,9 +79,18 @@ public:
 	vector<unordered_map<string, int>> quote;   // 我方给出的虚拟机报价 : vmID->price
 	vector<unordered_map<string, int>> compQuote; // 对方给出的虚拟机报价 : vmID->price
 	unordered_set<string> lostVmSet;   // 失去的虚拟机集合，存放vmID(记得添加头文件)
-	void updateRequest(int iDay, cRequests &request);   // 根据报价结果更新request.info
-	void setQuote(cRequests &request, int iDay);   // 给出我方的报价
+	void updateRequest(int iDay, cRequests &request, istream &cin);   // 根据报价结果更新request.info
 	vector<int> winNum; // 博弈成功次数
 	vector<int> lossNum; // 博弈失败次数
+
+	unordered_map<string, sExtraVmInfo> extraVmInfo;  // 存放用户的报价和vm寿命(存放全部的)
+	void getExtraInfo(int iDay, cRequests &request);  // 获取额外信息
+	vector<unordered_set<string>> ownedVmSet;   // 抢到的虚拟机集合
+
+	double analyseQuote(cRequests &request, int iDay);   // 分析当天我方出价和对方出价
+
+	double cytRatio = 1.0;
+	int lowCnt = 0;    // 一直处于低价的计数（低于cost的70%）
+	bool isAutoRise = false;   // 自动涨价   
 
 };

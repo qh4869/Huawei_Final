@@ -3,7 +3,7 @@
 #include "SSP_Mig_VM.h"
 #include "SSP_Mig_Request.h"
 #include "ssp.h"
-#include "Pricer.h"
+#include "game.h"
 // #include "FF_Server.h"
 // #include "firstFit.h"
 #include <iostream>
@@ -19,21 +19,16 @@ clock_t TIMEstart, TIMEend;
 
 int main()
 {
-	/*debug*/
-	// ofstream fout;
-	// fout.open("tmpOut.txt", ios::app);
-
 #ifdef LOCAL
 	TIMEstart = clock();
 	ifstream fin;
-	fin.open("../CodeCraft-2021/training-1.txt");
+	fin.open("game.txt");
 	cin.rdbuf(fin.rdbuf());
 #endif
-
+	
 	cSSP_Mig_Server server;
 	cSSP_Mig_VM VM;
 	cSSP_Mig_Request request;
-	cPricer pricer; // 小数点多几位，不想跟对手参数撞上而平局
 
 	/*自定义参数*/ // 加不加锁
 	server.ksSize = 4;
@@ -56,9 +51,7 @@ int main()
 	/*初始化，排序等操作*/
 	request.initReqNum(); // 需要统计每天的请求数
 	server.genInfoV();// 生成server.infoV，向量，为了写多线程
-	server.rankServerByPrice(); // 可购买的服务器排序
 	server.getMeanPerCost();
-	pricer.updateDayThreadhold(request.dayNum);
 
 	for (int iDay = 0; iDay < request.dayNum; iDay++) {
 #ifdef LOCAL
@@ -69,19 +62,39 @@ int main()
 		/*读取请求部分*/
 		if (!request.readOK)
 			reqDataIn(cin, request, iDay);
-		
+
+#ifdef GAME
+		ofstream fout;
+		fout.open("game.txt", ios::app);
+		reqDataOut(request, fout, iDay);
+#endif // GAME
+
+		/*获取虚拟机的额外信息*/
+		VM.getExtraInfo(iDay, request);
+
 		/******* 决赛新增内容 ******/
-		// VM.setQuote(request, iDay);   // 给出我方定价
-		pricer.setQuote(VM, request, server, iDay);
+		quoteStrategy(iDay, request, VM, server);
 		dataOutQuote(iDay, VM, request);  // 输出我方定价
-		VM.updateRequest(iDay, request);  
-		pricer.updateCompDiscount(request, VM, iDay); // 统计对手的平均折扣
+		VM.updateRequest(iDay, request, cin);  // 这里删除拿不到的请求
+
+		/*请求排序*/
+		vector<sRequestItem> priRequest = request.info[iDay];
+		orderRequest(VM, request, iDay);
 
 		/*购买 迁移 部署 删除*/
 		sspEachDay(iDay, server, VM, request);
 
+		/*分析对手出价*/
+		VM.analyseQuote(request, iDay);
+
+		/*服务器的额外信息*/
+		server.serExtraServerInfo(iDay);
+
 		/*id 映射*/
 		server.idMappingEachDay(iDay);
+
+		/*恢复请求原始排序*/
+		request.info[iDay] = priRequest;
 
 		/*每日输出*/
 		dataOutEachDay(iDay, server, VM, request);

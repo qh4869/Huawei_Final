@@ -8,7 +8,6 @@
 #include "Request.h"
 #include "globalHeader.h"
 #include <map>
-#include <numeric>
 using namespace std;
 
 struct sServerItem {
@@ -24,6 +23,10 @@ struct sMyEachServer {
 	int bIdleCPU;
 	int aIdleRAM;
 	int bIdleRAM;
+};
+
+struct sExtraServerInfo {
+	int buyDay;   // 服务器购买的时间
 };
 
 class cServer {
@@ -43,6 +46,7 @@ public:
 
 	/*id 映射*/
 	unordered_map<int, int> idMap; // 新旧id的映射关系
+
 	/*每日id映射*/
 	int startID = 0; // 每天服务器起始编号
 	void idMappingEachDay(int iDay);
@@ -54,18 +58,18 @@ public:
 	void energyCostEachDay();
 	int getTotalCost();
 
+	/*决赛新增内容*/
+	vector<pair<double, double>> allSoruceRatio;      // 考虑非空和空的资源比率 (CPU, RAM)
+	vector<pair<double, double>> noEmptySourceRatio;  // 只考虑非空的资源比率 (CPU, RAM)
+	void setSourceEmptyRatio(int iDay);   // 计算某一天的资源比例
+
 	double CPUHardCost;    // 单个CPU的硬件成本
 	double RAMHardCost;    // 单个RAM的硬件成本
 	double CPUEnergyCost;  // 单个CPU的能耗成本
 	double RAMEnergyCost;  // 单个RAM的能耗成本
 	void getMeanPerCost();  // 获取平均的消耗
 
-	vector<double> cpuRatio; // 每天的cpu占比 <每天部署迁移之后更新>，不考虑空的服务器
-	vector<double> ramRatio;
-	vector<double> cpuRatioIncAll; // 考虑空的服务器
-	vector<double> ramRatioIncAll;
-	void updateResourceRatio();
-	tuple<double, double> getAveResourceRatio();
-	void updateResourceRatioIncludeALL();
-	tuple<double, double> getAveResourceRatioIncludeALL();
+	vector<sExtraServerInfo> extraServerInfo;   // 已购买服务器的额外信息
+	void serExtraServerInfo(int iDay);    // 设置服务器每天可分配的盈利
+
 };

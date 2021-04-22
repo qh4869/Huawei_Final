@@ -40,7 +40,6 @@ unordered_map<int, sMyEachServer> recoverDelSerSet(cSSP_Mig_Server &server, cSSP
 /*---------------cyt-------------*/
 
 // subset-sum problem
-void ssp(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cRequests &request);
 void sspEachDay(int iDay, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, cSSP_Mig_Request &request);
 
 // 每天 bestFit部署 + knapSack购买+部署 + 删除
@@ -62,25 +61,9 @@ tuple<string, queue<int>> knapSack(const cSSP_Mig_Server &server, cSSP_Mig_VM &V
 tuple<int, queue<int>> dp(int N, int aIdleCPU, int aIdleRAM, int bIdleCPU, int bIdleRAM,
 	vector<pair<string, string>> &curSet, cSSP_Mig_VM &VM); // 计算每台服务器的背包问题
 
-/*迁移挑选服务器*/
-cyt::sServerItem bestFitMigrate(cSSP_Mig_Server &server, sVmItem &requestVM, cSSP_Mig_VM &VM, int index,
-	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
-int srchInVmSourceDouble(cSSP_Mig_Server &server, sVmItem &reqeustVM, cSSP_Mig_VM &VM, int index,
-	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
-tuple<int, bool> srchInVmSourceSingle(cSSP_Mig_Server &server, sVmItem &reqeustVM, cSSP_Mig_VM &VM, int index,
-	unordered_map<int, sMyEachServer> &delSerSet, string vmID);
+
 
 /*Mig中提高运行速度*/
-int getGoal(cSSP_Mig_Server &server, int SerID, bool isDouble, bool node, int needCPU, int needRAM);
-int getSelfGoal(cSSP_Mig_Server &server, int SerID, bool isDouble, bool node);
-bool quickFindDouble(cyt::sServerItem &myServer, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, string vmName, string vmID, int outSerID);
-bool quickFindSingle(cyt::sServerItem &myServer, cSSP_Mig_Server &server, cSSP_Mig_VM &VM, string vmName, string vmID, 
-	int outSerID, bool outNode);
-tuple<cyt::sServerItem, int, bool> findMigInSer(cSSP_Mig_Server &server, sVmItem &requestVM, 
-	unordered_map<int, sMyEachServer> &delSerSet, bool isDouble, bool inNode, int outSerID, bool outNode);
-void updateGoalSaver(cSSP_Mig_Server &server, cSSP_Mig_VM &VM, unordered_map<int, sMyEachServer> &delSerSet, 
-	sVmItem &requestVM, string vmName, bool isDouble, int outSerID, bool outNode, 
-	cyt::sServerItem &betServer, int betValue, bool findFlag);
 map<int, map<int, map<int, map<int, vector<int>>>>>::iterator greaterEqu1(map<int, 
 	map<int, map<int, map<int, vector<int>>>>> &set, int val);
 map<int, map<int, map<int, vector<int>>>>::iterator greaterEqu2(map<int, map<int, 

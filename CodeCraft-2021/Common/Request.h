@@ -25,4 +25,5 @@ public:
 	int dayReadable; // 可读取数据的天数 [K]
 	int toDay = 0; // 当前已经读到第几天
 	bool readOK = false; // 标记已经读完所有天数的数据
+
 };

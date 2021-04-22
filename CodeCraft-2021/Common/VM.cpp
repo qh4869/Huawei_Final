@@ -277,11 +277,12 @@ void cVM::deleteVM(string vmID, cServer& server) {
 }
 
 /******** 决赛新增内容 *******/
-void cVM::updateRequest(int iDay, cRequests &request) {
+void cVM::updateRequest(int iDay, cRequests &request, istream &cin) {
 
 	string inputStr;
 	vector<sRequestItem> tempItem = request.info[iDay];
 	unordered_map<string, int> dayCompQuote;
+	unordered_set<string> ownedVm;   // 得到的虚拟机
 	int count = 0;
 	winNum.push_back(0);
 	lossNum.push_back(0);
@@ -291,6 +292,7 @@ void cVM::updateRequest(int iDay, cRequests &request) {
 			cin >> inputStr;
 			inputStr.erase(inputStr.begin()); // 删除左括号
 			inputStr.erase(inputStr.end() - 1); // 逗号
+			string getVmFlag = inputStr;
 			if (inputStr == "0") {   // 没有抢到该虚拟机
 				request.info[iDay].erase(request.info[iDay].begin() + count);  // 删除
 				request.numEachDay[iDay]--;  // 当天请求数-1
@@ -300,11 +302,19 @@ void cVM::updateRequest(int iDay, cRequests &request) {
 			else  { // 抢到该虚拟机
 				count++;
 				winNum.at(iDay)++;
+				ownedVm.insert(req.vmID);
 			}
 			/* 获取对手报价 */
 			cin >> inputStr;  
 			inputStr.erase(inputStr.end() - 1); // 逗号
 			dayCompQuote.insert({ req.vmID, atoi(inputStr.c_str()) });
+
+#ifdef GAME
+			ofstream fout;
+			fout.open("game.txt", ios::app);
+			fout << "(" << getVmFlag << ", " << inputStr << ")" << endl;
+#endif // GAME
+
 		}
 		else {  // delete
 			if (lostVmSet.count(req.vmID) == 1) {  // 没获得该虚拟机，不需要删除操作
@@ -317,14 +327,98 @@ void cVM::updateRequest(int iDay, cRequests &request) {
 
 	}
 	compQuote.push_back(dayCompQuote);
+	ownedVmSet.push_back(ownedVm);
 }
 
-void cVM::setQuote(cRequests &request, int iDay) {
-	unordered_map<string, int> dayQuote;  // 当天的报价
-	double ratio = 0.8;  // 折扣
+void cVM::getExtraInfo(int iDay, cRequests &request) {
 	for (auto &req : request.info[iDay]) {
-		if (req.type)  // true : add
-			dayQuote.insert({ req.vmID, req.quote * ratio});
+		if (!req.type)   // 删除操作不必理会
+			continue;
+		sExtraVmInfo extraInfo;
+		extraInfo.lifetime = req.lifetime;
+		extraInfo.uQuote = req.quote;
+		extraInfo.buyDay = iDay;
+		extraVmInfo.insert({ req.vmID, extraInfo });
 	}
-	quote.push_back(dayQuote);
+}
+
+double cVM::analyseQuote(cRequests &request, int iDay) {
+
+	string vmID;
+	double ratioSum = 0.0, lowerRatio = 10000000.0;   // 对方出价低时，我方是对方的百分之几
+	int count = 0;
+	int totalQuote = 0, higherQuote = 0;  // 我方总出价以及高的出价
+
+	for (auto &ite : quote[iDay]) {
+
+		vmID = ite.first;
+		if (quote[iDay][vmID] > 0) 
+			totalQuote += quote[iDay][vmID];   // 统计我方总出价（不考虑-1）
+
+		// 如果放弃或者对方出价太低，则此次请求不考虑
+		if (quote[iDay][vmID] == -1 || compQuote[iDay][vmID] == -1 ||  
+			compQuote[iDay][vmID] < extraVmInfo[vmID].cost * 0.5)
+			continue;
+
+		if (quote[iDay][vmID] >= compQuote[iDay][vmID]) { 	// 对方出价比我们低
+			ratioSum += (double)compQuote[iDay][vmID] / quote[iDay][vmID];
+			higherQuote += quote[iDay][vmID];
+			count++;
+		}
+		else {    // 我方出价比较低
+			double tempRatio = (double)compQuote[iDay][vmID] / quote[iDay][vmID];
+			if (tempRatio < lowerRatio) {   // 找到最小的比例
+				lowerRatio = tempRatio;
+			}
+		}
+
+	}
+
+	if ((double)higherQuote / totalQuote < 0.2)  // 少的钱不多，尝试缓慢增长
+		count = 0;
+
+	double tempRatio;
+	if (count > 0) {
+		tempRatio = ratioSum / count;   // 平均百分比
+		tempRatio = 1 - (double)higherQuote / totalQuote + (double)higherQuote / totalQuote * tempRatio;
+		cytRatio = cytRatio * tempRatio;
+		if (cytRatio <= 0.75 && iDay > request.dayNum * 0.1)   // 前期与对手内卷，中后期就不卷了
+			cytRatio = 1.2;
+	}
+	else if (count == 0) {
+
+		//lowerRatio *= 1.1;   // 稍微多增加一点
+		if (lowerRatio > 1.5)
+			tempRatio = 1.5;   // 避免一次性增长太多
+		else
+			tempRatio = lowerRatio;
+		cytRatio *= tempRatio;
+	}
+
+	if (cytRatio <= 0.9)   // 对手给的定价较低，有可能造成负收益
+		lowCnt++;
+	else
+		lowCnt = 0;
+
+	// 表示此时已经连续N轮处于低价状态，极大概率是内卷，主动涨价
+	if (lowCnt >= 3) {
+		cytRatio = 1.2;  // 表示涨价到成本价的1.2倍
+		lowCnt = 0;
+		isAutoRise = true;   // 表示已经进入到主动涨价的场景
+	}
+
+	if (isAutoRise) {
+		if (cytRatio <= 0.9) {  // 我方涨价之后，对方还是处于低价状态，那我们就继续出高价
+			cytRatio = 1;
+			isAutoRise = true;
+			lowCnt = 0;
+		}
+		else {   // 对方处的价格已经达到我们可以接受的范围，和他卷
+			isAutoRise = false;
+			lowCnt = 0;
+		}
+	}
+
+	return cytRatio;
+
 }
