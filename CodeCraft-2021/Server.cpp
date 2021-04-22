@@ -85,36 +85,62 @@ int cServer::getTotalCost() {
 
 void cServer::getMeanPerCost() {
 
-	double totalCPU_1 = 0, totalRAM_1 = 0, totalEnergyCost_1 = 0, totalHardCost_1 = 0;
-	double totalCPU_2 = 0, totalRAM_2 = 0, totalEnergyCost_2 = 0, totalHardCost_2 = 0;
+	vector<vector<double>> A(info.size(), vector<double>(2));
+	vector<double> b_hard(info.size());
+	vector<double> b_eng(info.size());
 
-	sServerItem serInfo;
-	int count = 0;
-	for (auto &ite : info) {
-		serInfo = ite.second;
-		if (count % 2 == 0) {
-			totalCPU_1 += serInfo.totalCPU;
-			totalRAM_1 += serInfo.totalRAM;
-			totalEnergyCost_1 += serInfo.energyCost;
-			totalHardCost_1 += serInfo.hardCost;
-		}
-		else {
-			totalCPU_2 += serInfo.totalCPU;
-			totalRAM_2 += serInfo.totalRAM;
-			totalEnergyCost_2 += serInfo.energyCost;
-			totalHardCost_2 += serInfo.hardCost;
-		}
-		count++;
+	/*获取A[N*2] b[N*1]的值*/
+	int cnt = 0;
+	for (auto &ser : info) {
+		sServerItem serInfo = ser.second;
+		A.at(cnt).at(0) = serInfo.totalCPU;
+		A.at(cnt).at(1) = serInfo.totalRAM;
+		b_hard.at(cnt) = serInfo.hardCost;
+		b_eng.at(cnt) = serInfo.energyCost;
+		cnt++;
 	}
 
-	RAMHardCost = (totalHardCost_1 * totalCPU_2 - totalHardCost_2 * totalCPU_1) /
-		(totalRAM_1 * totalCPU_2 - totalRAM_2 * totalCPU_1);
-	CPUHardCost = (totalHardCost_1 * totalRAM_2 - totalHardCost_2 * totalRAM_1) /
-		(totalCPU_1 * totalRAM_2 - totalCPU_2 * totalRAM_1);
-	RAMEnergyCost = (totalEnergyCost_1 * totalCPU_2 - totalEnergyCost_2 * totalCPU_1) /
-		(totalRAM_1 * totalCPU_2 - totalRAM_2 * totalCPU_1);
-	CPUEnergyCost = (totalEnergyCost_1 * totalRAM_2 - totalEnergyCost_2 * totalRAM_1) /
-		(totalCPU_1 * totalRAM_2 - totalCPU_2 * totalRAM_1);
+	/* 计算A^T*A [2*2](转置)*/
+	vector<vector<double>> prod{{0,0}, {0,0}};
+	for(int iSV = 0; iSV < (int)info.size(); iSV++) {
+		prod.at(0).at(0) += A.at(iSV).at(0) * A.at(iSV).at(0);
+		prod.at(1).at(1) += A.at(iSV).at(1) * A.at(iSV).at(1);
+		prod.at(0).at(1) += A.at(iSV).at(0) * A.at(iSV).at(1);
+		prod.at(1).at(0) += A.at(iSV).at(1) * A.at(iSV).at(0);
+	}
+
+	/* 计算 (A^T*A)^(-1) [2*2](逆矩阵)*/
+	double denom = prod.at(0).at(0) * prod.at(1).at(1) - prod.at(0).at(1) * prod.at(1).at(0); // 分母
+	vector<vector<double>> inv(2, vector<double>(2));
+	inv.at(0).at(0) = prod.at(1).at(1) / denom;
+	inv.at(0).at(1) = -1 * prod.at(0).at(1) / denom;
+	inv.at(1).at(0) = -1 * prod.at(1).at(0) / denom;
+	inv.at(1).at(1) = prod.at(0).at(0) / denom;
+
+	/*计算A的左伪逆 (A^T*A)^(-1)*A^T [2*N]*/
+	vector<vector<double>> pseudoInv(2, vector<double>(info.size()));
+	for (int iSV = 0; iSV < (int)info.size(); iSV++) {
+		pseudoInv.at(0).at(iSV) = inv.at(0).at(0) * A.at(iSV).at(0) + inv.at(0).at(1) * A.at(iSV).at(1); // 第一行
+		pseudoInv.at(1).at(iSV) = inv.at(1).at(0) * A.at(iSV).at(0) + inv.at(1).at(1) * A.at(iSV).at(1); // 第二行
+	}
+
+	/*计算方程组的解 (A^T*A)^(-1)*A^T*b */
+	double cpuHardVal = 0;
+	double ramHardVal = 0;
+	double cpuEngVal = 0;
+	double ramEngVal = 0;
+	for (int iSV = 0; iSV < (int)info.size(); iSV++) {
+		cpuHardVal += pseudoInv.at(0).at(iSV) * b_hard.at(iSV);
+		ramHardVal += pseudoInv.at(1).at(iSV) * b_hard.at(iSV);
+		cpuEngVal += pseudoInv.at(0).at(iSV) * b_eng.at(iSV);
+		ramEngVal += pseudoInv.at(1).at(iSV) * b_eng.at(iSV);
+	}
+
+	// Return
+	RAMHardCost = ramHardVal;
+	CPUHardCost = cpuHardVal;
+	RAMEnergyCost = ramEngVal;
+	CPUEnergyCost = cpuEngVal;
 
 }
 
