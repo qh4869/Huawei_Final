@@ -520,17 +520,17 @@ void cPricer::moreVeryEarlyDay(cSSP_Mig_Request &request) {
 *	- 如果能够读到请求的天数里有一天add请求超过2500，那就延长到这一天 or 最多6%天
 *	- 如果目标顺延日期已经过了，那就不调整veraEarlyDay，但是exteded = true
 */
-	for (int day = veryEarlyDay + 1; day < request.toDay && day < (int)(request.dayNum * 0.75); day++) {
+	for (int day = veryEarlyDay + 1; day < request.toDay && day < (int)(request.dayNum * later); day++) {
 
 		if (request.addNum.at(day) > 2500) {
-			disCountVeryEarly += 0.01;
-			if (disCountVeryEarly > 0.95)
-				disCountVeryEarly = 0.95;
+			disCountVeryEarly += disCountStep;
+			if (disCountVeryEarly > disCountMax)
+				disCountVeryEarly = disCountMax;
 
 			if (day > veryEarlyDay) {
 				veryEarlyDay = day;
 			}
-			if (veryEarlyDay > (int)(request.dayNum * 0.75)) // 多次延长，直到这个天数
+			if (veryEarlyDay > (int)(request.dayNum * later)) // 多次延长，直到这个天数
 				veryEarlyExtended = true;
 			return; 
 		}
