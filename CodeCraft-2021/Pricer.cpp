@@ -523,6 +523,10 @@ void cPricer::moreVeryEarlyDay(cSSP_Mig_Request &request) {
 	for (int day = veryEarlyDay + 1; day < request.toDay && day < (int)(request.dayNum * 0.75); day++) {
 
 		if (request.addNum.at(day) > 2500) {
+			disCountVeryEarly += 0.01;
+			if (disCountVeryEarly > 0.95)
+				disCountVeryEarly = 0.95;
+
 			if (day > veryEarlyDay) {
 				veryEarlyDay = day;
 			}
