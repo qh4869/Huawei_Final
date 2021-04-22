@@ -395,7 +395,7 @@ double cVM::analyseQuote(cRequests &request, int iDay) {
 		cytRatio *= tempRatio;
 	}
 
-	if (cytRatio <= 0.9)   // 对手给的定价较低，有可能造成负收益
+	if (cytRatio <= 0.88)   // 对手给的定价较低，有可能造成负收益
 		lowCnt++;
 	else
 		lowCnt = 0;
@@ -408,7 +408,7 @@ double cVM::analyseQuote(cRequests &request, int iDay) {
 	}
 
 	if (isAutoRise) {
-		if (cytRatio <= 0.9) {  // 我方涨价之后，对方还是处于低价状态，那我们就继续出高价
+		if (cytRatio <= 0.88) {  // 我方涨价之后，对方还是处于低价状态，那我们就继续出高价
 			cytRatio = 1;
 			isAutoRise = true;
 			lowCnt = 0;

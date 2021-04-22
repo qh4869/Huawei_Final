@@ -51,7 +51,7 @@ void quoteStrategy(int iDay, cSSP_Mig_Request &request, cSSP_Mig_VM &VM, cSSP_Mi
 		VM.extraVmInfo[vmID].cost = cost;    // 保存这台虚拟机的成本价
 		quote = getQuote(VM, uQuote, cost, iDay);
 		//////////////////////////////////////////////////////////
-		if (request.info[iDay].size() > 300 && VM.cytRatio < 0.96) {   // 当天的请求实在太多，并且给的折扣太低
+		if (request.info[iDay].size() > 300 && VM.cytRatio < 0.963) {   // 当天的请求实在太多，并且给的折扣太低
 			double tempRatio = rand() % 100 / 101.0;
 			if (tempRatio <= 0.5) {
 				quote = cost * 0.98;
