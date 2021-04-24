@@ -64,8 +64,8 @@ public:
 	  4、Plan A: 尽可能准确估价，调价，预测对手，分段成本分摊等各种方法*/
 	double estCostScale = 0.9; 
 	// 我也不知道为啥：最前期往已购买的服务器里装 成本会高估 - >然后进入前期 已有的服务器越多 估算的成本越低 (这个是应该的)
-	double disCountVeryEarly = 0.82;
-	double disCountStep = 0.01; // 每次延长veryEarlyDay的时候，折扣减少这个步长
+	double disCountVeryEarly = 0.85;
+	double disCountStep = 0.005; // 每次延长veryEarlyDay的时候，折扣减少这个步长
 	double disCountMax = 0.95;
 	// 早期硬件成本不调整
 	double hardTaxEarly = 1;
