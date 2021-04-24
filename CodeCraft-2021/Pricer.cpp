@@ -403,6 +403,8 @@ void cPricer::setEqualPrice(cVM &VM, cSSP_Mig_Request &request, int iDay) {
 								dayQuote.insert({req.vmID, req.quote * genRatio});
 							}
 						}
+						else
+							dayQuote.insert({req.vmID, req.quote * genRatio});
 					}
 				}
 			}
