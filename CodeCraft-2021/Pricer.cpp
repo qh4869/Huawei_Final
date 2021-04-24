@@ -145,6 +145,7 @@ void cPricer::setQuote(cVM &VM, cSSP_Mig_Request &request, cSSP_Mig_Server &serv
 	// 初始化
 	updatePseudoVar(server);
 	minRatio.clear();
+	ratioAndQuote.clear();
 	double cpuAveRatio, ramAveRatio;
 	tie(cpuAveRatio, ramAveRatio) = server.getAveResourceRatio(); // 计算占空比(之前所有天的均值，不考虑空SV)
 	double cpuAveRatioIncAll, ramAveRatioIncAll;
@@ -278,12 +279,22 @@ void cPricer::setQuote(cVM &VM, cSSP_Mig_Request &request, cSSP_Mig_Server &serv
 				}			
 			}
 
-			if (iDay <= veryEarlyDay)
-				minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale * disCountVeryEarly);
-			else
-				minRatio.push_back( (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale);
+			if (iDay <= veryEarlyDay) {
+				double a = (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale * disCountVeryEarly;
+				minRatio.push_back(a);
+				ratioAndQuote.push_back( {vmID, {a, userTotalQuote}});
+			}
+			else {
+				double a = (double)(estHardCost + estEnergyCost) / userTotalQuote * estCostScale;
+				minRatio.push_back(a);
+				ratioAndQuote.push_back({vmID, {a, userTotalQuote}});
+			}
 		}
 	}
+
+	///////////////bind
+	bind(iDay, VM);
+
 
 	if (iDay == 0) { // 初期争夺用户时期完全按照最低价出价
 		genRatio = -1; // -1是个标记，即按照minRatio定价
@@ -550,5 +561,35 @@ void cPricer::moreVeryEarlyDay(cSSP_Mig_Request &request) {
 			return; 
 		}
 	}
+
+}
+
+bool comRatio(pair<string, pair<double, int>> i, pair<string, pair<double, int>> j) {
+	return i.second.first < j.second.first;
+}
+
+void cPricer::bind(int iDay, cVM &VM) {
+	sort (ratioAndQuote.begin(), ratioAndQuote.end(), comRatio);
+
+	for (auto &x : ratioAndQuote) {
+		if (x.second.second > 10000 && VM.Binders.at(iDay).size() < 3) {
+			VM.Binders.at(iDay).insert(x.first);
+		}
+	}
+
+	if (VM.Binders.at(iDay).size() < 3) { 
+		for (auto &x : ratioAndQuote) {
+			if (VM.Binders.at(iDay).size() < 3 && !VM.Binders.at(iDay).count(x.first) ) {
+				VM.Binders.at(iDay).insert(x.first);
+			}
+		}
+	}
+
+	// ofstream fout;
+	// fout.open("tmpOut.txt", ios::app);
+	// fout << iDay << "-> " << VM.Binders.at(iDay).size() << endl;
+	// for (auto &x : VM.Binders.at(iDay)) {
+	// 	fout << x << endl;
+	// }
 
 }

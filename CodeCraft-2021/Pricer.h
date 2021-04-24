@@ -19,6 +19,7 @@ public:
 	double lossValue = 0.3;
 	// double minRatio = 0.5;
 	vector<double> minRatio; // 对应于每个add请求的成本折扣 <定价估计成本时初始化>
+	vector<pair<string, pair<double, int>>> ratioAndQuote;
 	double maxRatio = 1;
 	int cnt;
 
@@ -28,6 +29,7 @@ public:
 	void setQuote(cVM &VM, cSSP_Mig_Request &request, cSSP_Mig_Server &server, int iDay);
 	void setEqualPrice(cVM &VM, cSSP_Mig_Request &request, int iDay);
 	void updateRate(int iDay);
+	void bind(int iDay, cVM &VM);
 
 	/*伪部署*/
 	vector<sMyEachServer> pseudoServerSet;
