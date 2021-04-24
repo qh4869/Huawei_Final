@@ -81,6 +81,7 @@ void infoDataIn(istream &cin, cServer &server, cVM &VM, cRequests &request) {
 	server.buyRecord.resize(request.dayNum);
 	VM.transVmRecord.resize(request.dayNum);
 	VM.deployRecord.resize(request.dayNum);
+	VM.Binders.resize(request.dayNum);
 }
 
 void reqDataIn(istream &cin, cSSP_Mig_Request &request, int iDay) {
@@ -197,8 +198,13 @@ void dataOutEachDay(int iDay, cServer &server, cVM &VM, cRequests &request) {
 /*********************** 决赛新增内容 ***********************/
 void dataOutQuote(int iDay, cVM &VM, cRequests &request) {
 	for (auto &req : request.info[iDay]) {
-		if (req.type)
-			cout << VM.quote[iDay][req.vmID] << endl;
+		if (req.type) {
+			if (VM.Binders.at(iDay).count(req.vmID)) {
+				cout << req.quote << ",#" << endl;
+			}
+			else
+				cout << VM.quote[iDay][req.vmID] << endl;
+		}
 	}
 	fflush(stdout);
 }
