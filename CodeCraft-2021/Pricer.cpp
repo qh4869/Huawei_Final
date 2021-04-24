@@ -403,7 +403,7 @@ void cPricer::setEqualPrice(cVM &VM, cSSP_Mig_Request &request, int iDay) {
 					else { // genRatio >= minRatio.at(cnt) && genRatio <= maxRatio
 						if (request.addNum.at(iDay) > 500 && genRatio < minRatio.at(cnt) * 1.05) {
 							double roll = (double)rand() / RAND_MAX;
-							if (roll < 0.5) { // 50%的概率不出这么低的价
+							if (roll < 0.25) { // 50%的概率不出这么低的价
 								double newRatio = minRatio.at(cnt) * 1.025;
 								if (newRatio > maxRatio)
 									dayQuote.insert({req.vmID, req.quote});
